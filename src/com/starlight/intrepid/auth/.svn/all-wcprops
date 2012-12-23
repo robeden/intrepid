@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svnroot/intrepid2/!svn/ver/375/trunk/src/com/starlight/intrepid/auth
+END
+SimpleUserContextInfo.java
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svnroot/intrepid2/!svn/ver/315/trunk/src/com/starlight/intrepid/auth/SimpleUserContextInfo.java
+END
+UserCredentialReinitAuthenticationHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/svnroot/intrepid2/!svn/ver/182/trunk/src/com/starlight/intrepid/auth/UserCredentialReinitAuthenticationHandler.java
+END
+UserCredentialsConnectionArgs.java
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svnroot/intrepid2/!svn/ver/131/trunk/src/com/starlight/intrepid/auth/UserCredentialsConnectionArgs.java
+END
+ConnectionArgs.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/auth/ConnectionArgs.java
+END
+ConnectionAuthFailureException.java
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/auth/ConnectionAuthFailureException.java
+END
+RequestUserCredentialReinit.java
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svnroot/intrepid2/!svn/ver/131/trunk/src/com/starlight/intrepid/auth/RequestUserCredentialReinit.java
+END
+TokenReconnectAuthenticationHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svnroot/intrepid2/!svn/ver/375/trunk/src/com/starlight/intrepid/auth/TokenReconnectAuthenticationHandler.java
+END
+AuthenticationHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svnroot/intrepid2/!svn/ver/131/trunk/src/com/starlight/intrepid/auth/AuthenticationHandler.java
+END
+UserContextInfo.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/auth/UserContextInfo.java
+END

@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svnroot/intrepid2/!svn/ver/384/trunk/src/com/starlight/intrepid/spi
+END
+InboundMessageHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svnroot/intrepid2/!svn/ver/43/trunk/src/com/starlight/intrepid/spi/InboundMessageHandler.java
+END
+SessionInfo.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svnroot/intrepid2/!svn/ver/375/trunk/src/com/starlight/intrepid/spi/SessionInfo.java
+END
+IntrepidSPI.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svnroot/intrepid2/!svn/ver/304/trunk/src/com/starlight/intrepid/spi/IntrepidSPI.java
+END
+CloseSessionIndicator.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svnroot/intrepid2/!svn/ver/120/trunk/src/com/starlight/intrepid/spi/CloseSessionIndicator.java
+END
+NoAuthenticationHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svnroot/intrepid2/!svn/ver/103/trunk/src/com/starlight/intrepid/spi/NoAuthenticationHandler.java
+END

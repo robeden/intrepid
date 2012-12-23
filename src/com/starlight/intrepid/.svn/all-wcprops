@@ -1,0 +1,167 @@
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svnroot/intrepid2/!svn/ver/384/trunk/src/com/starlight/intrepid
+END
+VirtualByteChannel.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/intrepid2/!svn/ver/366/trunk/src/com/starlight/intrepid/VirtualByteChannel.java
+END
+Proxy.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/Proxy.java
+END
+ChannelAcceptor.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svnroot/intrepid2/!svn/ver/320/trunk/src/com/starlight/intrepid/ChannelAcceptor.java
+END
+PerformanceControl.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/intrepid2/!svn/ver/304/trunk/src/com/starlight/intrepid/PerformanceControl.java
+END
+ProxyInvocationHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svnroot/intrepid2/!svn/ver/381/trunk/src/com/starlight/intrepid/ProxyInvocationHandler.java
+END
+RemoteProxyWeakReference.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svnroot/intrepid2/!svn/ver/218/trunk/src/com/starlight/intrepid/RemoteProxyWeakReference.java
+END
+Intrepid.java
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svnroot/intrepid2/!svn/ver/323/trunk/src/com/starlight/intrepid/Intrepid.java
+END
+LocalRegistry.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svnroot/intrepid2/!svn/ver/207/trunk/src/com/starlight/intrepid/LocalRegistry.java
+END
+InvokeRunner.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svnroot/intrepid2/!svn/ver/381/trunk/src/com/starlight/intrepid/InvokeRunner.java
+END
+ProxyKit.java
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svnroot/intrepid2/!svn/ver/155/trunk/src/com/starlight/intrepid/ProxyKit.java
+END
+RemoteCallHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svnroot/intrepid2/!svn/ver/375/trunk/src/com/starlight/intrepid/RemoteCallHandler.java
+END
+IntrepidContext.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svnroot/intrepid2/!svn/ver/313/trunk/src/com/starlight/intrepid/IntrepidContext.java
+END
+Resources.java
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svnroot/intrepid2/!svn/ver/131/trunk/src/com/starlight/intrepid/Resources.java
+END
+PerformanceListener.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svnroot/intrepid2/!svn/ver/207/trunk/src/com/starlight/intrepid/PerformanceListener.java
+END
+ForceProxy.java
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/ForceProxy.java
+END
+LocalCallHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svnroot/intrepid2/!svn/ver/381/trunk/src/com/starlight/intrepid/LocalCallHandler.java
+END
+Registry.java
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svnroot/intrepid2/!svn/ver/68/trunk/src/com/starlight/intrepid/Registry.java
+END
+LeasePruneFlag.java
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svnroot/intrepid2/!svn/ver/218/trunk/src/com/starlight/intrepid/LeasePruneFlag.java
+END
+MethodMap.java
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svnroot/intrepid2/!svn/ver/174/trunk/src/com/starlight/intrepid/MethodMap.java
+END
+ProxyLeaseInfo.java
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svnroot/intrepid2/!svn/ver/220/trunk/src/com/starlight/intrepid/ProxyLeaseInfo.java
+END
+MethodIDTemplate.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svnroot/intrepid2/!svn/ver/64/trunk/src/com/starlight/intrepid/MethodIDTemplate.java
+END
+IntrepidSetup.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svnroot/intrepid2/!svn/ver/349/trunk/src/com/starlight/intrepid/IntrepidSetup.java
+END
+NewIDIndicator.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svnroot/intrepid2/!svn/ver/45/trunk/src/com/starlight/intrepid/NewIDIndicator.java
+END
+LeaseManager.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svnroot/intrepid2/!svn/ver/378/trunk/src/com/starlight/intrepid/LeaseManager.java
+END
+VMID.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svnroot/intrepid2/!svn/ver/207/trunk/src/com/starlight/intrepid/VMID.java
+END
+ConnectionListener.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/intrepid2/!svn/ver/194/trunk/src/com/starlight/intrepid/ConnectionListener.java
+END
+IntrepidInstanceListener.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svnroot/intrepid2/!svn/ver/187/trunk/src/com/starlight/intrepid/IntrepidInstanceListener.java
+END

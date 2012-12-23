@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svnroot/intrepid2/!svn/ver/386/trunk/lib
+END
+jzlib-1.0.7.jar
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svnroot/intrepid2/!svn/ver/66/trunk/lib/jzlib-1.0.7.jar
+END
+starlight-common-382.jar
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svnroot/intrepid2/!svn/ver/320/trunk/lib/starlight-common-382.jar
+END
+trove-3.0.2.jar
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svnroot/intrepid2/!svn/ver/354/trunk/lib/trove-3.0.2.jar
+END
+mina-core-2.0.7.jar
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svnroot/intrepid2/!svn/ver/386/trunk/lib/mina-core-2.0.7.jar
+END
+mina-filter-compression-2.0.7.jar
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svnroot/intrepid2/!svn/ver/386/trunk/lib/mina-filter-compression-2.0.7.jar
+END
+slf4j-api-1.7.2.jar
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svnroot/intrepid2/!svn/ver/386/trunk/lib/slf4j-api-1.7.2.jar
+END

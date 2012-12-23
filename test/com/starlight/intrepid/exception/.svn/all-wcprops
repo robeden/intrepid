@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svnroot/intrepid2/!svn/ver/381/trunk/test/com/starlight/intrepid/exception
+END
+ServerExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svnroot/intrepid2/!svn/ver/47/trunk/test/com/starlight/intrepid/exception/ServerExceptionTest.java
+END
+NotConnectedExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/svnroot/intrepid2/!svn/ver/89/trunk/test/com/starlight/intrepid/exception/NotConnectedExceptionTest.java
+END
+UnknownObjectExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svnroot/intrepid2/!svn/ver/381/trunk/test/com/starlight/intrepid/exception/UnknownObjectExceptionTest.java
+END
+ObjectNotBoundExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/svnroot/intrepid2/!svn/ver/47/trunk/test/com/starlight/intrepid/exception/ObjectNotBoundExceptionTest.java
+END
+UnknownMethodExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/svnroot/intrepid2/!svn/ver/47/trunk/test/com/starlight/intrepid/exception/UnknownMethodExceptionTest.java
+END
+IllegalProxyDelegateExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/svnroot/intrepid2/!svn/ver/47/trunk/test/com/starlight/intrepid/exception/IllegalProxyDelegateExceptionTest.java
+END
+IntrepidRuntimeExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svnroot/intrepid2/!svn/ver/47/trunk/test/com/starlight/intrepid/exception/IntrepidRuntimeExceptionTest.java
+END
+InterruptedCallExceptionTest.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svnroot/intrepid2/!svn/ver/47/trunk/test/com/starlight/intrepid/exception/InterruptedCallExceptionTest.java
+END

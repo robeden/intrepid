@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svnroot/intrepid2/!svn/ver/384/trunk/src/com/starlight/intrepid/spi/mina
+END
+HostAndPort.java
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/svnroot/intrepid2/!svn/ver/250/trunk/src/com/starlight/intrepid/spi/mina/HostAndPort.java
+END
+IMessageEncoder.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svnroot/intrepid2/!svn/ver/378/trunk/src/com/starlight/intrepid/spi/mina/IMessageEncoder.java
+END
+SSLConfig.java
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svnroot/intrepid2/!svn/ver/54/trunk/src/com/starlight/intrepid/spi/mina/SSLConfig.java
+END
+IntrepidCodecFactory.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svnroot/intrepid2/!svn/ver/114/trunk/src/com/starlight/intrepid/spi/mina/IntrepidCodecFactory.java
+END
+SessionContainer.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svnroot/intrepid2/!svn/ver/371/trunk/src/com/starlight/intrepid/spi/mina/SessionContainer.java
+END
+IoBufferSerialization.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svnroot/intrepid2/!svn/ver/378/trunk/src/com/starlight/intrepid/spi/mina/IoBufferSerialization.java
+END
+DefaultVMIDFuture.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/spi/mina/DefaultVMIDFuture.java
+END
+IMessageDecoder.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svnroot/intrepid2/!svn/ver/378/trunk/src/com/starlight/intrepid/spi/mina/IMessageDecoder.java
+END
+SerializationShortCut.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svnroot/intrepid2/!svn/ver/52/trunk/src/com/starlight/intrepid/spi/mina/SerializationShortCut.java
+END
+IoSessionInfoWrapper.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svnroot/intrepid2/!svn/ver/375/trunk/src/com/starlight/intrepid/spi/mina/IoSessionInfoWrapper.java
+END
+Resources.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/intrepid2/!svn/ver/118/trunk/src/com/starlight/intrepid/spi/mina/Resources.java
+END
+VMIDFuture.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svnroot/intrepid2/!svn/ver/42/trunk/src/com/starlight/intrepid/spi/mina/VMIDFuture.java
+END
+MINAIntrepidSPI.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svnroot/intrepid2/!svn/ver/384/trunk/src/com/starlight/intrepid/spi/mina/MINAIntrepidSPI.java
+END
+CloseHandler.java
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svnroot/intrepid2/!svn/ver/283/trunk/src/com/starlight/intrepid/spi/mina/CloseHandler.java
+END
