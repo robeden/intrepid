@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.spi.mina;
 
+import com.starlight.IOKit;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -71,6 +72,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		ProtocolDecoderOutput out ) throws Exception {
 
 		deserialization_context_vmid.set( vmid );
+
+		// Hint to StarLight Common's IOKit that we're doing a bunch of deserialization
+		IOKit.DESERIALIZATION_HINT.set( Boolean.TRUE );
 		try {
 			IMessage message = decode( in, session );
 
@@ -81,6 +85,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			}
 		}
 		finally {
+			IOKit.DESERIALIZATION_HINT.remove();
 			deserialization_context_vmid.remove();
 		}
 	}
