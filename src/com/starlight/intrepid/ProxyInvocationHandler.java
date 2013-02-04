@@ -192,7 +192,6 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 		}
 
 		if ( method_id == 0 ) {
-			assert false : "Unknown method: " + method + "  Map: " + method_to_id_map;
 			throw new UnknownMethodException( method_id, method );
 		}
 
