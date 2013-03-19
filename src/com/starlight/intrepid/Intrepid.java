@@ -155,8 +155,9 @@ public class Intrepid {
 
 		ListenerSupport<PerformanceListener,Void> performance_listeners =
 			ListenerSupportFactory.create( PerformanceListener.class, false );
-		if ( setup.getPerformanceListener() != null ) {
-			performance_listeners.add( setup.getPerformanceListener() );
+		final PerformanceListener perf_listener = setup.getPerformanceListener();
+		if ( perf_listener != null ) {
+			performance_listeners.add( perf_listener );
 		}
 
 		VMID vmid = new VMID( UUID.randomUUID(), vmid_hint );
@@ -214,6 +215,7 @@ public class Intrepid {
 	 * @throws IllegalStateException	If more than one Intrepid instance is active in
 	 * 									the local VM.
 	 */
+	@SuppressWarnings( "UnusedDeclaration" )
 	public static Object staticCreateProxy( Object delegate ) {
 		if ( isProxy( delegate ) ) return delegate;
 
@@ -270,6 +272,7 @@ public class Intrepid {
 	/**
 	 * @see #addInstanceListener(IntrepidInstanceListener)
 	 */
+	@SuppressWarnings( "UnusedDeclaration" )
 	public static void removeInstanceListener( IntrepidInstanceListener listener ) {
 		instance_listeners.remove( listener );
 	}
