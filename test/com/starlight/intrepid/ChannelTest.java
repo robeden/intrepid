@@ -245,6 +245,13 @@ public class ChannelTest extends TestCase {
 				public Object invoke( Object proxy, Method method, Object[] args )
 					throws Throwable {
 
+					if ( method.getName().equals( "hashCode" ) ) {
+						return Integer.valueOf( System.identityHashCode( this ) );
+					}
+					if ( method.getName().equals( "equals" ) ) {
+						return Boolean.valueOf( args[ 0 ] == this );
+					}
+
 					if ( !method.getName().equals( "messageSent" ) ) return null;
 
 					// Don't overwrite initial error
