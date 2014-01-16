@@ -1,4 +1,5 @@
-import com.starlight.intrepid.*;
+package com.starlight.intrepid;
+
 import com.starlight.intrepid.auth.*;
 import junit.framework.TestCase;
 
