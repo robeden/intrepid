@@ -17,6 +17,8 @@ public class ChainedCallUserContextTest extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
+		IntrepidTesting.setInterInstanceBridgeDisabled( false );
+
 		if ( tail_instance != null ) tail_instance.close();
 		if ( head_instance != null ) head_instance.close();
 		if ( client_instance != null ) client_instance.close();
