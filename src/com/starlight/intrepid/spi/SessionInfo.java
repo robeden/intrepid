@@ -63,9 +63,10 @@ public interface SessionInfo {
 	public VMID getVMID();
 
 	/**
-	 * Sets the VMID for the session.
+	 * Sets the VMID and the invoke ack rate for the session. If the peer doesn't support
+	 * method ack, the value for ack_rate_sec is undefined.
 	 */
-	public void setVMID( VMID vmid );
+	public void setVMID( VMID vmid, byte ack_rate_sec );
 
 
 	/**
@@ -132,4 +133,10 @@ public interface SessionInfo {
 	public ScheduledFuture<?> getReconnectTokenRegenerationTimer();
 
 	public void setReconnectTokenRegenerationTimer( ScheduledFuture<?> timer );
+
+
+	/**
+	 * Returns the ack rate (in seconds).
+	 */
+	public Byte getAckRateSec();
 }

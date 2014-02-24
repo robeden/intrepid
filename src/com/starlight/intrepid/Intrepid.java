@@ -36,7 +36,8 @@ import com.starlight.intrepid.spi.IntrepidSPI;
 import com.starlight.intrepid.spi.mina.MINAIntrepidSPI;
 import com.starlight.listeners.ListenerSupport;
 import com.starlight.listeners.ListenerSupportFactory;
-import com.starlight.thread.NamingThreadFactory;
+import com.starlight.thread.ScheduledExecutor;
+import com.starlight.thread.SharedThreadPool;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -46,8 +47,6 @@ import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -119,11 +118,9 @@ public class Intrepid {
 		IntrepidSPI spi = setup.getSPI();
 		if ( spi == null ) spi = new MINAIntrepidSPI();
 
-		ThreadPoolExecutor thread_pool = setup.getThreadPool();
+		ScheduledExecutor thread_pool = setup.getThreadPool();
 		if ( thread_pool == null ) {
-			thread_pool = new ThreadPoolExecutor( CORE_POOL_SIZE, MAX_POOL_SIZE,
-				KEEPALIVE, TimeUnit.MILLISECONDS, new SynchronousQueue<Runnable>(),
-				new NamingThreadFactory( "Intrepid-", setup.getServerPort() == null ) );
+			thread_pool = SharedThreadPool.INSTANCE;
 		}
 
 		InetAddress server_address = setup.getServerAddress();
@@ -172,7 +169,8 @@ public class Intrepid {
 		// Init SPI
 		spi.init( server_address, server_port, vmid_hint, remote_handler,
 			connection_listeners.dispatch(), thread_pool, vmid,
-			ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch() );
+			ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch(),
+			setup.getUnitTestHook() );
 
 		Intrepid instance = new Intrepid( spi, vmid, local_handler, remote_handler,
 			connection_listeners, performance_listeners );

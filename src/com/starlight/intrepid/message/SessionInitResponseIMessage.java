@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.message;
 
+import com.starlight.ValidationKit;
 import com.starlight.intrepid.VMID;
 
 import java.io.Serializable;
@@ -40,14 +41,24 @@ public class SessionInitResponseIMessage implements IMessage {
 	private final Integer responder_server_port;
 	private final byte protocol_version;
 	private final Serializable reconnect_token;
+	private final byte ack_rate_sec;
 
+
+
+	/**
+	 * @param ack_rate_sec      The rate (in seconds) at which acks for invocations may
+	 *                          be expected. Must be greater than 0.
+	 */
 	public SessionInitResponseIMessage( VMID responder_vmid, Integer responder_server_port,
-		byte protocol_version, Serializable reconnect_token ) {
+		byte protocol_version, Serializable reconnect_token, byte ack_rate_sec ) {
+
+		ValidationKit.checkGreaterThan( ack_rate_sec, 0, "ack_rate_sec" );
 
 		this.responder_vmid = responder_vmid;
 		this.responder_server_port = responder_server_port;
 		this.protocol_version = protocol_version;
 		this.reconnect_token = reconnect_token;
+		this.ack_rate_sec = ack_rate_sec;
 	}
 
 	@Override
@@ -80,6 +91,15 @@ public class SessionInitResponseIMessage implements IMessage {
 		return reconnect_token;
 	}
 
+	/**
+	 * The rate (in seconds) at which acks for invocations may be expected. Must be
+	 * greater than zero.
+	 */
+	public byte getAckRateSec() {
+		return ack_rate_sec;
+	}
+
+
 
 	@Override
 	public String toString() {
@@ -89,6 +109,7 @@ public class SessionInitResponseIMessage implements IMessage {
 		sb.append( ", responder_vmid=" ).append( responder_vmid );
 		sb.append( ", responder_server_port=" ).append( responder_server_port );
 		sb.append( ", reconnect_token=" ).append( reconnect_token );
+		sb.append( ", ack_rate_sec=" ).append( ack_rate_sec );
 		sb.append( '}' );
 		return sb.toString();
 	}

@@ -25,12 +25,14 @@
 
 package com.starlight.intrepid;
 
+import com.starlight.NotNull;
 import com.starlight.intrepid.auth.AuthenticationHandler;
 import com.starlight.intrepid.spi.IntrepidSPI;
 import com.starlight.intrepid.spi.NoAuthenticationHandler;
+import com.starlight.intrepid.spi.UnitTestHook;
+import com.starlight.thread.ScheduledExecutor;
 
 import java.net.InetAddress;
-import java.util.concurrent.ThreadPoolExecutor;
 
 
 /**
@@ -41,12 +43,14 @@ public class IntrepidSetup {
 	private IntrepidSPI spi;
 	private InetAddress server_address;
 	private Integer server_port;
-	private ThreadPoolExecutor thread_pool;
+	private ScheduledExecutor thread_pool;
 	private AuthenticationHandler auth_handler;
 	private String vmid_hint;
 	private ConnectionListener connection_listener;
 	private PerformanceListener performance_listener;
 	private ChannelAcceptor channel_acceptor;
+
+	private UnitTestHook unit_test_hook;
 
 
 	public IntrepidSetup authHandler( AuthenticationHandler auth_handler ) {
@@ -73,7 +77,7 @@ public class IntrepidSetup {
 		return this;
 	}
 
-	public IntrepidSetup threadPool( ThreadPoolExecutor thread_pool ) {
+	public IntrepidSetup threadPool( ScheduledExecutor thread_pool ) {
 		this.thread_pool = thread_pool;
 		return this;
 	}
@@ -126,7 +130,7 @@ public class IntrepidSetup {
 		return spi;
 	}
 
-	public ThreadPoolExecutor getThreadPool() {
+	public ScheduledExecutor getThreadPool() {
 		return thread_pool;
 	}
 
@@ -144,5 +148,16 @@ public class IntrepidSetup {
 
 	public ChannelAcceptor getChannelAcceptor() {
 		return channel_acceptor;
+	}
+
+
+
+	IntrepidSetup unitTestHook( @NotNull UnitTestHook hook ) {
+		this.unit_test_hook = hook;
+		return this;
+	}
+
+	UnitTestHook getUnitTestHook() {
+		return unit_test_hook;
 	}
 }

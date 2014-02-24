@@ -225,7 +225,7 @@ class LeaseManager {
 		if ( renew ) message = new LeaseIMessage( object_id );
 		else message = new LeaseReleaseIMessage( object_id );
 
-		spi.sendMessage( vmid, message );
+		spi.sendMessage( vmid, message, null );
 	}
 
 
@@ -318,14 +318,13 @@ class LeaseManager {
 				catch ( Throwable t ) {
 					if ( t instanceof AssertionError ) {
 						LOG.error( "AssertionError caught handling leases. Info: {} " +
-							" Queue: {}", new Object[] { info, renew_queue, t } );
+							" Queue: {}", info, renew_queue, t );
 					}
 					LOG.debug( "Exception caught in LeaseManager", t );
 					if ( info != null ) {
 						if ( LOG.isDebugEnabled() ) {
 							LOG.debug( "Error while sending lease to {} for {}",
-								new Object[] { info.vmid,
-								Integer.valueOf( info.object_id ), t } );
+								info.vmid, Integer.valueOf( info.object_id ), t );
 						}
 
 						if ( reschedule ) {

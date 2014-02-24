@@ -40,6 +40,7 @@ public enum IMessageType {
 	INVOKE(					10 ),
 	INVOKE_RETURN(			11 ),
 	INVOKE_INTERRUPT(		12 ),
+	INVOKE_ACK(             13 ),   // Added in protocol version 2
 
 	LEASE(                  20 ),
 	LEASE_RELEASE(          21 ),
@@ -57,6 +58,10 @@ public enum IMessageType {
 	private final byte id;
 
 	private IMessageType( int id ) {
+		if ( id < 1 || id > Byte.MAX_VALUE ) {
+			throw new IllegalArgumentException( "Invalid ID: " + id );
+		}
+
 		this.id = ( byte ) id;
 	}
 
