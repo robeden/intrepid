@@ -182,7 +182,7 @@ public class AbnormalMethodTerminationTest extends TestCase {
 		@Override
 		public void dieByOutOfMemory() {
 			//noinspection MismatchedQueryAndUpdateOfCollection
-			List<byte[]> list_of_doom = new LinkedList<>();
+			List<byte[]> list_of_doom = new LinkedList<byte[]>();
 			//noinspection InfiniteLoopStatement
 			for( int i = 0; ; i++ ) {
 				list_of_doom.add( new byte[ 102400 ] );
@@ -194,6 +194,7 @@ public class AbnormalMethodTerminationTest extends TestCase {
 			final Thread thread_to_kill = Thread.currentThread();
 
 			SharedThreadPool.INSTANCE.schedule( new Runnable() {
+				@SuppressWarnings( "deprecation" )
 				@Override
 				public void run() {
 					thread_to_kill.stop();
