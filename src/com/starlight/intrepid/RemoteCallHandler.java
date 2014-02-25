@@ -25,16 +25,16 @@
 
 package com.starlight.intrepid;
 
+import com.starlight.NotNull;
+import com.starlight.ValidationKit;
 import com.starlight.intrepid.auth.*;
 import com.starlight.intrepid.exception.*;
 import com.starlight.intrepid.message.*;
-import com.starlight.intrepid.spi.CloseSessionIndicator;
-import com.starlight.intrepid.spi.InboundMessageHandler;
-import com.starlight.intrepid.spi.IntrepidSPI;
-import com.starlight.intrepid.spi.SessionInfo;
+import com.starlight.intrepid.spi.*;
 import com.starlight.listeners.ListenerSupport;
 import com.starlight.locale.FormattedTextResourceKey;
 import com.starlight.thread.ObjectSlot;
+import com.starlight.thread.ScheduledExecutor;
 import com.starlight.thread.SharedThreadPool;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TObjectIntMap;
@@ -59,7 +59,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -74,27 +73,41 @@ import java.util.concurrent.locks.ReentrantLock;
 class RemoteCallHandler implements InboundMessageHandler {
 	private static final Logger LOG = LoggerFactory.getLogger( RemoteCallHandler.class );
 
-	/** Current protocol version desired by this instance. */
-	// Protocol version history:
-	// 0             - initial release
-	// 1 (6/10/2012) - reconnect token handling
-	//                 introduction of SessionTokenChangeIMessage
-	private static final byte PROTOCOL_VERSION = 1;
-
-	/** Minimum protocol version this instance can handle. */
-	private static final byte MIN_PROTOCOL_VERSION = 0;
 
 	private static final int MAX_CHANNEL_MESSAGE_DATA_SIZE =
 		Integer.getInteger( "intrepid.channel.max_message_data",
 		( 1 << 18 ) - 20 ).intValue();  // 256K - 20 bytes
 
+	private static final byte REQUEST_INVOKE_ACK_RATE_SEC = ( byte )
+		Math.min( 10,
+			Integer.getInteger( "intrepid.req_invoke_ack_rate_sec", 10 ).intValue() );
+	static {
+		if ( REQUEST_INVOKE_ACK_RATE_SEC < 0 ) {
+			throw new IllegalArgumentException(
+				"System property \"intrepid.req_invoke_ack_rate_sec\" may not be set " +
+				"to a negative number." );
+		}
+	}
+
 	private static final InvokeCloseFlag SESSION_CLOSED_FLAG = new InvokeCloseFlag();
+
+	private static final InvokeNotAckedFlag NEVER_ACKED_FLAG =
+		new InvokeNotAckedFlag( false );
+	private static final InvokeNotAckedFlag SUBSEQUENT_NOT_ACKED_FLAG =
+		new InvokeNotAckedFlag( true );
+
+
+
+	private enum InvokeAttempt { BY_ID, BY_PERSISTENT_NAME }
+	private static final InvokeAttempt[] INVOKE_ATTEMPT = InvokeAttempt.values();
+
+
 
 	private final AuthenticationHandler auth_handler;
 	private final IntrepidSPI spi;
 	private final LocalCallHandler local_handler;
 	private final VMID local_vmid;
-	private final Executor executor;
+	private final ScheduledExecutor executor;
 	private final ChannelAcceptor channel_acceptor;
 	private Intrepid instance;		// for call context info
 
@@ -103,35 +116,35 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private final AtomicInteger call_id_counter = new AtomicInteger( 0 );
 
 	private final Lock call_wait_map_lock = new ReentrantLock();
-	private final TIntObjectMap<ObjectSlot<InvokeReturnIMessage>> call_wait_map =
-		new TIntObjectHashMap<ObjectSlot<InvokeReturnIMessage>>();
+	private final TIntObjectMap<CallInfoAndAckControl> call_wait_map =
+		new TIntObjectHashMap<>();
 
 	// Map of VMID to active calls
-	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<VMID, TIntSet>();
+	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<>();
 
 
 	private final Lock ping_wait_map_lock = new ReentrantLock();
 	private final TShortObjectHashMap<ObjectSlot<PingResponseIMessage>> ping_wait_map =
-		new TShortObjectHashMap<ObjectSlot<PingResponseIMessage>>();
+		new TShortObjectHashMap<>();
 
 
 	private final Lock channel_map_lock = new ReentrantLock();
-	private final TIntObjectMap<ObjectSlot<ChannelInitResponseIMessage>> channel_init_wait_map =
-		new TIntObjectHashMap<ObjectSlot<ChannelInitResponseIMessage>>();
+	private final TIntObjectMap<ObjectSlot<ChannelInitResponseIMessage>>
+		channel_init_wait_map = new TIntObjectHashMap<>();
 
 	// Map of active virtual channels
 	private final Map<VMID,TShortObjectMap<VirtualByteChannel>> channel_map =
-		new HashMap<VMID, TShortObjectMap<VirtualByteChannel>>();
+		new HashMap<>();
 
 	private final AtomicInteger channel_id_counter = new AtomicInteger();
 
 
 	private final TIntObjectMap<InvokeRunner> runner_map =
-		new TIntObjectHashMap<InvokeRunner>();
+		new TIntObjectHashMap<>();
 	private final Lock runner_map_lock = new ReentrantLock();
 
 	RemoteCallHandler( IntrepidSPI spi, AuthenticationHandler auth_handler,
-		LocalCallHandler local_handler, VMID local_vmid, Executor executor,
+		LocalCallHandler local_handler, VMID local_vmid, ScheduledExecutor executor,
 		ListenerSupport<PerformanceListener, ?> performance_listeners,
 		ChannelAcceptor channel_acceptor ) {
 
@@ -154,8 +167,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		int call_id = call_id_counter.getAndIncrement();
 
-		final ObjectSlot<InvokeReturnIMessage> return_slot =
-			new ObjectSlot<InvokeReturnIMessage>();
+		final ObjectSlot<InvokeReturnIMessage> return_slot = new ObjectSlot<>();
 
 		// Make sure args are serializable and wrap in proxy if they're not
 		if ( args != null && args.length > 0 ) checkArgsForSerialization( args );
@@ -175,11 +187,15 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		InvokeIMessage message = new InvokeIMessage( call_id, object_id, null, method_id,
 			args, user_context, has_perf_listeners );
+		AtomicInteger protocol_version_slot = new AtomicInteger();
+
+		CallInfoAndAckControl call_info =
+			new CallInfoAndAckControl( executor, return_slot );
 
 		// Put the slot in the call_wait_map
 		call_wait_map_lock.lock();
 		try {
-			call_wait_map.put( call_id, return_slot );
+			call_wait_map.put( call_id, call_info );
 
 			TIntSet call_id_set = vmid_call_wait_map.get( vmid );
 			if ( call_id_set == null ) {
@@ -196,8 +212,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 			VMID new_vmid = null;
 			Integer new_object_id = null;
 			Throwable t = null;
-			for( int i = 0; i < 2; i++ ) {
-				if ( i == 1 ) {
+			for( InvokeAttempt attempt : INVOKE_ATTEMPT ) {
+				if ( attempt == InvokeAttempt.BY_PERSISTENT_NAME ) {
 					if ( persistent_name == null ) break;
 					
 					if ( has_perf_listeners ) {
@@ -215,8 +231,29 @@ class RemoteCallHandler implements InboundMessageHandler {
 				LOG.debug( "Sending message {}", call_id_obj );
 				assert message != null;
 				assert vmid != null;
-				new_vmid = spi.sendMessage( vmid, message );
+
+				SessionInfo session_info =
+					spi.sendMessage( vmid, message, protocol_version_slot );
 				LOG.debug( "Message sent: {}", call_id_obj );
+
+				VMID current_vmid = session_info.getVMID();
+				if ( current_vmid != null && !current_vmid.equals( vmid ) ) {
+					new_vmid = current_vmid;
+				}
+
+
+				// If the connection supports method acks, set up timer to expect it.
+				if ( ProtocolVersions.supportsMethodAck(
+					protocol_version_slot.byteValue() ) ) {
+
+					Byte session_ack_rate = session_info.getAckRateSec();
+					if ( session_ack_rate != null ) {
+						call_info.setSessionAckRateSec( session_ack_rate.byteValue() );
+					}
+
+					call_info.scheduleAckExpector( true );
+				}
+
 
 				InvokeReturnIMessage return_message;
 				try {
@@ -227,7 +264,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 				catch( InterruptedException ex ) {
 					// send interrupt message
 					try {
-						spi.sendMessage( vmid, new InvokeInterruptIMessage( call_id ) );
+						spi.sendMessage( vmid,
+							new InvokeInterruptIMessage( call_id ), null );
 					}
 					catch( Exception exc ) {
 						// ignore
@@ -250,7 +288,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 					// case and we have a persistent name available (and we haven't tried
 					// already), then retry the loop which will retry with the persistent
 					// name.
-					if ( t instanceof UnknownObjectException && i == 0 &&
+					if ( t instanceof UnknownObjectException &&
+						attempt == InvokeAttempt.BY_ID &&
 						persistent_name != null ) {
 
 						return_slot.clear();
@@ -283,6 +322,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 			else throw t;
 		}
 		finally {
+			call_info.dispose();
+
 			// Make sure nothing is left in the call_wait_map
 			call_wait_map_lock.lock();
 			try {
@@ -303,12 +344,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		final int call_id = call_id_counter.getAndIncrement();
 
-		ObjectSlot<ChannelInitResponseIMessage> response_slot =
-			new ObjectSlot<ChannelInitResponseIMessage>();
+		ObjectSlot<ChannelInitResponseIMessage> response_slot = new ObjectSlot<>();
 		boolean successful = false;
 		short channel_id = -1;
 		try {
-
 			ChannelInitIMessage channel_init;
 			VirtualByteChannel channel;
 
@@ -321,7 +360,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				TShortObjectMap<VirtualByteChannel> channel_id_map =
 					channel_map.get( destination );
 				if ( channel_id_map == null ) {
-					channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
+					channel_id_map = new TShortObjectHashMap<>();
 					channel_map.put( destination, channel_id_map );
 				}
 
@@ -349,7 +388,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				channel_map_lock.unlock();
 			}
 
-			spi.sendMessage( destination, channel_init );
+			spi.sendMessage( destination, channel_init, null );
 
 			
 			ChannelInitResponseIMessage response = response_slot.waitForValue();
@@ -394,22 +433,17 @@ class RemoteCallHandler implements InboundMessageHandler {
 		boolean send_message ) {
 
 		if ( send_message ) {
-//			SharedThreadPool.INSTANCE.execute( new Runnable() {
-//				@Override
-//				public void run() {
-					try {
-						spi.sendMessage( destination,
-							new ChannelCloseIMessage( channel_id ) );
-					}
-					catch( NotConnectedException ex ) {
-						// ignore
-					}
-					catch ( IOException ex ) {
-						LOG.warn( "Unable to send channel close message: {}",
-							Short.valueOf( channel_id ), ex );
-					}
-//				}
-//			} );
+			try {
+				spi.sendMessage( destination,
+					new ChannelCloseIMessage( channel_id ), null );
+			}
+			catch( NotConnectedException ex ) {
+				// ignore
+			}
+			catch ( IOException ex ) {
+				LOG.warn( "Unable to send channel close message: {}",
+					Short.valueOf( channel_id ), ex );
+			}
 		}
 
 		channel_map_lock.lock();
@@ -444,7 +478,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		while( data.position() < original_limit ) {
 			data.limit( Math.min( original_limit,
 				data.position() + MAX_CHANNEL_MESSAGE_DATA_SIZE ) );
-			spi.sendMessage( destination, new ChannelDataIMessage( channel_id, data ) );
+			spi.sendMessage( destination,
+				new ChannelDataIMessage( channel_id, data ), null );
 		}
 
 		if ( performance_listeners.hasListeners() ) {
@@ -459,7 +494,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		short id = ( short ) call_id_counter.getAndIncrement();
 
 		ObjectSlot<PingResponseIMessage> response_slot =
-			new ObjectSlot<PingResponseIMessage>();
+			new ObjectSlot<>();
 
 		ping_wait_map_lock.lock();
 		try {
@@ -472,7 +507,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		long start = System.nanoTime();
 
 		try {
-			spi.sendMessage( vmid, new PingIMessage( id ) );
+			spi.sendMessage( vmid, new PingIMessage( id ), null );
 
 			PingResponseIMessage response =
 				response_slot.waitForValue( timeout_unit.toMillis( timeout ) );
@@ -499,7 +534,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	public IMessage receivedMessage( SessionInfo session_info, IMessage message )
 		throws CloseSessionIndicator {
 
-		LOG.debug( "receivedMessage: {}", message );
+		LOG.debug( "receivedMessage from {}: {}", session_info.getVMID(), message );
 
 		IMessage response = null;
 		switch ( message.getType() ) {
@@ -532,6 +567,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			case INVOKE_INTERRUPT:
 				handleInvokeInterrupt( ( InvokeInterruptIMessage ) message );
+				break;
+
+			case INVOKE_ACK:
+				handlerInvokeAck( ( InvokeAckIMessage ) message, session_info.getVMID() );
 				break;
 
 			case LEASE:
@@ -626,12 +665,12 @@ class RemoteCallHandler implements InboundMessageHandler {
 		ConnectionArgs connection_args ) throws CloseSessionIndicator {
 
 		// Only care about sessions we opened
-		// TODO: probably want to set a timeout timer for cases where we don't receive an init
 		if ( !opened_locally ) return null;
 
 		return new SessionInitIMessage( local_vmid, spi.getServerPort(),
-			connection_args, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION,
-			session_info.getReconnectToken() );
+			connection_args, ProtocolVersions.MIN_PROTOCOL_VERSION,
+			ProtocolVersions.PROTOCOL_VERSION, session_info.getReconnectToken(),
+			REQUEST_INVOKE_ACK_RATE_SEC );
 	}
 
 
@@ -643,23 +682,16 @@ class RemoteCallHandler implements InboundMessageHandler {
 				Resources.ERROR_CLIENT_CONNECTIONS_NOT_ALLOWED_NO_AUTH_HANDLER, true ) );
 		}
 
-		// If they're preferred version is smaller than our minimum, then not compatible
-		if ( message.getPrefProtocolVersion() < MIN_PROTOCOL_VERSION ||
-			PROTOCOL_VERSION < message.getMinProtocolVersion() ) {
-
+		byte proto_version = ProtocolVersions.negotiateProtocolVersion(
+			message.getMinProtocolVersion(), message.getPrefProtocolVersion() );
+		if ( proto_version < 0 ) {
 			throw new CloseSessionIndicator( new SessionCloseIMessage(
 				new FormattedTextResourceKey( Resources.INCOMPATIBLE_PROTOCOL_VERSION,
-				Byte.valueOf( MIN_PROTOCOL_VERSION ),
-				Byte.valueOf( PROTOCOL_VERSION ),
+				Byte.valueOf( ProtocolVersions.MIN_PROTOCOL_VERSION ),
+				Byte.valueOf( ProtocolVersions.PROTOCOL_VERSION ),
 				Byte.valueOf( message.getMinProtocolVersion() ),
 				Byte.valueOf( message.getPrefProtocolVersion() ) ), false ) );
 		}
-
-		byte proto_version;
-		if ( PROTOCOL_VERSION < message.getPrefProtocolVersion() ) {
-			proto_version = PROTOCOL_VERSION;
-		}
-		else proto_version = message.getPrefProtocolVersion();
 		
 		// Handle session re-init (see class docs on RequestUserCredentialReinit)
 		if ( message.getConnectionArgs() != null &&
@@ -673,8 +705,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 					UserCredentialsConnectionArgs new_args = handler.getUserCredentials(
 						session_info.getRemoteAddress(), session_info.getSessionSource() );
 					return new SessionInitIMessage( local_vmid, spi.getServerPort(),
-						new_args, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION,
-						session_info.getReconnectToken() );
+						new_args, ProtocolVersions.MIN_PROTOCOL_VERSION,
+						ProtocolVersions.PROTOCOL_VERSION,
+						session_info.getReconnectToken(), REQUEST_INVOKE_ACK_RATE_SEC );
 				}
 				catch( ConnectionAuthFailureException ex ) {
 					throw new CloseSessionIndicator(
@@ -692,7 +725,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		Serializable reconnect_token = null;
 		try {
 			// Session token reconnection added in protocol version 1.
-			if ( proto_version >= 1 &&
+			if ( ProtocolVersions.supportsReconnectTokens( proto_version ) &&
 				auth_handler instanceof TokenReconnectAuthenticationHandler ) {
 
 				TokenReconnectAuthenticationHandler token_handler =
@@ -723,17 +756,28 @@ class RemoteCallHandler implements InboundMessageHandler {
 		// NOTE: MUST come before setVMID
 		session_info.setPeerServerPort( message.getInitiatorServerPort() );
 
-		session_info.setVMID( message.getInitiatorVMID() );
+
+		byte ack_rate = REQUEST_INVOKE_ACK_RATE_SEC;
+		if ( message.getRequestedAckRateSec() > 0 &&
+			message.getRequestedAckRateSec() < ack_rate ) {
+
+			ack_rate = message.getRequestedAckRateSec();
+		}
+
+		session_info.setVMID( message.getInitiatorVMID(), ack_rate );
 
 		return new SessionInitResponseIMessage( local_vmid, spi.getServerPort(),
-			proto_version, reconnect_token );
+			proto_version, reconnect_token, ack_rate );
 	}
 
 	private void handleSessionInitResponse( SessionInitResponseIMessage message,
 		SessionInfo session_info ) {
 
+		byte ack_rate = message.getAckRateSec();
+		if ( ack_rate <= 0 ) ack_rate = REQUEST_INVOKE_ACK_RATE_SEC;
+
 		session_info.setProtocolVersion( Byte.valueOf( message.getProtocolVersion() ) );
-		session_info.setVMID( message.getResponderVMID() );
+		session_info.setVMID( message.getResponderVMID(), ack_rate );
 		session_info.setReconnectToken( message.getReconnectToken() );
 	}
 
@@ -767,10 +811,11 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private void handleInvoke( InvokeIMessage message,
 		SessionInfo session_info ) {
 
-		LOG.trace( "Invoke: {}", message );
+		LOG.trace( "Invoke: {} (protocol version={})", message,
+			session_info.getProtocolVersion() );
 
 		// Use the messages call context, unless a context has already been set for the
-		// session. In other words, only allow an overridding context if this is a server
+		// session. In other words, only allow an overriding context if this is a server
 		// connection.
 		UserContextInfo context_info = session_info.getUserContext();
 		if ( context_info == null ) context_info = message.getUserContext();
@@ -790,9 +835,20 @@ class RemoteCallHandler implements InboundMessageHandler {
 			source_address = ( ( InetSocketAddress ) sock_addr ).getAddress();
 		}
 
+		Byte protocol_version = session_info.getProtocolVersion();
+		assert protocol_version != null :
+			"Unknown protocol version for session: " + session_info;
+		//noinspection ConstantConditions
+		boolean needs_ack = protocol_version == null ||
+			ProtocolVersions.supportsMethodAck( protocol_version.byteValue() );
+
+		Byte ack_rate = session_info.getAckRateSec();
+
 		InvokeRunner runner = new InvokeRunner( message, session_info.getVMID(),
 			source_address, context_info, spi, local_handler, instance, runner_map,
-			runner_map_lock, performance_listeners );
+			runner_map_lock, performance_listeners, needs_ack,
+			ack_rate == null ? REQUEST_INVOKE_ACK_RATE_SEC : ack_rate.byteValue(),
+			executor );
 
 		runner_map_lock.lock();
 		try {
@@ -806,27 +862,27 @@ class RemoteCallHandler implements InboundMessageHandler {
 	}
 
 	private void handleInvokeReturn( InvokeReturnIMessage message ) {
-		ObjectSlot<InvokeReturnIMessage> return_slot;
+		CallInfoAndAckControl call_info;
 
 		LOG.trace( "Invoke return: {}", message );
 
 		call_wait_map_lock.lock();
 		try {
-			return_slot = call_wait_map.get( message.getCallID() );
+			call_info = call_wait_map.get( message.getCallID() );
 		}
 		finally {
 			call_wait_map_lock.unlock();
 		}
 
-		if ( return_slot == null ) {
+		if ( call_info == null ) {
 			if ( LOG.isDebugEnabled() ) {
-				LOG.debug( "No return slot found for call {}, message: {}",
+				LOG.debug( "No info found for call {}, message: {}",
 					Integer.valueOf( message.getCallID() ), message );
 			}
 			return;
 		}
 
-		return_slot.set( message );
+		call_info.return_slot.set( message );
 	}
 
 	private void handleInvokeInterrupt( InvokeInterruptIMessage message ) {
@@ -844,6 +900,31 @@ class RemoteCallHandler implements InboundMessageHandler {
 		if ( runner != null ) runner.interrupt();
 	}
 
+
+	private void handlerInvokeAck( InvokeAckIMessage message, VMID caller_vmid ) {
+		LOG.trace( "Invoke ack from {}: {}", caller_vmid, message );
+
+		CallInfoAndAckControl call_info;
+		call_wait_map_lock.lock();
+		try {
+			call_info = call_wait_map.get( message.getCallID() );
+		}
+		finally {
+			call_wait_map_lock.unlock();
+		}
+
+		if ( call_info == null ) {
+			if ( LOG.isDebugEnabled() ) {
+				LOG.debug( "No info found for call {}, message: {}",
+					Integer.valueOf( message.getCallID() ), message );
+			}
+			return;
+		}
+
+		call_info.scheduleAckExpector( false );
+	}
+
+
 	private ChannelInitResponseIMessage handleChannelInit( ChannelInitIMessage message,
 		VMID vmid ) {
 
@@ -858,7 +939,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		try {
 			TShortObjectMap<VirtualByteChannel> channel_id_map = channel_map.get( vmid );
 			if ( channel_id_map == null ) {
-				channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
+				channel_id_map = new TShortObjectHashMap<>();
 				channel_map.put( vmid, channel_id_map );
 			}
 
@@ -986,13 +1067,19 @@ class RemoteCallHandler implements InboundMessageHandler {
 		session_info.setReconnectTokenRegenerationTimer( future );
 
 		if ( send_token_change_message ) {
-			try {
-				spi.sendMessage( vmid,
-					new SessionTokenChangeIMessage( reconnect_token ) );
-			}
-			catch ( IOException e ) {
-				// TODO: retry
-				LOG.warn( "Unable to send SessionTokenChange message", e );
+			for( int i = 2; i >= 0; i-- ) {
+				try {
+					spi.sendMessage( vmid,
+						new SessionTokenChangeIMessage( reconnect_token ), null );
+					break;
+				}
+				catch ( IOException e ) {
+					String message = "Unable to send SessionTokenChange message";
+					if ( i == 0 ) message += " (will NOT retry)";
+					else message += " (will retry)";
+
+					LOG.warn( message, e );
+				}
 			}
 		}
 
@@ -1050,8 +1137,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private class CallInterruptProcedure implements TIntProcedure {
 		@Override
 		public boolean execute( int call_id ) {
-			ObjectSlot<InvokeReturnIMessage> slot = call_wait_map.get( call_id );
-			slot.set( SESSION_CLOSED_FLAG );
+			CallInfoAndAckControl call_info = call_wait_map.get( call_id );
+			call_info.return_slot.set( SESSION_CLOSED_FLAG );
 			return true;
 		}
 	}
@@ -1076,6 +1163,39 @@ class RemoteCallHandler implements InboundMessageHandler {
 		private static InterruptedCallException buildException() {
 			InterruptedCallException ex = new InterruptedCallException(
 				"Connection to peer closed during method invocation" );
+
+			// Erase the stack because this exception is build ahead of time and reused.
+			// So, the stack is pretty pointless (and confusing) when viewed.
+			ex.setStackTrace( new StackTraceElement[ 0 ] );
+			return ex;
+		}
+	}
+
+
+	/**
+	 * Used to signal that an invocation did not received the expected acknowlegement from
+	 * the server.
+	 */
+	private static class InvokeNotAckedFlag extends InvokeReturnIMessage {
+
+		public InvokeNotAckedFlag( boolean received_any_acks ) {
+			//noinspection ThrowableResultOfMethodCallIgnored
+			super( -1, buildException( received_any_acks ), true, null, null );
+		}
+
+
+		private static MethodInvocationFailedException buildException(
+			boolean received_any_acks ) {
+
+			String message;
+			if ( received_any_acks ) {
+				message = "Message acknowledgement timeout exceeded";
+			}
+			else {
+				message = "Initial message acknowledgement timeout exceeded";
+			}
+			MethodInvocationFailedException ex =
+				new MethodInvocationFailedException( message );
 
 			// Erase the stack because this exception is build ahead of time and reused.
 			// So, the stack is pretty pointless (and confusing) when viewed.
@@ -1125,6 +1245,99 @@ class RemoteCallHandler implements InboundMessageHandler {
 			catch( Throwable t ) {
 				LOG.warn( "Unexpected error regenerating reconnection token", t );
 			}
+		}
+	}
+
+
+	/**
+	 * This object serves two purposes:
+	 * <ol>
+	 * <li>It is the data container for information relating to a call invocation</li>
+	 * <li>It is the Runnable that is executed if the call is not ack'ed by the server
+	 *     in a proper amount of time</li>
+	 * </ol>
+	 */
+	private static class CallInfoAndAckControl implements Runnable {
+		long ack_deadline_ms;       // WARNING: milliseconds
+
+		final ScheduledExecutor executor;
+		final ObjectSlot<InvokeReturnIMessage> return_slot;
+
+		private volatile boolean received_an_ack = false;
+		private volatile boolean aborted_by_ack_fail = false;
+
+		ScheduledFuture<?> ack_expect_future;
+		final Lock ack_handler_lock = new ReentrantLock();
+
+
+		private CallInfoAndAckControl( @NotNull ScheduledExecutor executor,
+			@NotNull ObjectSlot<InvokeReturnIMessage> return_slot ) {
+
+			ValidationKit.checkNonnull( return_slot, "return_slot" );
+
+			this.executor = executor;
+			this.return_slot = return_slot;
+
+			// Default, should be overridden
+			setSessionAckRateSec( REQUEST_INVOKE_ACK_RATE_SEC );
+		}
+
+
+		void setSessionAckRateSec( byte ack_sec ) {
+			// WARNING: Converting to milliseconds
+			ack_deadline_ms = Math.round( TimeUnit.SECONDS.toMillis( ack_sec ) * 2.5 );
+		}
+
+
+		void scheduleAckExpector( boolean first ) {
+			if ( !first ) received_an_ack = true;
+
+			ack_handler_lock.lock();
+			try {
+				// Do nothing if we've already killed the call due to missing an ack
+				if ( aborted_by_ack_fail ) return;
+
+				if ( ack_expect_future != null ) {
+					ack_expect_future.cancel( false );
+				}
+
+				// NOTE: time is in milliseconds
+				ack_expect_future =
+					executor.schedule( this, ack_deadline_ms, TimeUnit.MILLISECONDS );
+			}
+			finally {
+				ack_handler_lock.unlock();
+			}
+		}
+
+
+		/**
+		 * Called when a call has not been acknowledged within the deadline.
+		 */
+		@Override
+		public void run() {
+			InvokeNotAckedFlag flag;
+			if ( received_an_ack ) {
+				flag = SUBSEQUENT_NOT_ACKED_FLAG;
+			}
+			else flag = NEVER_ACKED_FLAG;
+
+
+			ack_handler_lock.lock();
+			try {
+				return_slot.compareAndSet( null, flag );
+				aborted_by_ack_fail = true;
+				ack_expect_future = null;
+			}
+			finally {
+				ack_handler_lock.unlock();
+			}
+		}
+
+
+		public void dispose() {
+			final ScheduledFuture<?> future = ack_expect_future;
+			if ( future != null ) future.cancel( false );
 		}
 	}
 }

@@ -35,11 +35,9 @@ import com.starlight.intrepid.exception.ConnectionFailureException;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.SessionCloseIMessage;
-import com.starlight.intrepid.spi.CloseSessionIndicator;
-import com.starlight.intrepid.spi.InboundMessageHandler;
-import com.starlight.intrepid.spi.IntrepidSPI;
-import com.starlight.intrepid.spi.SessionInfo;
+import com.starlight.intrepid.spi.*;
 import com.starlight.locale.FormattedTextResourceKey;
+import com.starlight.thread.ScheduledExecutor;
 import com.starlight.thread.ThreadKit;
 import org.apache.mina.core.RuntimeIoException;
 import org.apache.mina.core.future.CloseFuture;
@@ -72,6 +70,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -101,6 +100,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	static final String CONTAINER_KEY = ".container";
 	// Time (System.nanoTime()) at which the session was created
 	static final String CREATED_TIME_KEY = ".created_time";
+	// Byte value for the invoke ack rate (in seconds)
+	static final String INVOKE_ACK_RATE = ".invoke_ack_rate";
 	// Boolean indicating whether or not we initiated the connection. Null indicates false.
 	static final String LOCAL_INITIATE_KEY = ".local_initiate";
 	// Boolean indicating that the session has been closed locally. Null indicates false.
@@ -133,7 +134,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	private InboundMessageHandler message_handler;
 	private ConnectionListener connection_listener;
 	private PerformanceListener performance_listener;
-	private ThreadPoolExecutor thread_pool;
+	private UnitTestHook unit_test_hook;
+	private ScheduledExecutor thread_pool;
 	private VMID local_vmid;
 
 	private SocketAcceptor acceptor;
@@ -142,22 +144,20 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	// Lock for session_map, outbound_session_map and vmid_remap
 	private final Lock map_lock = new ReentrantLock();
 
-	private final Map<VMID,SessionContainer> session_map =
-		new HashMap<VMID, SessionContainer>();
+	private final Map<VMID,SessionContainer> session_map = new HashMap<>();
 
 	// Map containing information about outbound_session_map sessions (sessions opened
 	// locally). There session are managed for automatic reconnection.
-	private final Map<HostAndPort,SessionContainer> outbound_session_map =
-		new HashMap<HostAndPort, SessionContainer>();
+	private final Map<HostAndPort,SessionContainer> outbound_session_map = new HashMap<>();
 
 	// When a connection changes VMID's (due to reconnection), the old and new ID's are
 	// put here.
-	private final Map<VMID,VMID> vmid_remap = new HashMap<VMID, VMID>();
+	private final Map<VMID,VMID> vmid_remap = new HashMap<>();
 
 	private final DelayQueue<ReconnectRunnable> reconnect_delay_queue =
-		new DelayQueue<ReconnectRunnable>();
+		new DelayQueue<>();
 	private final ConcurrentHashMap<HostAndPort,HostAndPort> active_reconnections =
-		new ConcurrentHashMap<HostAndPort,HostAndPort>();
+		new ConcurrentHashMap<>();
 	private final ReconnectManager reconnect_manager;
 
 	private long reconnect_retry_interval = RECONNECT_RETRY_INTERVAL;
@@ -194,9 +194,10 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	@Override
 	public void init( InetAddress server_address, Integer server_port, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
-		ThreadPoolExecutor thread_pool, VMID vmid,
+		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener ) throws IOException {
+		PerformanceListener performance_listener, UnitTestHook unit_test_hook )
+		throws IOException {
 
 		ValidationKit.checkNonnull( message_handler, "message_handler" );
 		ValidationKit.checkNonnull( connection_listener, "connection_listener" );
@@ -204,6 +205,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		this.message_handler = message_handler;
 		this.connection_listener = connection_listener;
 		this.performance_listener = performance_listener;
+		this.unit_test_hook = unit_test_hook;
 		this.thread_pool = thread_pool;
 		this.local_vmid = vmid;
 		if ( ssl_config != null ) {
@@ -321,7 +323,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		// Shut down all sessions. Try to do it nicely, but don't wait too long.
 		map_lock.lock();
 		try {
-			List<CloseFuture> futures = new ArrayList<CloseFuture>( session_map.size() );
+			List<CloseFuture> futures = new ArrayList<>( session_map.size() );
 
 			for( SessionContainer container : session_map.values() ) {
 				container.setCanceled();        // cancel reconnector
@@ -578,7 +580,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
         }
 		ConnectFuture future = connector.connect(
 			new InetSocketAddress( address, port ),
-			new VMIDSlotInitializer<ConnectFuture>( args, reconnect_token, container,
+			new VMIDSlotInitializer<>( args, reconnect_token, container,
 				attachment, original_vmid ) );
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
 			future.cancel();
@@ -707,13 +709,13 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 
 	@Override
-	public VMID sendMessage( VMID destination, IMessage message )
-		throws IOException {
+	public SessionInfo sendMessage( VMID destination, IMessage message,
+		AtomicInteger protocol_version_slot ) throws IOException {
 
 		Integer message_id = Integer.valueOf( System.identityHashCode( message ) );
 		LOG.debug( "Send message (ID:{}): ", message_id, message );
 
-		VMID new_vmid = null;
+		VMID new_vmid;
 
 		// If there's an artificial delay, sleep now
 		if ( message_send_delay != null ) {
@@ -734,8 +736,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 					LOG.debug( "Container not found for {} in sendMessage. " +
 						"Session map: {}  Outbound session map: {}  VMID remap: {}  " +
 						"Reconnect delay queue: {}  Active reconnections: {}",
-						new Object[] { destination, session_map, outbound_session_map,
-						vmid_remap, reconnect_delay_queue, active_reconnections } );
+						destination, session_map, outbound_session_map,
+						vmid_remap, reconnect_delay_queue, active_reconnections );
 				}
 				throw new NotConnectedException( destination );
 			}
@@ -746,6 +748,29 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 		IoSession session = container.getSession( SEND_MESSAGE_SESSION_CONNECT_TIMEOUT );
 		if ( session == null ) throw new NotConnectedException( destination );
+
+		SessionInfo session_info = ( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );
+
+
+		// See if there's a test hook that would like to drop the message
+		if ( unit_test_hook != null &&
+			unit_test_hook.dropMessageSend( destination, message ) ) {
+
+			LOG.info( "Dropping message send per UnitTestHook instructions: {} to {}",
+				message, destination );
+			return session_info;
+		}
+
+
+		if ( protocol_version_slot != null ) {
+			Byte protocol_version = session_info.getProtocolVersion();
+			if ( protocol_version != null ) {
+				protocol_version_slot.set( protocol_version.byteValue() & 0xFF );
+			}
+			else {
+				protocol_version_slot.set( -1 );
+			}
+		}
 
 //		System.err.println( "Sending message to " + destination + ": " + message );
 
@@ -777,7 +802,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		}
 		else performance_listener.messageSent( destination, message );
 
-		return new_vmid;
+		return ( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );
 	}
 
 	@Override
@@ -947,10 +972,10 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
         if ( LOG.isDebugEnabled() ) {
             LOG.debug( "MINA.sessionClosed (stage 2): {} session_info: {} " +
                 "locally_initiated: {} locally_terminated: {} vmid: {} attachment: {} " +
-                "RECONNECT: {} container: {}", new Object[] { session,
-				session.getAttribute( SESSION_INFO_KEY ), locally_initiated,
-				locally_terminated, vmid, attachment, Boolean.valueOf( reconnect ),
-				container } );
+                "RECONNECT: {} container: {}", session,
+	            session.getAttribute( SESSION_INFO_KEY ), locally_initiated,
+	            locally_terminated, vmid, attachment, Boolean.valueOf( reconnect ),
+	            container );
         }
 
 		// If it was not locally terminated, notify listeners. Otherwise, this has already
@@ -1017,8 +1042,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 				if ( LOG.isDebugEnabled() ) {
 					LOG.debug( "Removed {} from session_map due to close of session " +
-						"({}) , container session ({})", new Object[] { vmid, session,
-						test_container.getSession() } );
+						"({}) , container session ({})", vmid, session,
+						test_container.getSession() );
 				}
 			}
 
@@ -1050,6 +1075,17 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			( IMessage ) message );
 
 		if ( message == null ) return;
+
+
+		// See if there's a test hook that would like to drop the message
+		if ( unit_test_hook != null && unit_test_hook.dropMessageReceive(
+			session_info.getVMID(), ( IMessage ) message ) ) {
+
+			LOG.info( "Dropping message receive per UnitTestHook instructions: {} from {}",
+				message, session_info.getVMID() );
+			return;
+		}
+
 
 		final IMessage response;
 		try {
@@ -1291,8 +1327,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			catch( ClosedChannelException ex ) {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) - {} - CHANNEL CLOSED",
-                        new Object[] { Integer.valueOf( System.identityHashCode( this ) ),
-                        host_and_port, ex } );
+	                    Integer.valueOf( System.identityHashCode( this ) ),
+	                    host_and_port, ex );
                 }
 				// If it's closed, exit!
 
@@ -1305,8 +1341,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) - {} - exception (will be " +
                         "rescheduled)",
-                        new Object[] { Integer.valueOf( System.identityHashCode( this ) ),
-                        host_and_port, ex } );
+	                    Integer.valueOf( System.identityHashCode( this ) ),
+	                    host_and_port, ex );
                 }
 				if ( ex instanceof RuntimeException || ex instanceof Error ) {
 					LOG.warn( "Error while reconnecting to {}",
@@ -1327,8 +1363,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			finally {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) exiting for {} (abend={})",
-						new Object[] { Integer.valueOf( System.identityHashCode( this ) ),
-						host_and_port, Boolean.valueOf( abend ) } );
+	                    Integer.valueOf( System.identityHashCode( this ) ),
+	                    host_and_port, Boolean.valueOf( abend ) );
                 }
 
 				active_reconnections.remove( host_and_port );
@@ -1359,9 +1395,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
         @Override
         public String toString() {
-            return new StringBuilder( "ReconnectRunnable to " ).append( host_and_port )
-                .append( " original vmid: " ).append( original_vmid ).append(
-				" container: " ).append( container ).toString();
+            return "ReconnectRunnable to " + host_and_port + " original vmid: " +
+	            original_vmid + " container: " + container;
         }
     }
 

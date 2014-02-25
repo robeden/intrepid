@@ -26,15 +26,19 @@
 package com.starlight.intrepid;
 
 import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.spi.InboundMessageHandler;
 import com.starlight.intrepid.spi.IntrepidSPI;
+import com.starlight.intrepid.spi.SessionInfo;
+import com.starlight.intrepid.spi.UnitTestHook;
+import com.starlight.thread.ScheduledExecutor;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -58,19 +62,24 @@ public class StubIntrepidSPI implements IntrepidSPI {
 		return false;
 	}
 
+
+
 	@Override
 	public void init( InetAddress server_address, Integer server_port, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
-		ThreadPoolExecutor thread_pool, VMID vmid,
+		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener ) throws IOException {}
+		PerformanceListener performance_listener, UnitTestHook unit_test_hook )
+		throws IOException {}
 
 	@Override
 	public void shutdown() {}
 
+
+
 	@Override
-	public VMID sendMessage( VMID destination, IMessage message )
-		throws IOException {
+	public SessionInfo sendMessage( VMID destination, IMessage message,
+		AtomicInteger protocol_version_slot ) throws IOException, NotConnectedException {
 
 		return null;
 	}

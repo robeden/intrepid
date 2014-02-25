@@ -31,11 +31,12 @@ import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
+import com.starlight.thread.ScheduledExecutor;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -77,9 +78,10 @@ public interface IntrepidSPI {
 	 */
 	public void init( InetAddress server_address, Integer server_port, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
-		ThreadPoolExecutor thread_pool, VMID vmid,
+		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener ) throws IOException;
+		PerformanceListener performance_listener,
+		UnitTestHook unit_test_hook ) throws IOException;
 
 	public void shutdown();
 
@@ -89,12 +91,16 @@ public interface IntrepidSPI {
 	 *
 	 * @param destination		Destination for the message.
 	 * @param message			Message to send.
+	 * @param protocol_version_slot  If non-null, the negotiated protocol version for the
+	 *                          session with the peer will be set into this slot. If the
+	 *                          version is not available for some reason but the host is
+	 *                          connected (an error condition), -1 will be set.
 	 *
 	 * @return		If this VMID of the <tt>destination</tt> VM has changed, it will be
 	 * 				returned.
 	 */
-	public VMID sendMessage( VMID destination, IMessage message )
-		throws IOException, NotConnectedException;
+	public SessionInfo sendMessage( VMID destination, IMessage message,
+		AtomicInteger protocol_version_slot ) throws IOException, NotConnectedException;
 
 
 	/**

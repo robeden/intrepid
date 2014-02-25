@@ -43,9 +43,21 @@ public class SessionInitIMessage implements IMessage {
 
 	private final Serializable reconnect_token;
 
+	// The rate (in seconds) at which Invoke acks will be expected.
+	// Must be greater than zero. A value of 0 means the server may choose.
+	private final byte requested_ack_rate_sec;
+
+
+
+	/**
+	 * @param requested_ack_rate_sec    The rate (in seconds) at which Invoke ack's will
+	 *                                  be expected. Must be greater than zero. A value
+	 *                                  of 0 means the server may choose.
+	 */
 	public SessionInitIMessage( VMID initiator_vmid, Integer initiator_server_port,
 		ConnectionArgs connection_args, byte min_protocol_version,
-		byte pref_protocol_version, Serializable reconnect_token ) {
+		byte pref_protocol_version, Serializable reconnect_token,
+		byte requested_ack_rate_sec ) {
 
 		this.initiator_vmid = initiator_vmid;
 		this.initiator_server_port = initiator_server_port;
@@ -53,6 +65,7 @@ public class SessionInitIMessage implements IMessage {
 		this.min_protocol_version = min_protocol_version;
 		this.pref_protocol_version = pref_protocol_version;
 		this.reconnect_token = reconnect_token;
+		this.requested_ack_rate_sec = requested_ack_rate_sec;
 	}
 
 	@Override
@@ -85,6 +98,12 @@ public class SessionInitIMessage implements IMessage {
 		return reconnect_token;
 	}
 
+	public byte getRequestedAckRateSec() {
+		return requested_ack_rate_sec;
+	}
+
+
+
 	@Override
 	public String toString() {
 		final StringBuilder sb = new StringBuilder();
@@ -95,6 +114,7 @@ public class SessionInitIMessage implements IMessage {
 		sb.append( ", min_protocol_version=" ).append( min_protocol_version );
 		sb.append( ", pref_protocol_version=" ).append( pref_protocol_version );
 		sb.append( ", reconnect_token=" ).append( reconnect_token );
+		sb.append( ", requested_ack_rate_sec=" ).append( requested_ack_rate_sec );
 		sb.append( '}' );
 		return sb.toString();
 	}

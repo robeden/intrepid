@@ -148,6 +148,10 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 				message = decodeInvokeInterrupt( buffer );
 				break;
 
+			case INVOKE_ACK:
+				message = decodeInvokeAck( buffer );
+				break;
+
 			case LEASE:
 				message = decodeLease( buffer );
 				break;
@@ -360,6 +364,17 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
+	private static InvokeAckIMessage decodeInvokeAck( IoBuffer buffer ) {
+		// VERSION
+		buffer.get();
+
+		// CALL ID
+		int call_id = buffer.getInt();
+
+		return new InvokeAckIMessage( call_id );
+	}
+
+
 	private static SessionInitIMessage decodeSessionInit( IoBuffer buffer,
 		IoSession session ) {
 		
@@ -421,8 +436,12 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			}
 		}
 
+		// REQUESTED ACK RATE
+		byte ack_rate = -1;
+		if ( version >= 3 ) ack_rate = buffer.get();
+
 		return new SessionInitIMessage( vmid, server_port, connection_args,
-			min_protocol_version, pref_protocol_version, reconnect_token );
+			min_protocol_version, pref_protocol_version, reconnect_token, ack_rate );
 	}
 
 
@@ -478,8 +497,12 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			}
 		}
 
+		// ACK RATE
+		byte ack_rate = -1;
+		if ( version >= 3 ) ack_rate = buffer.get();
+
 		return new SessionInitResponseIMessage( vmid, server_port, protocol_version,
-			reconnect_token );
+			reconnect_token, ack_rate );
 	}
 
 

@@ -27,10 +27,13 @@ package com.starlight.intrepid;
 
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.exception.IllegalProxyDelegateException;
+import com.starlight.intrepid.message.InvokeAckIMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
 import com.starlight.intrepid.message.InvokeReturnIMessage;
 import com.starlight.intrepid.spi.IntrepidSPI;
 import com.starlight.listeners.ListenerSupport;
+import com.starlight.thread.ScheduledExecutor;
+import com.starlight.thread.ThreadKit;
 import gnu.trove.map.TIntObjectMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +41,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetAddress;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 
@@ -60,13 +65,16 @@ class InvokeRunner implements Runnable {
 
 	private final ListenerSupport<PerformanceListener,?> performance_listeners;
 
+	private final ScheduledFuture<?> ack_future;
+
 
 	Thread my_thread;
 
 	InvokeRunner( InvokeIMessage message, VMID source, InetAddress source_address,
 		UserContextInfo user_context, IntrepidSPI spi, LocalCallHandler local_handler,
 		Intrepid instance, TIntObjectMap<InvokeRunner> runner_map, Lock runner_map_lock,
-		ListenerSupport<PerformanceListener,?> performance_listeners ) {
+		ListenerSupport<PerformanceListener,?> performance_listeners, boolean needs_ack,
+		byte ack_rate_sec, ScheduledExecutor ack_executor ) {
 
 		this.message = message;
 		this.source = source;
@@ -78,6 +86,12 @@ class InvokeRunner implements Runnable {
 		this.runner_map = runner_map;
 		this.runner_map_lock = runner_map_lock;
 		this.performance_listeners = performance_listeners;
+
+		if ( needs_ack ) {
+			ack_future = ack_executor.scheduleWithFixedDelay( new AckRunnable(),
+				ack_rate_sec & 0xFFL, ack_rate_sec & 0xFFL, TimeUnit.SECONDS );
+		}
+		else ack_future = null;
 	}
 
 
@@ -127,20 +141,19 @@ class InvokeRunner implements Runnable {
 			catch( Throwable throwable ) {
 				result = throwable;
 				result_was_thrown = true;
-				// TODO:
 			}
 
 			try {
 				spi.sendMessage( source, new InvokeReturnIMessage( message.getCallID(),
 					result, result_was_thrown, new_object_id, perf_stats ?
-					Long.valueOf( System.nanoTime() - start ) : null ) );
+					Long.valueOf( System.nanoTime() - start ) : null ), null );
 			}
 			catch ( Throwable throwable ) {
 				if ( LOG.isDebugEnabled() ) {
 					LOG.debug(
 						"Unable to send return message for call {} to {} (will retry)",
-						new Object[] { Integer.valueOf( message.getCallID() ), source,
-						throwable } );
+						Integer.valueOf( message.getCallID() ), source,
+						throwable );
 				}
 
 				if ( throwable instanceof IOException ) {
@@ -151,19 +164,23 @@ class InvokeRunner implements Runnable {
 				try {
 					spi.sendMessage( source, new InvokeReturnIMessage( message.getCallID(),
 						throwable, result_was_thrown, new_object_id, perf_stats ?
-							Long.valueOf( System.nanoTime() - start ) : null ) );
+							Long.valueOf( System.nanoTime() - start ) : null ), null );
 				}
 				catch ( Exception e ) {
 					if ( LOG.isInfoEnabled() ) {
 						LOG.info( "Unable to send return message for call {} to {} " +
 							"(will NOT retry)",
-							new Object[] { Integer.valueOf( message.getCallID() ), source,
-							throwable } );
+							Integer.valueOf( message.getCallID() ), source,
+							throwable );
 					}
 				}
 			}
 		}
 		finally {
+			if ( ack_future != null ) {
+				ack_future.cancel( false );
+			}
+
 			IntrepidContext.clearCallInfo();
 
 			my_thread.setName( original_thread_name );
@@ -198,5 +215,32 @@ class InvokeRunner implements Runnable {
 		}
 
 		return arg;
+	}
+
+
+	private class AckRunnable implements Runnable {
+		@Override
+		public void run() {
+			for( int i = 0; i < 3; i++ ) {
+				if ( i != 0 ) {
+					ThreadKit.sleep( 500 );
+				}
+
+				try {
+					spi.sendMessage( source,
+						new InvokeAckIMessage( message.getCallID() ), null );
+
+					if ( LOG.isDebugEnabled() ) {
+						LOG.debug( "Sent ack for invoke {} to {}",
+							Integer.valueOf( message.getCallID() ), source );
+					}
+				}
+				catch ( IOException e ) {
+					LOG.warn( "Unable to send ack for invoke {} to {}. Will retry: {}",
+						Integer.valueOf( message.getCallID() ), source,
+						Boolean.valueOf( i != 2 ) );
+				}
+			}
+		}
 	}
 }

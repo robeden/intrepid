@@ -118,6 +118,10 @@ class IMessageEncoder implements ProtocolEncoder {
 					encodeInvokeInterrupt( ( InvokeInterruptIMessage ) message, buffer );
 					break;
 
+				case INVOKE_ACK:
+					encodeInvokeAck( ( InvokeAckIMessage ) message, buffer );
+					break;
+
 				case LEASE:
 					encodeLease( ( LeaseIMessage ) message, buffer );
 					break;
@@ -308,11 +312,20 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 
+	private static void encodeInvokeAck( InvokeAckIMessage message, IoBuffer buffer ) {
+		// VERSION
+		buffer.put( ( byte ) 0 );
+
+		// CALL ID
+		buffer.putInt( message.getCallID() );
+	}
+
+
 	private static void encodeSessionInit( SessionInitIMessage message, IoBuffer buffer )
 		throws IOException {
 
 		// VERSION
-		buffer.put( ( byte ) 2 );
+		buffer.put( ( byte ) 3 );
 
 		// MIN PROTOCOL VERSION
 		buffer.put( message.getMinProtocolVersion() );
@@ -343,6 +356,9 @@ class IMessageEncoder implements ProtocolEncoder {
 			buffer.put( ( byte ) 1 );
 			IoBufferSerialization.putObject( message.getReconnectToken(), buffer );
 		}
+
+		// REQUESTED ACK RATE
+		buffer.put( message.getRequestedAckRateSec() );
 	}
 
 
@@ -350,7 +366,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		IoBuffer buffer ) throws IOException {
 
 		// VERSION
-		buffer.put( ( byte ) 2 );
+		buffer.put( ( byte ) 3 );
 
 		// PROTOCOL VERSION
 		buffer.put( message.getProtocolVersion() );
@@ -371,6 +387,9 @@ class IMessageEncoder implements ProtocolEncoder {
 			buffer.put( ( byte ) 1 );
 			IoBufferSerialization.putObject( message.getReconnectToken(), buffer );
 		}
+
+		// ACK RATE
+		buffer.put( message.getAckRateSec() );
 	}
 
 

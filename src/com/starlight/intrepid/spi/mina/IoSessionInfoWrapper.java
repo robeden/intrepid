@@ -119,11 +119,16 @@ class IoSessionInfoWrapper implements SessionInfo {
 		return ( VMID ) session.getAttribute( MINAIntrepidSPI.VMID_KEY );
 	}
 
+
+
 	@Override
-	public void setVMID( VMID vmid ) {
+	public void setVMID( VMID vmid, byte ack_rate_sec ) {
 		// Setting a null VMID is invalid. It will be null by default, but this is okay.
 		// Allowing null to be set would allow sessions to disappear from the session_map.
 		ValidationKit.checkNonnull( vmid, "VMID" );
+
+		session.setAttribute( MINAIntrepidSPI.INVOKE_ACK_RATE,
+			Byte.valueOf( ack_rate_sec ) );
 
 		VMID old_vmid = ( VMID ) session.setAttribute( MINAIntrepidSPI.VMID_KEY, vmid );
 
@@ -138,7 +143,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 				buf.append( session.getAttribute( key ) );
 			}
 			LOG.debug( "MINA.SessionInfo setVMID: {} old_vmid: {} attributes: {}",
-				new Object[] { vmid, old_vmid, buf.toString() } );
+				vmid, old_vmid, buf.toString() );
 		}
 
 		// If the VMID is unchanged, exit
@@ -329,5 +334,32 @@ class IoSessionInfoWrapper implements SessionInfo {
 	@Override
 	public void setReconnectTokenRegenerationTimer( ScheduledFuture<?> timer ) {
 		session.setAttribute( MINAIntrepidSPI.RECONNECT_TOKEN_REGENERATION_TIMER, timer );
+	}
+
+
+
+	@Override
+	public Byte getAckRateSec() {
+		return ( Byte ) session.getAttribute( MINAIntrepidSPI.INVOKE_ACK_RATE );
+	}
+
+
+
+	@Override
+	public String toString() {
+		final StringBuilder sb =
+			new StringBuilder( "IoSessionInfoWrapper{" );
+		sb.append( "connection_listener=" ).append( connection_listener );
+		sb.append( ", connection_type_description='" )
+			.append( connection_type_description )
+			.append( '\'' );
+		sb.append( ", local_vmid=" ).append( local_vmid );
+		sb.append( ", map_lock=" ).append( map_lock );
+		sb.append( ", outbound_session_map=" ).append( outbound_session_map );
+		sb.append( ", session=" ).append( session );
+		sb.append( ", session_map=" ).append( session_map );
+		sb.append( ", vmid_remap=" ).append( vmid_remap );
+		sb.append( '}' );
+		return sb.toString();
 	}
 }
