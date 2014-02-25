@@ -229,6 +229,7 @@
 			<jvmarg value="-Dintrepid.lease.duration=2000"/>
 			<jvmarg value="-Dintrepid.lease.prune_interval=1000"/>
 			<jvmarg value="-Dintrepid.local_call_handler.initial_reservation=10000"/>
+			<jvmarg value="-Dintrepid.req_invoke_ack_rate_sec=1"/>
 			<classpath>
 				<pathelement location="build/classes"/>
 				<pathelement location="build/test_classes"/>
