@@ -144,20 +144,22 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	// Lock for session_map, outbound_session_map and vmid_remap
 	private final Lock map_lock = new ReentrantLock();
 
-	private final Map<VMID,SessionContainer> session_map = new HashMap<>();
+	private final Map<VMID,SessionContainer> session_map =
+		new HashMap<VMID,SessionContainer>();
 
 	// Map containing information about outbound_session_map sessions (sessions opened
 	// locally). There session are managed for automatic reconnection.
-	private final Map<HostAndPort,SessionContainer> outbound_session_map = new HashMap<>();
+	private final Map<HostAndPort,SessionContainer> outbound_session_map =
+		new HashMap<HostAndPort,SessionContainer>();
 
 	// When a connection changes VMID's (due to reconnection), the old and new ID's are
 	// put here.
-	private final Map<VMID,VMID> vmid_remap = new HashMap<>();
+	private final Map<VMID,VMID> vmid_remap = new HashMap<VMID,VMID>();
 
 	private final DelayQueue<ReconnectRunnable> reconnect_delay_queue =
-		new DelayQueue<>();
+		new DelayQueue<ReconnectRunnable>();
 	private final ConcurrentHashMap<HostAndPort,HostAndPort> active_reconnections =
-		new ConcurrentHashMap<>();
+		new ConcurrentHashMap<HostAndPort,HostAndPort>();
 	private final ReconnectManager reconnect_manager;
 
 	private long reconnect_retry_interval = RECONNECT_RETRY_INTERVAL;
@@ -323,7 +325,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		// Shut down all sessions. Try to do it nicely, but don't wait too long.
 		map_lock.lock();
 		try {
-			List<CloseFuture> futures = new ArrayList<>( session_map.size() );
+			List<CloseFuture> futures = new ArrayList<CloseFuture>( session_map.size() );
 
 			for( SessionContainer container : session_map.values() ) {
 				container.setCanceled();        // cancel reconnector
@@ -580,7 +582,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
         }
 		ConnectFuture future = connector.connect(
 			new InetSocketAddress( address, port ),
-			new VMIDSlotInitializer<>( args, reconnect_token, container,
+			new VMIDSlotInitializer<ConnectFuture>( args, reconnect_token, container,
 				attachment, original_vmid ) );
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
 			future.cancel();

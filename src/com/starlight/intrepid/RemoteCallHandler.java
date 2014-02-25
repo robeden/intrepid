@@ -117,30 +117,30 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 	private final Lock call_wait_map_lock = new ReentrantLock();
 	private final TIntObjectMap<CallInfoAndAckControl> call_wait_map =
-		new TIntObjectHashMap<>();
+		new TIntObjectHashMap<CallInfoAndAckControl>();
 
 	// Map of VMID to active calls
-	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<>();
+	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<VMID,TIntSet>();
 
 
 	private final Lock ping_wait_map_lock = new ReentrantLock();
 	private final TShortObjectHashMap<ObjectSlot<PingResponseIMessage>> ping_wait_map =
-		new TShortObjectHashMap<>();
+		new TShortObjectHashMap<ObjectSlot<PingResponseIMessage>>();
 
 
 	private final Lock channel_map_lock = new ReentrantLock();
-	private final TIntObjectMap<ObjectSlot<ChannelInitResponseIMessage>>
-		channel_init_wait_map = new TIntObjectHashMap<>();
+	private final TIntObjectMap<ObjectSlot<ChannelInitResponseIMessage>> channel_init_wait_map =
+		new TIntObjectHashMap<ObjectSlot<ChannelInitResponseIMessage>>();
 
 	// Map of active virtual channels
 	private final Map<VMID,TShortObjectMap<VirtualByteChannel>> channel_map =
-		new HashMap<>();
+		new HashMap<VMID,TShortObjectMap<VirtualByteChannel>>();
 
 	private final AtomicInteger channel_id_counter = new AtomicInteger();
 
 
 	private final TIntObjectMap<InvokeRunner> runner_map =
-		new TIntObjectHashMap<>();
+		new TIntObjectHashMap<InvokeRunner>();
 	private final Lock runner_map_lock = new ReentrantLock();
 
 	RemoteCallHandler( IntrepidSPI spi, AuthenticationHandler auth_handler,
@@ -167,7 +167,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		int call_id = call_id_counter.getAndIncrement();
 
-		final ObjectSlot<InvokeReturnIMessage> return_slot = new ObjectSlot<>();
+		final ObjectSlot<InvokeReturnIMessage> return_slot =
+			new ObjectSlot<InvokeReturnIMessage>();
 
 		// Make sure args are serializable and wrap in proxy if they're not
 		if ( args != null && args.length > 0 ) checkArgsForSerialization( args );
@@ -344,7 +345,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		final int call_id = call_id_counter.getAndIncrement();
 
-		ObjectSlot<ChannelInitResponseIMessage> response_slot = new ObjectSlot<>();
+		ObjectSlot<ChannelInitResponseIMessage> response_slot =
+			new ObjectSlot<ChannelInitResponseIMessage>();
 		boolean successful = false;
 		short channel_id = -1;
 		try {
@@ -360,7 +362,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				TShortObjectMap<VirtualByteChannel> channel_id_map =
 					channel_map.get( destination );
 				if ( channel_id_map == null ) {
-					channel_id_map = new TShortObjectHashMap<>();
+					channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
 					channel_map.put( destination, channel_id_map );
 				}
 
@@ -494,7 +496,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		short id = ( short ) call_id_counter.getAndIncrement();
 
 		ObjectSlot<PingResponseIMessage> response_slot =
-			new ObjectSlot<>();
+			new ObjectSlot<PingResponseIMessage>();
 
 		ping_wait_map_lock.lock();
 		try {
@@ -939,7 +941,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		try {
 			TShortObjectMap<VirtualByteChannel> channel_id_map = channel_map.get( vmid );
 			if ( channel_id_map == null ) {
-				channel_id_map = new TShortObjectHashMap<>();
+				channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
 				channel_map.put( vmid, channel_id_map );
 			}
 
