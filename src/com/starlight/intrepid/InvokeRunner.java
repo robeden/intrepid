@@ -234,6 +234,8 @@ class InvokeRunner implements Runnable {
 						LOG.debug( "Sent ack for invoke {} to {}",
 							Integer.valueOf( message.getCallID() ), source );
 					}
+
+					break;
 				}
 				catch ( IOException e ) {
 					LOG.warn( "Unable to send ack for invoke {} to {}. Will retry: {}",
