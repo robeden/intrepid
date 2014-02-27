@@ -349,12 +349,10 @@ class IoSessionInfoWrapper implements SessionInfo {
 	public String toString() {
 		final StringBuilder sb =
 			new StringBuilder( "IoSessionInfoWrapper{" );
-		sb.append( "connection_listener=" ).append( connection_listener );
 		sb.append( ", connection_type_description='" )
 			.append( connection_type_description )
 			.append( '\'' );
 		sb.append( ", local_vmid=" ).append( local_vmid );
-		sb.append( ", map_lock=" ).append( map_lock );
 		sb.append( ", outbound_session_map=" ).append( outbound_session_map );
 		sb.append( ", session=" ).append( session );
 		sb.append( ", session_map=" ).append( session_map );
