@@ -1259,7 +1259,12 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			this.reconnect_token = reconnect_token;
 			this.host_and_port = host_and_port;
 
-			next_run_time = System.nanoTime() + TimeUnit.SECONDS.toNanos( 1 );
+			// Random delay between 1 and 10 seconds for initial firing. This works around
+			// "oscillation" problems with single connection negotiation where each side
+			// closes the other side.
+			int reconnect_delay_sec = ThreadLocalRandom.current().nextInt( 1, 10 );
+			next_run_time = System.nanoTime() +
+				TimeUnit.SECONDS.toNanos( reconnect_delay_sec );
 		}
 
 		@Override
