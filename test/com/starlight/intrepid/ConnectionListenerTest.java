@@ -52,6 +52,13 @@ public class ConnectionListenerTest extends TestCase {
 		if ( server_instance != null ) server_instance.close();
 	}
 
+
+	public void testSystemProperty() {
+		assertEquals( "System property 'intrepid.req_invoke_ack_rate_sec' must be set " +
+			"to '1' when running unit tests.", "1",
+			System.getProperty( "intrepid.req_invoke_ack_rate_sec" ) );
+	}
+
 	public void testListener() throws Exception {
 		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
 		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
@@ -81,7 +88,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertNull( info.attachment );
 		assertNull( info.user_context );
 		assertEquals( localhost, info.host );
-		assertEquals( 10, info.ack_rate_sec );
+		assertEquals( 1, info.ack_rate_sec );               // specified in property
 		System.out.println( "client port: " + info.port );
 
 		// OPENING
@@ -99,7 +106,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( client_attachment, info.attachment );
 		assertNull( info.user_context );
 		assertEquals( localhost, info.host );
-		assertEquals( 10, info.ack_rate_sec );
+		assertEquals( 1, info.ack_rate_sec );
 		assertEquals( 11751, info.port );
 
 		// Make sure there are no more events

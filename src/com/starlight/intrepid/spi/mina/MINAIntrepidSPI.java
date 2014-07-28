@@ -82,7 +82,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	private static final Logger LOG = LoggerFactory.getLogger( MINAIntrepidSPI.class );
 
 	private static final long SEND_MESSAGE_SESSION_CONNECT_TIMEOUT =
-		Long.getLong( "intrepid.spi.mina.send_message_connect_timeout", 2000 ).longValue();
+		Long.getLong( "intrepid.spi.mina.send_message_connect_timeout", 11000 ).longValue();
 
 	private static final long RECONNECT_RETRY_INTERVAL =
 		Long.getLong( "intrepid.spi.mina.reconnect_retry", 5000 ).longValue();
