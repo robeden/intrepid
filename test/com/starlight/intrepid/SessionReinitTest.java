@@ -177,7 +177,7 @@ public class SessionReinitTest extends TestCase {
 				VMID source_vmid,
 				VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description ) {
+				Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
@@ -315,7 +315,7 @@ public class SessionReinitTest extends TestCase {
 				VMID source_vmid,
 				VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description ) {
+				Object connection_type_description, byte ack_rate_sec ) {
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
@@ -458,7 +458,7 @@ public class SessionReinitTest extends TestCase {
 							public void connectionOpened( InetAddress host,
 								int port, Object attachment, VMID source_vmid, VMID vmid,
 								UserContextInfo user_context, VMID previous_vmid,
-								Object connection_type_description ) {
+								Object connection_type_description, byte ack_rate_sec ) {
 								System.out.println( "Server connection opened: " + vmid );
 								server_connection_slot.set( vmid );
 							}
@@ -611,7 +611,7 @@ public class SessionReinitTest extends TestCase {
 				VMID source_vmid,
 				VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description ) {
+				Object connection_type_description, byte ack_rate_sec ) {
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
@@ -673,7 +673,7 @@ public class SessionReinitTest extends TestCase {
 				VMID source_vmid,
 				VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description ) {
+				Object connection_type_description, byte ack_rate_sec ) {
 				client_connection_slot.set( vmid );
 			}
 
@@ -826,7 +826,7 @@ public class SessionReinitTest extends TestCase {
 				VMID source_vmid,
 				VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description ) {
+				Object connection_type_description, byte ack_rate_sec ) {
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
@@ -888,7 +888,7 @@ public class SessionReinitTest extends TestCase {
 				VMID source_vmid,
 				VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description ) {
+				Object connection_type_description, byte ack_rate_sec ) {
 				client_connection_slot.set( vmid );
 			}
 

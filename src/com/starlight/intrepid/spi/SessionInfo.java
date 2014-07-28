@@ -136,7 +136,7 @@ public interface SessionInfo {
 
 
 	/**
-	 * Returns the ack rate (in seconds).
+	 * Returns the ack rate (in seconds). If null, acks should be disabled.
 	 */
 	public Byte getAckRateSec();
 }

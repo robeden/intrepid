@@ -47,10 +47,11 @@ public interface ConnectionListener {
 	 *                                      peer's VMID has changed, this will contain
 	 *                                      the old VMID.
 	 * @param connection_type_description   An SPI-specific description of the connection
+	 * @param ack_rate_sec                  Rate of method acks in seconds.
 	 */
 	public void connectionOpened( InetAddress host, int port, Object attachment,
 		VMID source_vmid, VMID vmid, UserContextInfo user_context, VMID previous_vmid,
-		Object connection_type_description );
+		Object connection_type_description, byte ack_rate_sec );
 
 	/**
 	 * Called when a connection is broken.

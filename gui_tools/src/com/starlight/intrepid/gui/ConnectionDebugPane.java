@@ -133,7 +133,7 @@ public class ConnectionDebugPane extends JPanel implements ConnectionListener {
 	public void connectionOpened( final InetAddress host, final int port,
 		final Object attachment, final VMID source_vmid, final VMID vmid,
 		final UserContextInfo user_context, final VMID previous_vmid,
-		final Object connection_type_description ) {
+		final Object connection_type_description, final byte ack_rate_sec ) {
 
 		if ( !SwingUtilities.isEventDispatchThread() ) {
 			SwingUtilities.invokeLater( new Runnable() {
@@ -141,7 +141,7 @@ public class ConnectionDebugPane extends JPanel implements ConnectionListener {
 				public void run() {
 					connectionOpened( host, port, attachment, source_vmid, vmid,
 						user_context,
-						previous_vmid, connection_type_description );
+						previous_vmid, connection_type_description, ack_rate_sec );
 				}
 			} );
 			return;

@@ -44,7 +44,8 @@ public class BidirectionalConnectionsTest extends TestCase {
 			@Override
 			public void connectionOpened( InetAddress host, int port, Object attachment,
 				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description ) {
+				VMID previous_vmid, Object connection_type_description,
+				byte ack_rate_sec ) {
 
 				System.out.println( "Connection Opened (" + vmid + "): " + host + ":" + port );
 				// TODO: implement
