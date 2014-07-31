@@ -84,12 +84,11 @@ public class ObjectDropTest extends TestCase {
 
 	
 	private void doBasicTest( boolean compress, boolean drop_to_caller ) throws Exception {
-		Intrepid server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.create( new IntrepidSetup().openServer() );
 		server.getLocalRegistry().bind( "test", new ServerImpl( server, compress ) );
 
 		ObjectDrop client_drop = new ObjectDrop();
-		Intrepid client =
-			Intrepid.create( new IntrepidSetup().channelAcceptor( client_drop ) );
+		client = Intrepid.create( new IntrepidSetup().channelAcceptor( client_drop ) );
 		VMID server_vmid = client.connect( InetAddress.getByName( "127.0.0.1" ),
 			server.getServerPort().intValue(), null, null );
 
