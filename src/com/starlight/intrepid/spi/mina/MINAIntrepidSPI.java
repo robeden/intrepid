@@ -82,7 +82,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	private static final Logger LOG = LoggerFactory.getLogger( MINAIntrepidSPI.class );
 
 	private static final long SEND_MESSAGE_SESSION_CONNECT_TIMEOUT =
-		Long.getLong( "intrepid.spi.mina.send_message_connect_timeout", 2000 ).longValue();
+		Long.getLong( "intrepid.spi.mina.send_message_connect_timeout", 11000 ).longValue();
 
 	private static final long RECONNECT_RETRY_INTERVAL =
 		Long.getLong( "intrepid.spi.mina.reconnect_retry", 5000 ).longValue();
@@ -1259,7 +1259,12 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			this.reconnect_token = reconnect_token;
 			this.host_and_port = host_and_port;
 
-			next_run_time = System.nanoTime() + TimeUnit.SECONDS.toNanos( 1 );
+			// Random delay between 1 and 10 seconds for initial firing. This works around
+			// "oscillation" problems with single connection negotiation where each side
+			// closes the other side.
+			int reconnect_delay_sec = ThreadLocalRandom.current().nextInt( 1, 10 );
+			next_run_time = System.nanoTime() +
+				TimeUnit.SECONDS.toNanos( reconnect_delay_sec );
 		}
 
 		@Override

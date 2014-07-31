@@ -87,7 +87,7 @@ class InvokeRunner implements Runnable {
 		this.runner_map_lock = runner_map_lock;
 		this.performance_listeners = performance_listeners;
 
-		if ( needs_ack ) {
+		if ( needs_ack && ack_rate_sec > 0 ) {
 			ack_future = ack_executor.scheduleWithFixedDelay( new AckRunnable(),
 				ack_rate_sec & 0xFFL, ack_rate_sec & 0xFFL, TimeUnit.SECONDS );
 		}

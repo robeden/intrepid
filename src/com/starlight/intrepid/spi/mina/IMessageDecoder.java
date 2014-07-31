@@ -498,8 +498,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		}
 
 		// ACK RATE
-		byte ack_rate = -1;
+		byte ack_rate;
 		if ( version >= 3 ) ack_rate = buffer.get();
+		else ack_rate = 0;      // not supported
 
 		return new SessionInitResponseIMessage( vmid, server_port, protocol_version,
 			reconnect_token, ack_rate );

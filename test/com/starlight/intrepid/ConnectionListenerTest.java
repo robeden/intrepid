@@ -52,6 +52,13 @@ public class ConnectionListenerTest extends TestCase {
 		if ( server_instance != null ) server_instance.close();
 	}
 
+
+	public void testSystemProperty() {
+		assertEquals( "System property 'intrepid.req_invoke_ack_rate_sec' must be set " +
+			"to '1' when running unit tests.", "1",
+			System.getProperty( "intrepid.req_invoke_ack_rate_sec" ) );
+	}
+
 	public void testListener() throws Exception {
 		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
 		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
@@ -81,6 +88,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertNull( info.attachment );
 		assertNull( info.user_context );
 		assertEquals( localhost, info.host );
+		assertEquals( 1, info.ack_rate_sec );               // specified in property
 		System.out.println( "client port: " + info.port );
 
 		// OPENING
@@ -98,6 +106,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( client_attachment, info.attachment );
 		assertNull( info.user_context );
 		assertEquals( localhost, info.host );
+		assertEquals( 1, info.ack_rate_sec );
 		assertEquals( 11751, info.port );
 
 		// Make sure there are no more events
@@ -236,11 +245,11 @@ public class ConnectionListenerTest extends TestCase {
 		@Override
 		public void connectionOpened( InetAddress host, int port, Object attachment,
 			VMID source_vmid, VMID vmid, UserContextInfo user_context, VMID previous_vmid,
-			Object connection_type_description ) {
+			Object connection_type_description, byte ack_rate_sec ) {
 
 			System.out.println( id + " connection opened: " + vmid );
 			event_queue.add( new ConnectionEventInfo( EventType.OPENED, vmid, attachment,
-				false, user_context, host, port ) );
+				false, user_context, host, port, ack_rate_sec ) );
 		}
 
 		@Override
@@ -249,7 +258,7 @@ public class ConnectionListenerTest extends TestCase {
 
 			System.out.println( id + " connection closed: " + vmid );
 			event_queue.add( new ConnectionEventInfo( EventType.CLOSED, vmid, attachment,
-				will_attempt_reconnect, null, host, port ) );
+				will_attempt_reconnect, null, host, port, ( byte ) -1 ) );
 		}
 
 		@Override
@@ -259,7 +268,7 @@ public class ConnectionListenerTest extends TestCase {
 			System.out.println( id + " connection open failed: " + host.getHostAddress() +
 				":" + port + " - " + error );
 			event_queue.add( new ConnectionEventInfo( EventType.OPEN_FAILED, null,
-				attachment, will_retry, null, host, port ) );
+				attachment, will_retry, null, host, port, ( byte ) -1 ) );
 		}
 
 		@Override
@@ -269,7 +278,7 @@ public class ConnectionListenerTest extends TestCase {
 			System.out.println( id + " connection opening: " + host.getHostAddress() +
 				":" + port );
 			event_queue.add( new ConnectionEventInfo( EventType.OPENING, null,
-				attachment, false, null, host, port ) );
+				attachment, false, null, host, port, ( byte ) -1 ) );
 		}
 	}
 
@@ -288,10 +297,11 @@ public class ConnectionListenerTest extends TestCase {
 		private final UserContextInfo user_context;
 		private final InetAddress host;
 		private final int port;
+		private final byte ack_rate_sec;
 
 		ConnectionEventInfo( EventType type, VMID vmid, Object attachment,
 			boolean will_reconnect, UserContextInfo user_context, InetAddress host,
-			int port ) {
+			int port, byte ack_rate_sec ) {
 
 			this.type = type;
 			this.vmid = vmid;
@@ -300,6 +310,7 @@ public class ConnectionListenerTest extends TestCase {
 			this.user_context = user_context;
 			this.host = host;
 			this.port = port;
+			this.ack_rate_sec = ack_rate_sec;
 		}
 
 		@Override

@@ -25,7 +25,6 @@
 
 package com.starlight.intrepid.message;
 
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.VMID;
 
 import java.io.Serializable;
@@ -47,12 +46,10 @@ public class SessionInitResponseIMessage implements IMessage {
 
 	/**
 	 * @param ack_rate_sec      The rate (in seconds) at which acks for invocations may
-	 *                          be expected. Must be greater than 0.
+	 *                          be expected.
 	 */
 	public SessionInitResponseIMessage( VMID responder_vmid, Integer responder_server_port,
 		byte protocol_version, Serializable reconnect_token, byte ack_rate_sec ) {
-
-		ValidationKit.checkGreaterThan( ack_rate_sec, 0, "ack_rate_sec" );
 
 		this.responder_vmid = responder_vmid;
 		this.responder_server_port = responder_server_port;
@@ -92,8 +89,8 @@ public class SessionInitResponseIMessage implements IMessage {
 	}
 
 	/**
-	 * The rate (in seconds) at which acks for invocations may be expected. Must be
-	 * greater than zero.
+	 * The rate (in seconds) at which acks for invocations may be expected. A value of
+	 * zero indicates acks are disabled.
 	 */
 	public byte getAckRateSec() {
 		return ack_rate_sec;

@@ -210,7 +210,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 					address.getPort(),
 					session.getAttribute( MINAIntrepidSPI.ATTACHMENT_KEY ), local_vmid, vmid,
 					getUserContext(), old_vmid,
-					connection_type_description );
+					connection_type_description, ack_rate_sec );
 			}
 			else assert false : "Null SessionContainer: " + session;
 
