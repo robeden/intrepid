@@ -411,6 +411,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 						server_port.intValue() ) ) {
 
 						outbound_session_map.put( host_and_port, entry.getValue() );
+						container = entry.getValue();
 						found_container = true;
 						break;
 					}
