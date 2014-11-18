@@ -74,7 +74,7 @@
 		<javac srcdir="src/${src_subtree}"
 			destdir="build/classes"
 			defaultexcludes="yes"
-			debug="on" target="1.6">
+			debug="on" target="1.8">
 
 			<classpath>
 				<fileset dir="lib">
@@ -107,7 +107,7 @@
 		depends="compile">
 
 		<javac srcdir="gui_tools/src/${src_subtree}" destdir="build/gui_tools_classes"
-			defaultexcludes="yes" debug="on" target="1.6">
+			defaultexcludes="yes" debug="on" target="1.8">
 
 			<classpath>
 				<pathelement location="build/classes"/>

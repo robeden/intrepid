@@ -25,6 +25,8 @@
 
 package com.starlight.intrepid;
 
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.ValidationKit;
 import com.starlight.intrepid.auth.AuthenticationHandler;
 import com.starlight.intrepid.auth.ConnectionArgs;
@@ -51,19 +53,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 
 
 /**
  * This class provides static functions for accessing Intrepid's main functionality.
  */
 public class Intrepid {
-	private static final int CORE_POOL_SIZE =
-		Integer.getInteger( "intrepid.thread_pool.core", 2 ).intValue();
-	private static final int MAX_POOL_SIZE =
-		Integer.getInteger( "intrepid.thread_pool.max", Integer.MAX_VALUE ).intValue();
-	private static final int KEEPALIVE =
-		Integer.getInteger( "intrepid.thread_pool.keepalive", 61000 ).intValue();
-
 	private static final long CONNECT_TIMEOUT =
 		Long.getLong( "intrepid.connect.timeout", 10000 ).longValue();
 
@@ -94,6 +90,10 @@ public class Intrepid {
 	private final ListenerSupport<PerformanceListener,Void> performance_listeners;
 
 	private final PerformanceControl performance_control;
+
+	private final ListenerRegistrationManager listener_registration_manager =
+		new ListenerRegistrationManager( this );
+
 
 	private volatile boolean closed = false;
 
@@ -189,6 +189,15 @@ public class Intrepid {
 	 */
 	public static boolean isProxy( Object object ) {
 		return ProxyKit.isProxy( object );
+	}
+
+
+	/**
+	 * Returns the VMID the given proxy object points to. If the object is not a proxy,
+	 * null will be returned.
+	 */
+	public static VMID getProxyVMID( Object object ) {
+		return ProxyKit.getProxyVMID( object );
 	}
 
 
@@ -605,6 +614,57 @@ public class Intrepid {
 	 */
 	public void removePerformanceListener( PerformanceListener listener ) {
 		performance_listeners.remove( listener );
+	}
+
+
+
+	/**
+	 * This method facilitates persistent connections to remote proxies by automatically
+	 * re-registering a listener (or other class using a similar model) when a connection
+	 * is lost and re-opened to a peer.
+	 * <p>
+	 * This is an example of maintaining a "FooListener" on a "Server" proxy:
+	 * <pre>
+	 *     Intrepid intrepid =        // Intrepid client instance
+	 *     Server server_proxy =     // proxy to server
+	 *
+	 *     FooListener my_listener = // listener instance
+	 *
+	 *     intrepid.keepListenerRegistered( my_listener, server_proxy,
+	 *         Server::addFooListener, Server::removeFooListener );
+	 * </pre>
+	 * If your listener has a defined lifetime and should be removed at some point, simply
+	 * hang on to the <tt>ListenerRegistration</tt> instance returned by the
+	 * <tt>keepListenerRegistered</tt> method and call the
+	 * {@link ListenerRegistration#remove()} method.
+	 *
+	 * @param listener          The listener to be registered.
+	 * @param proxy             The proxy object on which to register the listener.
+	 * @param add_method        The add*Listener method.
+	 * @param remove_method     Optional remove*Listener method. If null, calling
+	 *                          {@link com.starlight.intrepid.ListenerRegistration#remove()}
+	 *                          will simply stop listening for connection events.
+	 *
+	 * @param <L>               Listener class.
+	 * @param <P>               Proxy class.
+	 *
+	 * @return                  A registration object that allows canceling the
+	 *                          registration and checking the current connection state.
+	 *
+	 * @throws java.lang.IllegalArgumentException       If the provided "proxy" object
+	 *                          is not {@link #isProxy(Object) actually a proxy}.
+	 */
+	public <L,P> ListenerRegistration keepListenerRegistered( @NotNull L listener,
+		@NotNull P proxy, @NotNull BiConsumer<P,L> add_method,
+		@Nullable BiConsumer<P,L> remove_method ) throws IllegalArgumentException {
+
+		VMID vmid = getProxyVMID( proxy );
+		if ( vmid == null ) {
+			throw new IllegalArgumentException( "The \"proxy\" argument must be a proxy" );
+		}
+
+		return listener_registration_manager.keepListenerRegistered( listener, vmid,
+			proxy, add_method, remove_method );
 	}
 
 

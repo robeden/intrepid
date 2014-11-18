@@ -76,4 +76,17 @@ class ProxyKit {
 
 		return ( ( Proxy ) object ).__intrepid__getHostVMID();
 	}
+
+
+	/**
+	 * Returns the VMID the given proxy object points to. If the object is not a proxy,
+	 * null is returned.
+	 *
+	 * @see #isProxy(Object)
+	 */
+	static VMID getProxyVMID( Object object ) {
+		if ( !isProxy( object ) ) return null;
+
+		return ( ( Proxy ) object ).__intrepid__getHostVMID();
+	}
 }
