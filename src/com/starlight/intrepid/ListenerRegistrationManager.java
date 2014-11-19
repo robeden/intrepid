@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 
 /**
@@ -109,14 +111,13 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 
-	<P,L> ListenerRegistration keepListenerRegistered(
-		final @NotNull L listener, final @NotNull VMID vmid, final @NotNull P proxy,
-		final @NotNull BiConsumer<P,L> add_method,
-		final @Nullable BiConsumer<P,L> remove_method )
-		throws IllegalArgumentException {
+	<L,P,R> ListenerRegistration keepListenerRegistered( @NotNull L listener,
+		final @NotNull VMID vmid, @NotNull P proxy, @NotNull BiFunction<P,L,R> add_method,
+		@Nullable BiConsumer<P,L> remove_method,
+		@NotNull Consumer<R> return_value_handler ) throws IllegalArgumentException {
 
-		final ListenerInfo<L,P> info =
-			new ListenerInfo<>( proxy, listener, add_method, remove_method );
+		final ListenerInfo<L,P,R> info = new ListenerInfo<>( proxy, listener, add_method,
+			remove_method, return_value_handler );
 
 		info.addListener( false );
 
@@ -172,26 +173,45 @@ class ListenerRegistrationManager implements ConnectionListener {
 		};
 	}
 
+	<P,L> ListenerRegistration keepListenerRegistered(
+		final @NotNull L listener, final @NotNull VMID vmid, final @NotNull P proxy,
+		final @NotNull BiConsumer<P,L> add_method,
+		final @Nullable BiConsumer<P,L> remove_method )
+		throws IllegalArgumentException {
 
-	private static class ListenerInfo<L,P> {
+		return keepListenerRegistered( listener, vmid, proxy,
+			new BiFunction<P,L,Void>() {
+				@Override
+				public Void apply( P p, L l ) {
+					add_method.accept( p, l );
+					return null;
+				}
+			}, remove_method, ( not_used ) -> {} );
+	}
+
+
+	private static class ListenerInfo<L,P,R> {
 		private final P proxy;
 		private final L listener;
 
-		private final BiConsumer<P,L> add_method;
+		private final BiFunction<P,L,R> add_method;
 		private final BiConsumer<P,L> remove_method;
+
+		private final Consumer<R> return_value_handler;
 
 		private final AtomicBoolean connected = new AtomicBoolean( false );
 		private final AtomicReference<ScheduledFuture<?>> deferred_add_listener_slot =
 			new AtomicReference<>();
 
 
-		public ListenerInfo( P proxy, L listener, BiConsumer<P,L> add_method,
-			BiConsumer<P,L> remove_method ) {
+		public ListenerInfo( P proxy, L listener, BiFunction<P,L,R> add_method,
+			BiConsumer<P,L> remove_method, Consumer<R> return_value_handler ) {
 
 			this.proxy = proxy;
 			this.listener = listener;
 			this.add_method = add_method;
 			this.remove_method = remove_method;
+			this.return_value_handler = return_value_handler;
 		}
 
 
@@ -199,9 +219,10 @@ class ListenerRegistrationManager implements ConnectionListener {
 			removeScheduledAddTask();
 
 			try {
-				long start = System.currentTimeMillis();
-				add_method.accept( proxy, listener );
-				System.out.println( "Add time: " + ( System.currentTimeMillis() - start ));
+				R return_value = add_method.apply( proxy, listener );
+				if ( return_value_handler != null ) {
+					return_value_handler.accept( return_value );
+				}
 			}
 			catch( Exception ex ) {
 				connected.set( false );

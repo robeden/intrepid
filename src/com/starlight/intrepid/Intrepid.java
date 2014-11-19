@@ -54,6 +54,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 
 /**
@@ -665,6 +667,43 @@ public class Intrepid {
 
 		return listener_registration_manager.keepListenerRegistered( listener, vmid,
 			proxy, add_method, remove_method );
+	}
+
+	/**
+	 * Identical to {@link #keepListenerRegistered(Object, Object, java.util.function.BiConsumer, java.util.function.BiConsumer)}
+	 * except that it provides for handling a return value from the <tt>add_method</tt>.
+	 *
+	 * @param listener          The listener to be registered.
+	 * @param proxy             The proxy object on which to register the listener.
+	 * @param add_method        The add*Listener method which returns a value.
+	 * @param remove_method     Optional remove*Listener method. If null, calling
+	 *                          {@link com.starlight.intrepid.ListenerRegistration#remove()}
+	 *                          will simply stop listening for connection events.
+	 * @param return_value_handler  Consumer that will be called to handle the return
+	 *                          value whenever the listener is re-registered.
+	 *
+	 * @param <L>               Listener class.
+	 * @param <P>               Proxy class.
+	 * @param <R>               Return value class.
+	 *
+	 * @return                  A registration object that allows canceling the
+	 *                          registration and checking the current connection state.
+	 *
+	 * @throws java.lang.IllegalArgumentException       If the provided "proxy" object
+	 *                          is not {@link #isProxy(Object) actually a proxy}.
+	 */
+	public <L,P,R> ListenerRegistration keepListenerRegistered( @NotNull L listener,
+		@NotNull P proxy, @NotNull BiFunction<P,L,R> add_method,
+		@Nullable BiConsumer<P,L> remove_method,
+		@NotNull Consumer<R> return_value_handler ) throws IllegalArgumentException {
+
+		VMID vmid = getProxyVMID( proxy );
+		if ( vmid == null ) {
+			throw new IllegalArgumentException( "The \"proxy\" argument must be a proxy" );
+		}
+
+		return listener_registration_manager.keepListenerRegistered( listener, vmid,
+			proxy, add_method, remove_method, return_value_handler );
 	}
 
 
