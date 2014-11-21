@@ -39,7 +39,6 @@ import com.starlight.intrepid.spi.*;
 import com.starlight.locale.FormattedTextResourceKey;
 import com.starlight.thread.ScheduledExecutor;
 import com.starlight.thread.ThreadKit;
-import org.apache.mina.core.RuntimeIoException;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.future.WriteFuture;
@@ -482,34 +481,16 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 						}
 					}
 
-					for( int i = 0; i < 3; i++ ) {
-						try {
-							VMID vmid = inner_connect( address, port, args, null,
-								attachment, remaining, container, null );
-							if ( vmid != null ) {
-								abend = false;
-								return vmid;
-							}
-							break;
+					try {
+						VMID vmid = inner_connect( address, port, args, null,
+							attachment, remaining, container, null );
+						if ( vmid != null ) {
+							abend = false;
+							return vmid;
 						}
-						catch( IOException ex ) {
-							exception = ex;
-
-							// If the exception has a cause and it's an instance of
-							// MINA's RuntimeIoException, try again. This is trying to
-							// work around a problem in the JDK where this exception is
-							// received when setting keep alive and nodelay flags:
-							//   Caused by: org.apache.mina.core.RuntimeIoException:
-							//     java.net.SocketException: Invalid argument:
-							//     no further information
-							//     at ...NioSocketSession$SessionConfigImpl.setKeepAlive(NioSocketSession.java:133)
-							if ( ex.getCause() != null &&
-								ex.getCause() instanceof RuntimeIoException ) {
-
-								// continue
-							}
-							else break;
-						}
+					}
+					catch( IOException ex ) {
+						exception = ex;
 					}
 				}
 				finally {
@@ -523,7 +504,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			}
 
 			if ( exception == null ) {
-				exception = new ConnectException( "Connect timed out: " + host_and_port );
+				exception = new ConnectException(
+					"Timed out while waiting for connection to " + host_and_port );
 			}
 
 			throw exception;
