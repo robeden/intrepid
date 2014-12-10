@@ -78,9 +78,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 		Integer.getInteger( "intrepid.channel.max_message_data",
 		( 1 << 18 ) - 20 ).intValue();  // 256K - 20 bytes
 
+	// Default to 30 seconds, but don't allow anything longer than 2 min
 	private static final byte REQUEST_INVOKE_ACK_RATE_SEC = ( byte )
-		Math.min( 10,
-			Integer.getInteger( "intrepid.req_invoke_ack_rate_sec", 10 ).intValue() );
+		Math.min( 120,
+			Integer.getInteger( "intrepid.req_invoke_ack_rate_sec", 30 ).intValue() );
 	static {
 		if ( REQUEST_INVOKE_ACK_RATE_SEC < 0 ) {
 			throw new IllegalArgumentException(
@@ -1287,7 +1288,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		void setSessionAckRateSec( byte ack_sec ) {
 			// WARNING: Converting to milliseconds
-			ack_deadline_ms = Math.round( TimeUnit.SECONDS.toMillis( ack_sec ) * 2.5 );
+			ack_deadline_ms = Math.round( TimeUnit.SECONDS.toMillis( ack_sec ) * 3.5 );
 		}
 
 
