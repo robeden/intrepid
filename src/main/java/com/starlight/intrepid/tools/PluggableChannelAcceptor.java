@@ -13,7 +13,7 @@ import java.util.List;
 
 
 /**
- * An implementation of {@link main.java.com.starlight.intrepid.ChannelAcceptor} that allows
+ * An implementation of {@link com.starlight.intrepid.ChannelAcceptor} that allows
  * multiple implementations to be dynamically registered and unregistered at runtime.
  * This class will delegate calls to the other implementations 
  */

@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Test user session re-init (see
- * {@link main.java.com.starlight.intrepid.auth.RequestUserCredentialReinit} for more info).
+ * {@link com.starlight.intrepid.auth.RequestUserCredentialReinit} for more info).
  */
 public class SessionReinitTest extends TestCase {
 	Intrepid server;

@@ -48,7 +48,7 @@ import java.util.concurrent.locks.Lock;
 
 
 /**
- * Wraps an {@link IoSession} to implement the {@link main.java.com.starlight.intrepid.spi.SessionInfo} interface.
+ * Wraps an {@link IoSession} to implement the {@link com.starlight.intrepid.spi.SessionInfo} interface.
  */
 class IoSessionInfoWrapper implements SessionInfo {
 	private static final Logger LOG =

@@ -30,7 +30,7 @@ import com.starlight.locale.exception.LocalizedRuntimeException;
 
 
 /**
- * Thrown when a lookup fails from {@link main.java.com.starlight.intrepid.Registry}.
+ * Thrown when a lookup fails from {@link com.starlight.intrepid.Registry}.
  */
 public class ObjectNotBoundException extends LocalizedRuntimeException {
 	public ObjectNotBoundException( ResourceKey<String> message ) {

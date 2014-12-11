@@ -464,7 +464,7 @@ public class Intrepid {
 	 *
 	 * @throws IOException                  Thrown if an error occurs while trying to
 	 *                                      connect.
-	 * @throws main.java.com.starlight.intrepid.exception.ConnectionFailureException   If the connection failed due to an
+	 * @throws com.starlight.intrepid.exception.ConnectionFailureException   If the connection failed due to an
 	 *                                      authentication/authorization failure.
 	 *
 	 * @see #tryConnect
@@ -537,7 +537,7 @@ public class Intrepid {
 	 * 						support non-blocking mode.
 	 *
 	 * @throws IOException	Indicates a communication-related failure.
-	 * @throws main.java.com.starlight.intrepid.exception.ChannelRejectedException    Indicates the channel was rejected by the server.
+	 * @throws com.starlight.intrepid.exception.ChannelRejectedException    Indicates the channel was rejected by the server.
 	 */
 	public ByteChannel createChannel( VMID destination, Serializable attachment )
 		throws IOException, ChannelRejectedException {

@@ -119,7 +119,7 @@ public interface SessionInfo {
 
 	/**
 	 * Return the reconnect token for the session.
-	 * @see main.java.com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler
+	 * @see com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler
 	 */
 	public Serializable getReconnectToken();
 

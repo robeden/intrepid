@@ -5,7 +5,7 @@ import java.io.IOException;
 
 /**
  * Thrown when authentication/authorization failed when
- * {@link main.java.com.starlight.intrepid.Intrepid#connect a connection attempt} fails.
+ * {@link com.starlight.intrepid.Intrepid#connect a connection attempt} fails.
  */
 public class ConnectionFailureException extends IOException {
 	public ConnectionFailureException( Throwable throwable ) {

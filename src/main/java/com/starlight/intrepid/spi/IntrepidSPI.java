@@ -112,7 +112,7 @@ public interface IntrepidSPI {
 
 	/**
 	 * Adds an artificial delay before sending messages. See
-	 * {@link main.java.com.starlight.intrepid.PerformanceControl#setMessageSendDelay(Long)}.
+	 * {@link com.starlight.intrepid.PerformanceControl#setMessageSendDelay(Long)}.
 	 *
 	 * @param delay_ms  The delay in milliseconds or null for none.
 	 */

@@ -5,8 +5,8 @@ import java.io.Serializable;
 
 /**
  * This message is sent periodically when a
- * {@link main.java.com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler} is used with
- * {@link main.java.com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler#getTokenRegenerationInterval() token expiration}.
+ * {@link com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler} is used with
+ * {@link com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler#getTokenRegenerationInterval() token expiration}.
  * In that case, this will be sent to clients when new tokens are generated.
  * <p/>
  * This message was introduced in stream version 1.

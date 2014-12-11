@@ -45,7 +45,7 @@ public interface AuthenticationHandler {
 	 *
 	 * @return		An object containing context info about the user/service connecting.
 	 * 				This information will be available while operating inside a call
-	 * 				via the {@link main.java.com.starlight.intrepid.IntrepidContext} class. It is
+	 * 				via the {@link com.starlight.intrepid.IntrepidContext} class. It is
 	 * 				valid to return null, in which case no user information will be
 	 * 				available.
 	 * @throws ConnectionAuthFailureException		Thrown if the connection should be

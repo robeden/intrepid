@@ -30,7 +30,7 @@ import com.starlight.locale.exception.LocalizedException;
 
 
 /**
- * Thrown by {@link main.java.com.starlight.intrepid.ChannelAcceptor} if a channel is rejected
+ * Thrown by {@link com.starlight.intrepid.ChannelAcceptor} if a channel is rejected
  * by the server.
  */
 public class ChannelRejectedException extends LocalizedException {

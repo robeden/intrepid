@@ -27,7 +27,7 @@ package com.starlight.intrepid.exception;
 
 /**
  * Thrown to indicate that a delegate object was invalid for
- * {@link main.java.com.starlight.intrepid.Intrepid#createProxy(Object)}. See the method
+ * {@link com.starlight.intrepid.Intrepid#createProxy(Object)}. See the method
  * documentation for more information on requirements.
  */
 public class IllegalProxyDelegateException extends IntrepidRuntimeException {

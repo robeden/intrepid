@@ -34,7 +34,7 @@ import java.net.SocketAddress;
 
 
 /**
- * An implementation of {@link main.java.com.starlight.intrepid.auth.AuthenticationHandler} that
+ * An implementation of {@link com.starlight.intrepid.auth.AuthenticationHandler} that
  * allows all connections.
  */
 public class NoAuthenticationHandler implements AuthenticationHandler {

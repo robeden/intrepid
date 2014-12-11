@@ -8,9 +8,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * This extension to {@link AuthenticationHandler} allows reconnection using a token
  * rather than just the username and password. The reconnect token is passed to the client
- * as part of the {@link main.java.com.starlight.intrepid.message.SessionInitResponseIMessage}. When
+ * as part of the {@link com.starlight.intrepid.message.SessionInitResponseIMessage}. When
  * provided, the client will supply the token back to the server in the
- * {@link main.java.com.starlight.intrepid.message.SessionInitIMessage} when reconnecting.
+ * {@link com.starlight.intrepid.message.SessionInitIMessage} when reconnecting.
  * <p/>
  * The reconnect token must be considered optional. That is, if the token cannot be passed
  * to the client (for example, due to a serialization error), the server should be able to
@@ -37,7 +37,7 @@ public abstract class TokenReconnectAuthenticationHandler
 	 *
 	 * @return		An object containing context info about the user/service connecting.
 	 * 				This information will be available while operating inside a call
-	 * 				via the {@link main.java.com.starlight.intrepid.IntrepidContext} class. It is
+	 * 				via the {@link com.starlight.intrepid.IntrepidContext} class. It is
 	 * 				valid to return null, in which case no user information will be
 	 * 				available.
 	 * @throws ConnectionAuthFailureException		Thrown if the connection should be
