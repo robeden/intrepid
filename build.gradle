@@ -18,6 +18,13 @@ dependencies {
 	testCompile group: 'org.mockito', name: 'mockito-core', version: '1.10.+'
 }
 
+test {
+	systemProperty 'intrepid.lease.duration', '2000'
+	systemProperty 'intrepid.lease.prune_interval', '1000'
+	systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
+	systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
+}
+
 
 
 task wrapper(type: Wrapper) {
