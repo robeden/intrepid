@@ -1,0 +1,436 @@
+// Copyright (c) 2010 Rob Eden.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of Intrepid nor the
+//       names of its contributors may be used to endorse or promote products
+//       derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+package com.starlight.intrepid;
+
+import com.starlight.intrepid.*;
+import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.auth.SimpleUserContextInfo;
+import com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler;
+import com.starlight.intrepid.auth.UserContextInfo;
+import com.starlight.intrepid.exception.IntrepidRuntimeException;
+import com.starlight.intrepid.exception.NotConnectedException;
+import com.starlight.thread.ThreadKit;
+import junit.framework.TestCase;
+import org.easymock.EasyMock;
+
+import java.net.ConnectException;
+import java.net.InetAddress;
+import java.net.SocketAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.easymock.EasyMock.*;
+
+
+/**
+ *
+ */
+public class ReconnectTest extends TestCase {
+	private Intrepid server_instance = null;
+	private Intrepid client_instance = null;
+
+	@Override
+	protected void tearDown() throws Exception {
+		if ( server_instance != null ) server_instance.close();
+		if ( client_instance != null ) client_instance.close();
+	}
+
+	public void testReconnect() throws Exception {
+		// Make sure we test the full stack. See comment on
+		// "Intrepid.disable_inter_instance_bridge" for more info.
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
+		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		Integer port = server_instance.getServerPort();
+		assertNotNull( port );
+
+		client_instance = Intrepid.create( null );
+		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
+
+
+		CommTest.ServerImpl server_impl =
+			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
+		server_instance.getLocalRegistry().bind( "server", server_impl );
+
+		CommTest.Server proxy = ( CommTest.Server ) client_instance.getRemoteRegistry(
+			server_vmid ).lookup( "server" );
+
+		// Make a call... should work
+		proxy.getMessage();
+
+
+		// Shut down the server
+		server_instance.close();
+		System.out.println( "server instance closed" );
+
+		ThreadKit.sleep( 1000 );
+
+		try {
+			// Make a call... should fail
+			proxy.getMessage();
+			fail( "Shouldn't have worked" );
+		}
+		catch ( NotConnectedException ex ) {
+			// This is good
+		}
+		catch ( IntrepidRuntimeException ex ) {
+			ex.printStackTrace();
+			fail( "Unexpected exception: " + ex );
+		}
+
+		server_instance = Intrepid.create( new IntrepidSetup().serverPort(
+			port.intValue() ).openServer() );
+		System.out.println( "Server instance recreated: " + port );
+		server_instance.getLocalRegistry().bind( "server", server_impl );
+
+
+
+		boolean reconnected = false;
+		for( int i = 0; i < 40; i++ ) {
+			ThreadKit.sleep( 500 );
+
+			try {
+				proxy.getMessage();
+				reconnected = true;
+				break;
+			}
+			catch ( IntrepidRuntimeException ex ) {
+				// expected
+				System.out.println( ex );
+			}
+		}
+
+		assertTrue( reconnected );
+		System.out.println( "Reconnected!!" );
+	}
+
+	public void testReconnect2() throws Exception {
+		// Make sure we test the full stack. See comment on
+		// "Intrepid.disable_inter_instance_bridge" for more info.
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
+		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		Integer port = server_instance.getServerPort();
+		assertNotNull( port );
+
+		client_instance = Intrepid.create( null );
+		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
+
+
+		CommTest.ServerImpl server_impl =
+			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
+		server_instance.getLocalRegistry().bind( "server", server_impl );
+
+		CommTest.Server proxy = ( CommTest.Server ) client_instance.getRemoteRegistry(
+			server_vmid ).lookup( "server" );
+
+		// Make a call... should work
+		proxy.getMessage();
+
+
+		// Shut down the server
+		server_instance.close();
+		System.out.println( "server instance closed" );
+
+		ThreadKit.sleep( 1000 );
+
+		try {
+			// Make a call... should fail
+			proxy.getMessage();
+			fail( "Shouldn't have worked" );
+		}
+		catch ( NotConnectedException ex ) {
+			// This is good
+		}
+		catch ( IntrepidRuntimeException ex ) {
+			ex.printStackTrace();
+			fail( "Unexpected exception: " + ex );
+		}
+
+		try {
+			client_instance.connect(
+				InetAddress.getLocalHost(), port.intValue(), null, null );
+			fail( "Shouldn't work" );
+		}
+		catch( ConnectException ex ) {
+			// this is good... timeout
+		}
+
+		Registry r = client_instance.getRemoteRegistry( server_vmid );
+
+		try {
+			r.lookup( "server" );
+			fail( "Shouldn't have worked" );
+		}
+		catch( NotConnectedException ex ) {
+			// This is good
+		}
+
+		server_instance = Intrepid.create( new IntrepidSetup().serverPort(
+			port.intValue() ).openServer() );
+		System.out.println( "Server instance recreated: " + port );
+		server_instance.getLocalRegistry().bind( "server", server_impl );
+
+
+
+		boolean reconnected = false;
+		for( int i = 0; i < 40; i++ ) {
+			ThreadKit.sleep( 500 );
+
+			try {
+				proxy.getMessage();
+				reconnected = true;
+				break;
+			}
+			catch ( IntrepidRuntimeException ex ) {
+				// expected
+				System.out.println( ex );
+			}
+		}
+
+		assertTrue( reconnected );
+		System.out.println( "Reconnected!!" );
+	}
+
+
+	public void testConnectTwice() throws Exception {
+		// Make sure we test the full stack. See comment on
+		// "Intrepid.disable_inter_instance_bridge" for more info.
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
+		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		Integer port = server_instance.getServerPort();
+		assertNotNull( port );
+
+		client_instance = Intrepid.create( null );
+
+		final AtomicBoolean new_connection_flag = new AtomicBoolean( false );
+		client_instance.addConnectionListener( new ConnectionListener() {
+			@Override
+			public void connectionOpened( InetAddress host, int port, Object attachment,
+				VMID source_vmid, VMID vmid, UserContextInfo user_context,
+				VMID previous_vmid, Object connection_type_description,
+				byte ack_rate_sec ) {
+
+				new_connection_flag.set( true );
+			}
+
+			@Override
+			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
+				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+
+			@Override
+			public void connectionOpenFailed( InetAddress host, int port,
+				Object attachment, Exception error, boolean will_retry ) {}
+
+			@Override
+			public void connectionOpening( InetAddress host, int port, Object attachment,
+				ConnectionArgs args, Object connection_type_description ) {}
+		} );
+
+		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+
+		assertTrue( new_connection_flag.getAndSet( false ) );
+
+		// Now connect again and make sure we get the same VMID
+		VMID server_vmid2 = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+
+		assertFalse( new_connection_flag.get() );
+
+		assertEquals( server_vmid, server_vmid2 );
+	}
+
+	
+	public void testTwoQuickConnections() throws Exception {
+		// Make sure we test the full stack. See comment on
+		// "Intrepid.disable_inter_instance_bridge" for more info.
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
+		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		Integer port = server_instance.getServerPort();
+		assertNotNull( port );
+
+		client_instance = Intrepid.create( null );
+
+		final AtomicInteger connections = new AtomicInteger( 0 );
+		client_instance.addConnectionListener( new ConnectionListener() {
+			@Override
+			public void connectionOpened( InetAddress host, int port, Object attachment,
+				VMID source_vmid, VMID vmid, UserContextInfo user_context,
+				VMID previous_vmid, Object connection_type_description,
+				byte ack_rate_sec ) {
+
+				connections.incrementAndGet();
+			}
+
+			@Override
+			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
+				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+
+			@Override
+			public void connectionOpenFailed( InetAddress host, int port,
+				Object attachment, Exception error, boolean will_retry ) {}
+
+			@Override
+			public void connectionOpening( InetAddress host, int port, Object attachment,
+				ConnectionArgs args, Object connection_type_description ) {}
+		} );
+
+		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+
+		// Now connect again and make sure we get the same VMID
+		VMID server_vmid2 = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+
+		assertEquals( server_vmid, server_vmid2 );
+		assertEquals( 1, connections.get() );
+	}
+
+
+	public void testTokenReconnection() throws Exception {
+		// Make sure we test the full stack. See comment on
+		// "Intrepid.disable_inter_instance_bridge" for more info.
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
+		TokenReconnectAuthenticationHandler mock_auth_handler =
+			createMock( TokenReconnectAuthenticationHandler.class );
+
+		UserContextInfo test_info = new SimpleUserContextInfo( "test_user" );
+
+		// Mock for first call - no token should be provided
+		expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
+			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( test_info );
+		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+			EasyMock.<ConnectionArgs>isNull(),
+			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( "my test token" );
+		expect( Integer.valueOf(
+			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
+			Integer.valueOf( 2 ) );
+		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+			EasyMock.<ConnectionArgs>isNull(),
+			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			eq( "my test token" ) ) ).andReturn( "my test token - TWO" );
+		expect( Integer.valueOf(
+			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
+			Integer.valueOf( 2 ) );
+		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+			EasyMock.<ConnectionArgs>isNull(),
+			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			eq( "my test token - TWO" ) ) ).andReturn( "my test token - THREE" );
+		expect( Integer.valueOf(
+			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
+			Integer.valueOf( 2 ) );
+
+		replay( mock_auth_handler );
+
+		IntrepidSetup setup = new IntrepidSetup();
+		setup.authHandler( mock_auth_handler );
+		setup.serverPort( 0 );
+		server_instance = Intrepid.create( setup );
+		Integer port = server_instance.getServerPort();
+		assertNotNull( port );
+
+		client_instance = Intrepid.create( null );
+		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+			port.intValue(), null, null );
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
+
+		CommTest.ServerImpl server_impl =
+			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
+		server_instance.getLocalRegistry().bind( "server", server_impl );
+
+		CommTest.Server proxy = ( CommTest.Server ) client_instance.getRemoteRegistry(
+			server_vmid ).lookup( "server" );
+
+		// Make a call... should work
+		proxy.getMessage();
+
+		ThreadKit.sleep( 5000 );    // time to regen two session tokens
+
+		// Shut down the server
+		server_instance.close();
+		System.out.println( "server instance closed" );
+
+		// Make sure checkConnection was called once and only once
+		verify( mock_auth_handler );
+
+		// Mock for second call - token SHOULD be provided
+		reset( mock_auth_handler );
+		expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
+			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			eq( "my test token - THREE" ) ) ).andReturn( test_info );
+		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+			EasyMock.<ConnectionArgs>isNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.<SocketAddress>notNull(), eq( "my test token - THREE" ) ) )
+			.andReturn( "my NEW test token" );
+		expect( Integer.valueOf(
+			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
+			Integer.valueOf( 60 ) );
+
+		replay( mock_auth_handler );
+
+
+		ThreadKit.sleep( 1000 );
+
+		setup.serverPort( port.intValue() );
+		server_instance = Intrepid.create( setup );
+		System.out.println( "Server instance recreated: " + port );
+		server_instance.getLocalRegistry().bind( "server", server_impl );
+
+
+
+		boolean reconnected = false;
+		for( int i = 0; i < 40; i++ ) {
+			ThreadKit.sleep( 500 );
+
+			try {
+				proxy.getMessage();
+				reconnected = true;
+				break;
+			}
+			catch ( IntrepidRuntimeException ex ) {
+				// expected
+				System.out.println( ex );
+			}
+		}
+
+		assertTrue( reconnected );
+		System.out.println( "Reconnected!!" );
+
+
+		// Make sure checkConnection was called once and only once
+		verify( mock_auth_handler );
+	}
+}
