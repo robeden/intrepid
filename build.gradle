@@ -26,6 +26,11 @@ test {
 }
 
 
+jar {
+	baseName 'intrepid'
+}
+
+
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.2.1'
