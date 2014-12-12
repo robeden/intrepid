@@ -26,7 +26,6 @@
 package com.starlight.intrepid;
 
 import com.starlight.IOKit;
-import com.starlight.intrepid.*;
 import com.starlight.intrepid.exception.InterruptedCallException;
 import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.starlight.intrepid.exception.NotConnectedException;
@@ -840,7 +839,7 @@ public class CommTest extends TestCase {
 		@Override
 		public void waitALongTime() {
 //			System.out.println( "waiting..." );
-			interrupted = !ThreadKit.sleep( 5000 );
+			interrupted = !ThreadKit.sleep( 10000 );
 //			System.out.println( "done waiting" );
 //			System.out.println( "waitALongTime INTERRUPTED: " + interrupted );
 		}
