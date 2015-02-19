@@ -1,6 +1,7 @@
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.*;
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.intrepid.auth.*;
 import com.starlight.intrepid.spi.NoAuthenticationHandler;
 import com.starlight.locale.ResourceKey;
@@ -137,64 +138,57 @@ public class SessionReinitTest extends TestCase {
 		server = Intrepid.create( new IntrepidSetup().vmidHint(
 			"server" ).authHandler( handler ).serverPort( 0 ) );
 		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).authHandler(
-			new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
+			( connection_args, remote_address, session_source ) -> {
 
 //					System.out.println( "--- checkConnection(" + connection_args +
 //						"," + remote_address + "," + session_source + ")" );
 
-					if ( connection_args instanceof UserCredentialsConnectionArgs ) {
-						UserCredentialsConnectionArgs uargs =
-							( UserCredentialsConnectionArgs ) connection_args;
-						return new SimpleUserContextInfo( uargs.getUser() );
-					}
-
-					return null;
+				if ( connection_args instanceof UserCredentialsConnectionArgs ) {
+					UserCredentialsConnectionArgs uargs =
+						( UserCredentialsConnectionArgs ) connection_args;
+					return new SimpleUserContextInfo( uargs.getUser() );
 				}
+
+				return null;
 			} ) );
 
 		final AtomicReference<UserContextInfo> context_slot =
-			new AtomicReference<UserContextInfo>();
-		client.getLocalRegistry().bind( "lib/test", new Runnable() {
-			@Override
-			public void run() {
-				System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
-				System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
-				System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
-				context_slot.set( IntrepidContext.getUserInfo() );
-			}
+			new AtomicReference<>();
+		client.getLocalRegistry().bind( "lib/test", ( Runnable ) () -> {
+			System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
+			System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
+			System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
+			context_slot.set( IntrepidContext.getUserInfo() );
 		} );
 
 		// Indicate that we want to use the server instance
 		Intrepid.setThreadInstance( server );
 
-		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<>();
 		server.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid,
-				VMID vmid,
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description, byte ack_rate_sec ) {
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
+				ConnectionArgs args, @NotNull Object connection_type_description ) {}
 		} );
 
 		VMID server_vmid;
@@ -275,63 +269,57 @@ public class SessionReinitTest extends TestCase {
 		server = Intrepid.create( new IntrepidSetup().vmidHint(
 			"server" ).authHandler( handler ).serverPort( 0 ) );
 		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).authHandler(
-			new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
+			( connection_args, remote_address, session_source ) -> {
 
 //					System.out.println( "--- checkConnection(" + connection_args +
 //						"," + remote_address + "," + session_source + ")" );
 
-					if ( connection_args instanceof UserCredentialsConnectionArgs ) {
-						UserCredentialsConnectionArgs uargs =
-							( UserCredentialsConnectionArgs ) connection_args;
-						return new SimpleUserContextInfo( uargs.getUser() );
-					}
-
-					return null;
+				if ( connection_args instanceof UserCredentialsConnectionArgs ) {
+					UserCredentialsConnectionArgs uargs =
+						( UserCredentialsConnectionArgs ) connection_args;
+					return new SimpleUserContextInfo( uargs.getUser() );
 				}
+
+				return null;
 			} ) );
 
 		final AtomicReference<UserContextInfo> context_slot =
-			new AtomicReference<UserContextInfo>();
-		client.getLocalRegistry().bind( "lib/test", new Runnable() {
-			@Override
-			public void run() {
-				System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
-				System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
-				System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
-				context_slot.set( IntrepidContext.getUserInfo() );
-			}
+			new AtomicReference<>();
+		client.getLocalRegistry().bind( "lib/test", ( Runnable ) () -> {
+			System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
+			System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
+			System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
+			context_slot.set( IntrepidContext.getUserInfo() );
 		} );
 
 		// Indicate that we want to use the server instance
 		Intrepid.setThreadInstance( server );
 
-		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<>();
 		server.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid,
-				VMID vmid,
+			public void connectionOpened( @NotNull InetAddress host, int port, Object attachment,
+				@NotNull VMID source_vmid,
+				@NotNull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description, byte ack_rate_sec ) {
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
+				ConnectionArgs args, @NotNull Object connection_type_description ) {}
 		} );
 
 		VMID server_vmid;
@@ -411,79 +399,70 @@ public class SessionReinitTest extends TestCase {
 		// NOTE: Don't start the server yet
 
 		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).authHandler(
-			new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
+			( connection_args, remote_address, session_source ) -> {
 
 //					System.out.println( "--- checkConnection(" + connection_args +
 //						"," + remote_address + "," + session_source + ")" );
 
-					if ( connection_args instanceof UserCredentialsConnectionArgs ) {
-						UserCredentialsConnectionArgs uargs =
-							( UserCredentialsConnectionArgs ) connection_args;
-						return new SimpleUserContextInfo( uargs.getUser() );
-					}
-
-					return null;
+				if ( connection_args instanceof UserCredentialsConnectionArgs ) {
+					UserCredentialsConnectionArgs uargs =
+						( UserCredentialsConnectionArgs ) connection_args;
+					return new SimpleUserContextInfo( uargs.getUser() );
 				}
+
+				return null;
 			} ) );
 
 		final AtomicReference<UserContextInfo> context_slot =
-			new AtomicReference<UserContextInfo>();
-		client.getLocalRegistry().bind( "lib/test", new Runnable() {
-			@Override
-			public void run() {
-				System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
-				System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
-				System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
-				context_slot.set( IntrepidContext.getUserInfo() );
-			}
+			new AtomicReference<>();
+		client.getLocalRegistry().bind( "lib/test", ( Runnable ) () -> {
+			System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
+			System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
+			System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
+			context_slot.set( IntrepidContext.getUserInfo() );
 		} );
 
 		// Indicate that we want to use the server instance
 		Intrepid.setThreadInstance( server );
 
-		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<>();
 
-		SharedThreadPool.INSTANCE.schedule( new Runnable() {
-				@Override
-				public void run() {
-					try {
-						server = Intrepid.create( new IntrepidSetup().vmidHint(
-							"server" ).authHandler( handler ).serverPort( 12345 ) );
+		SharedThreadPool.INSTANCE.schedule( () -> {
+			try {
+				server = Intrepid.create( new IntrepidSetup().vmidHint(
+					"server" ).authHandler( handler ).serverPort( 12345 ) );
 
-						server.addConnectionListener( new ConnectionListener() {
-							@Override
-							public void connectionOpened( InetAddress host,
-								int port, Object attachment, VMID source_vmid, VMID vmid,
-								UserContextInfo user_context, VMID previous_vmid,
-								Object connection_type_description, byte ack_rate_sec ) {
-								System.out.println( "Server connection opened: " + vmid );
-								server_connection_slot.set( vmid );
-							}
-
-							@Override
-							public void connectionClosed( InetAddress host, int port,
-								VMID source_vmid, VMID vmid, Object attachment,
-								boolean will_attempt_reconnect ) {}
-
-							@Override
-							public void connectionOpenFailed( InetAddress host, int port,
-								Object attachment, Exception error, boolean will_retry ) {}
-
-							@Override
-							public void connectionOpening( InetAddress host, int port,
-								Object attachment, ConnectionArgs args,
-								Object connection_type_description ) {}
-						} );
+				server.addConnectionListener( new ConnectionListener() {
+					@Override
+					public void connectionOpened( @NotNull InetAddress host,
+						int port, Object attachment, @NotNull VMID source_vmid, @NotNull
+					VMID vmid,
+						UserContextInfo user_context, VMID previous_vmid,
+						@NotNull Object connection_type_description, byte ack_rate_sec ) {
+						System.out.println( "Server connection opened: " + vmid );
+						server_connection_slot.set( vmid );
 					}
-					catch ( IOException e ) {
-						e.printStackTrace();
-					}
-				}
-			}, 15, TimeUnit.SECONDS );
+
+					@Override
+					public void connectionClosed( @NotNull InetAddress host, int port,
+						@NotNull VMID source_vmid, @Nullable VMID vmid,
+						@Nullable Object attachment, boolean will_attempt_reconnect,
+						@Nullable UserContextInfo user_context ) {}
+
+					@Override
+					public void connectionOpenFailed( @NotNull InetAddress host, int port,
+						Object attachment, Exception error, boolean will_retry ) {}
+
+					@Override
+					public void connectionOpening( @NotNull InetAddress host, int port,
+						Object attachment, ConnectionArgs args,
+						@NotNull Object connection_type_description ) {}
+				} );
+			}
+			catch ( IOException e ) {
+				e.printStackTrace();
+			}
+		}, 15, TimeUnit.SECONDS );
 
 		VMID server_vmid;
 		try {
@@ -563,71 +542,65 @@ public class SessionReinitTest extends TestCase {
 		VMID original_server_vmid = server.getLocalVMID();
 		System.out.println( "Server VMID: " + original_server_vmid );
 		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).authHandler(
-			new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
+			( connection_args, remote_address, session_source ) -> {
 
 //					System.out.println( "--- checkConnection(" + connection_args +
 //						"," + remote_address + "," + session_source + ")" );
 
-					if ( connection_args instanceof UserCredentialsConnectionArgs ) {
-						String user =
-							( ( UserCredentialsConnectionArgs ) connection_args ).getUser();
-						if ( !user.equals( "reden" ) ) {
-							throw new ConnectionAuthFailureException(
-								new UnlocalizableTextResourceKey( "Bad user: " + user ) );
-						}
-
-						UserCredentialsConnectionArgs uargs =
-							( UserCredentialsConnectionArgs ) connection_args;
-						return new SimpleUserContextInfo( uargs.getUser() );
+				if ( connection_args instanceof UserCredentialsConnectionArgs ) {
+					String user =
+						( ( UserCredentialsConnectionArgs ) connection_args ).getUser();
+					if ( !user.equals( "reden" ) ) {
+						throw new ConnectionAuthFailureException(
+							new UnlocalizableTextResourceKey( "Bad user: " + user ) );
 					}
 
-					return null;
+					UserCredentialsConnectionArgs uargs =
+						( UserCredentialsConnectionArgs ) connection_args;
+					return new SimpleUserContextInfo( uargs.getUser() );
 				}
+
+				return null;
 			} ) );
 		System.out.println( "Client VMID: " + client.getLocalVMID() );
 
 		final AtomicReference<UserContextInfo> context_slot =
-			new AtomicReference<UserContextInfo>();
-		client.getLocalRegistry().bind( "lib/test", new Runnable() {
-			@Override
-			public void run() {
-				System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
-				System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
-				System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
-				context_slot.set( IntrepidContext.getUserInfo() );
-			}
+			new AtomicReference<>();
+		client.getLocalRegistry().bind( "lib/test", ( Runnable ) () -> {
+			System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
+			System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
+			System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
+			context_slot.set( IntrepidContext.getUserInfo() );
 		} );
 
 		// Indicate that we want to use the server instance
 		Intrepid.setThreadInstance( server );
 
-		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<>();
 		ConnectionListener server_listener = new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid,
-				VMID vmid,
+			public void connectionOpened( @NotNull InetAddress host, int port, Object attachment,
+				@NotNull VMID source_vmid,
+				@NotNull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description, byte ack_rate_sec ) {
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
+				ConnectionArgs args, @NotNull Object connection_type_description ) {}
 		};
 		server.addConnectionListener( server_listener );
 
@@ -666,23 +639,23 @@ public class SessionReinitTest extends TestCase {
 
 		System.out.println( "Shutting down connection from server side..." );
 
-		final ObjectSlot<VMID> client_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> client_connection_slot = new ObjectSlot<>();
 		final AtomicBoolean connection_closed_flag = new AtomicBoolean( false );
 		client.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid,
-				VMID vmid,
+			public void connectionOpened( @NotNull InetAddress host, int port, Object attachment,
+				@NotNull VMID source_vmid,
+				@NotNull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description, byte ack_rate_sec ) {
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 				client_connection_slot.set( vmid );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid,
-				Object attachment,
-				boolean will_attempt_reconnect ) {
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {
 
 				connection_closed_flag.set( true );
 
@@ -691,12 +664,12 @@ public class SessionReinitTest extends TestCase {
 			}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
+				ConnectionArgs args, @NotNull Object connection_type_description ) {}
 		} );
 
 		// Now break the connection from the server side
@@ -739,9 +712,9 @@ public class SessionReinitTest extends TestCase {
 		//        |                     |
 		//        |---- session ack --->|
 
-		final AtomicReference<String> auth_user = new AtomicReference<String>( "reden" );
+		final AtomicReference<String> auth_user = new AtomicReference<>( "reden" );
 		final ObjectSlot<ResourceKey<String>> auth_error_slot =
-			new ObjectSlot<ResourceKey<String>>();
+			new ObjectSlot<>();
 		AuthenticationHandler handler = new UserCredentialReinitAuthenticationHandler() {
 			@Override
 			public UserCredentialsConnectionArgs getUserCredentials(
@@ -778,71 +751,65 @@ public class SessionReinitTest extends TestCase {
 		VMID original_server_vmid = server.getLocalVMID();
 		System.out.println( "Server VMID: " + original_server_vmid );
 		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).authHandler(
-			new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
+			( connection_args, remote_address, session_source ) -> {
 
 //					System.out.println( "--- checkConnection(" + connection_args +
 //						"," + remote_address + "," + session_source + ")" );
 
-					if ( connection_args instanceof UserCredentialsConnectionArgs ) {
-						String user =
-							( ( UserCredentialsConnectionArgs ) connection_args ).getUser();
-						if ( !user.equals( "reden" ) ) {
-							throw new ConnectionAuthFailureException(
-								new UnlocalizableTextResourceKey( "Bad user: " + user ) );
-						}
-
-						UserCredentialsConnectionArgs uargs =
-							( UserCredentialsConnectionArgs ) connection_args;
-						return new SimpleUserContextInfo( uargs.getUser() );
+				if ( connection_args instanceof UserCredentialsConnectionArgs ) {
+					String user =
+						( ( UserCredentialsConnectionArgs ) connection_args ).getUser();
+					if ( !user.equals( "reden" ) ) {
+						throw new ConnectionAuthFailureException(
+							new UnlocalizableTextResourceKey( "Bad user: " + user ) );
 					}
 
-					return null;
+					UserCredentialsConnectionArgs uargs =
+						( UserCredentialsConnectionArgs ) connection_args;
+					return new SimpleUserContextInfo( uargs.getUser() );
 				}
+
+				return null;
 			} ) );
 		System.out.println( "Client VMID: " + client.getLocalVMID() );
 
 		final AtomicReference<UserContextInfo> context_slot =
-			new AtomicReference<UserContextInfo>();
-		client.getLocalRegistry().bind( "lib/test", new Runnable() {
-			@Override
-			public void run() {
-				System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
-				System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
-				System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
-				context_slot.set( IntrepidContext.getUserInfo() );
-			}
+			new AtomicReference<>();
+		client.getLocalRegistry().bind( "lib/test", ( Runnable ) () -> {
+			System.out.println( "Proxy run() called: " + IntrepidContext.getUserInfo() );
+			System.out.println( "  Active instance: " + IntrepidContext.getActiveInstance());
+			System.out.println( "  Calling VMID: " + IntrepidContext.getCallingVMID());
+			context_slot.set( IntrepidContext.getUserInfo() );
 		} );
 
 		// Indicate that we want to use the server instance
 		Intrepid.setThreadInstance( server );
 
-		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> server_connection_slot = new ObjectSlot<>();
 		ConnectionListener server_listener = new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid,
-				VMID vmid,
+			public void connectionOpened( @NotNull InetAddress host, int port, Object attachment,
+				@NotNull VMID source_vmid,
+				@NotNull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description, byte ack_rate_sec ) {
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 				System.out.println( "Server connection opened: " + vmid );
 				server_connection_slot.set( vmid );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
+				ConnectionArgs args, @NotNull Object connection_type_description ) {}
 		};
 		server.addConnectionListener( server_listener );
 
@@ -881,23 +848,23 @@ public class SessionReinitTest extends TestCase {
 
 		System.out.println( "Shutting down connection from server side..." );
 
-		final ObjectSlot<VMID> client_connection_slot = new ObjectSlot<VMID>();
+		final ObjectSlot<VMID> client_connection_slot = new ObjectSlot<>();
 		final AtomicBoolean connection_closed_flag = new AtomicBoolean( false );
 		client.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid,
-				VMID vmid,
+			public void connectionOpened( @NotNull InetAddress host, int port, Object attachment,
+				@NotNull VMID source_vmid,
+				@NotNull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				Object connection_type_description, byte ack_rate_sec ) {
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 				client_connection_slot.set( vmid );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid,
-				Object attachment,
-				boolean will_attempt_reconnect ) {
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {
 
 				connection_closed_flag.set( true );
 
@@ -906,12 +873,12 @@ public class SessionReinitTest extends TestCase {
 			}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
+				ConnectionArgs args, @NotNull Object connection_type_description ) {}
 		} );
 
 		//noinspection ThrowableResultOfMethodCallIgnored

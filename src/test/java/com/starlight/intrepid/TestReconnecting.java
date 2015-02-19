@@ -1,9 +1,7 @@
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.ConnectionListener;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.VMID;
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.thread.ThreadKit;
@@ -32,31 +30,34 @@ public class TestReconnecting {
 
 		instance.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description,
-				byte ack_rate_sec ) {
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+				UserContextInfo user_context, VMID previous_vmid,
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( "connectionOpened: " + host + ":" + port );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {
 
 				System.out.println( "connectionClosed: " + host + ":" + port +
 					( will_attempt_reconnect ? " will reconnect" : " will NOT reconnect" ) );
 			}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {
+			public void connectionOpening( @NotNull InetAddress host, int port,
+				Object attachment, ConnectionArgs args,
+				@NotNull Object connection_type_description ) {
 
 				System.out.println( "connectionOpening: " + host + ":" + port );
 			}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {
 
 				System.out.println( "connectionOpenFailed: " + host + ":" + port +
@@ -79,28 +80,31 @@ public class TestReconnecting {
 
 		intrepid.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description,
-				byte ack_rate_sec ) {
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+				UserContextInfo user_context, VMID previous_vmid,
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( "connectionOpened: " + host + ":" + port );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {
 
 				System.out.println( "connectionClosed: " + host + ":" + port +
 					( will_attempt_reconnect ? " will reconnect" : " will NOT reconnect" ) );
 			}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port,
+				Object attachment, ConnectionArgs args,
+				@NotNull Object connection_type_description ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 		} );
 

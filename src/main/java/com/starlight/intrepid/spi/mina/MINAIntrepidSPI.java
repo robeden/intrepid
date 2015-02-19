@@ -26,11 +26,13 @@
 package com.starlight.intrepid.spi.mina;
 
 import com.starlight.IOKit;
+import com.starlight.NotNull;
 import com.starlight.ValidationKit;
 import com.starlight.intrepid.ConnectionListener;
 import com.starlight.intrepid.PerformanceListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.exception.ConnectionFailureException;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
@@ -144,21 +146,21 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	private final Lock map_lock = new ReentrantLock();
 
 	private final Map<VMID,SessionContainer> session_map =
-		new HashMap<VMID,SessionContainer>();
+		new HashMap<>();
 
 	// Map containing information about outbound_session_map sessions (sessions opened
 	// locally). There session are managed for automatic reconnection.
 	private final Map<HostAndPort,SessionContainer> outbound_session_map =
-		new HashMap<HostAndPort,SessionContainer>();
+		new HashMap<>();
 
 	// When a connection changes VMID's (due to reconnection), the old and new ID's are
 	// put here.
-	private final Map<VMID,VMID> vmid_remap = new HashMap<VMID,VMID>();
+	private final Map<VMID,VMID> vmid_remap = new HashMap<>();
 
 	private final DelayQueue<ReconnectRunnable> reconnect_delay_queue =
-		new DelayQueue<ReconnectRunnable>();
+		new DelayQueue<>();
 	private final ConcurrentHashMap<HostAndPort,HostAndPort> active_reconnections =
-		new ConcurrentHashMap<HostAndPort,HostAndPort>();
+		new ConcurrentHashMap<>();
 	private final ReconnectManager reconnect_manager;
 
 	private long reconnect_retry_interval = RECONNECT_RETRY_INTERVAL;
@@ -324,7 +326,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		// Shut down all sessions. Try to do it nicely, but don't wait too long.
 		map_lock.lock();
 		try {
-			List<CloseFuture> futures = new ArrayList<CloseFuture>( session_map.size() );
+			List<CloseFuture> futures = new ArrayList<>( session_map.size() );
 
 			for( SessionContainer container : session_map.values() ) {
 				container.setCanceled();        // cancel reconnector
@@ -565,7 +567,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
         }
 		ConnectFuture future = connector.connect(
 			new InetSocketAddress( address, port ),
-			new VMIDSlotInitializer<ConnectFuture>( args, reconnect_token, container,
+			new VMIDSlotInitializer<>( args, reconnect_token, container,
 				attachment, original_vmid ) );
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
 			future.cancel();
@@ -665,8 +667,10 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 		// Notify listeners
 		InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
-		connection_listener.connectionClosed( address.getAddress(), address.getPort(),
-			local_vmid, vmid, session.getAttribute( ATTACHMENT_KEY ), false );
+		connection_listener.connectionClosed(
+			address.getAddress(), address.getPort(), local_vmid, vmid,
+			session.getAttribute( ATTACHMENT_KEY ), false,
+			( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 
 		IMessage message =
 			new SessionCloseIMessage( Resources.USER_INITIATED_DISCONNECT, false );
@@ -968,8 +972,9 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		boolean send_close_updates = false;
 		if ( !locally_terminated.booleanValue() && vmid != null ) {
 			InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
-			connection_listener.connectionClosed( address.getAddress(), address.getPort(),
-				local_vmid, vmid, attachment, reconnect );
+			connection_listener.connectionClosed(
+				address.getAddress(), address.getPort(), local_vmid, vmid, attachment,
+				reconnect, ( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 			send_close_updates = true;
 		}
 
@@ -1005,8 +1010,10 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 				else if ( send_close_updates ) {
 					InetSocketAddress address =
 						( InetSocketAddress ) session.getRemoteAddress();
-					connection_listener.connectionClosed( address.getAddress(),
-						address.getPort(), local_vmid, vmid, attachment, false );
+					connection_listener.connectionClosed(
+						address.getAddress(), address.getPort(), local_vmid, vmid,
+						attachment, false,
+						( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 
 					// fall through...
 				}
@@ -1049,7 +1056,11 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	}
 
 	@Override
-	public void messageReceived( final IoSession session, Object message ) throws Exception {
+	public void messageReceived( final IoSession session, Object message )
+		throws Exception {
+
+		if ( message == null ) return;
+
 		LOG.debug( "messageReceived - message class: {}", message.getClass().getName() );
 		LOG.trace( "messageReceived: {}", message );
 
@@ -1058,8 +1069,6 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 		performance_listener.messageReceived( session_info.getVMID(),
 			( IMessage ) message );
-
-		if ( message == null ) return;
 
 
 		// See if there's a test hook that would like to drop the message
@@ -1085,55 +1094,52 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			}
 		}
 		catch ( final CloseSessionIndicator close_indicator ) {
-			thread_pool.execute( new Runnable() {
-				@Override
-				public void run() {
-					// If there's a message, write it first
-					try {
-						if ( close_indicator.getReasonMessage() != null ) {
-							IMessage close_message = close_indicator.getReasonMessage();
-							WriteFuture future = session.write( close_message );
+			thread_pool.execute( () -> {
+				// If there's a message, write it first
+				try {
+					if ( close_indicator.getReasonMessage() != null ) {
+						IMessage close_message = close_indicator.getReasonMessage();
+						WriteFuture future = session.write( close_message );
 
-							performance_listener.messageSent( session_info.getVMID(),
-								close_message );
+						performance_listener.messageSent( session_info.getVMID(),
+							close_message );
 
-							// Wait (a bit) for the message to be sent
-							future.awaitUninterruptibly( 2000 );
+						// Wait (a bit) for the message to be sent
+						future.awaitUninterruptibly( 2000 );
 
-							ThreadKit.sleep( 500 );	// for good measure
-						}
+						ThreadKit.sleep( 500 );	// for good measure
 					}
-					catch( Exception ex ) {
-						LOG.info( "Error writing close message to {}",
-							session_info.getVMID(), ex );
-					}
-
-					// If this is a locally opened connection, make sure we flag the error
-					// so the caller isn't left waiting.
-					VMIDFuture vmid_future =
-						( VMIDFuture ) session.getAttribute( VMID_FUTURE_KEY );
-					if ( vmid_future != null ) {
-						if ( close_indicator.getServerReasonMessage() != null ) {
-							IOException exception;
-							if ( close_indicator.getReasonMessage() != null &&
-								close_indicator.getReasonMessage().isAuthFailure() ) {
-								
-								exception = new ConnectionFailureException(
-									close_indicator.getServerReasonMessage().getValue() );
-							}
-							else {
-								exception = new IOException(
-									close_indicator.getServerReasonMessage().getValue() );
-							}
-
-							vmid_future.setException( exception );
-						}
-						else vmid_future.setException( new IOException( "Session closed" ) );
-					}
-
-					CloseHandler.close( session );
 				}
-			});
+				catch( Exception ex ) {
+					LOG.info( "Error writing close message to {}",
+						session_info.getVMID(), ex );
+				}
+
+				// If this is a locally opened connection, make sure we flag the error
+				// so the caller isn't left waiting.
+				VMIDFuture vmid_future =
+					( VMIDFuture ) session.getAttribute( VMID_FUTURE_KEY );
+				if ( vmid_future != null ) {
+					if ( close_indicator.getServerReasonMessage() != null ) {
+						IOException exception;
+						if ( close_indicator.getReasonMessage() != null &&
+							close_indicator.getReasonMessage().isAuthFailure() ) {
+
+							exception = new ConnectionFailureException(
+								close_indicator.getServerReasonMessage().getValue() );
+						}
+						else {
+							exception = new IOException(
+								close_indicator.getServerReasonMessage().getValue() );
+						}
+
+						vmid_future.setException( exception );
+					}
+					else vmid_future.setException( new IOException( "Session closed" ) );
+				}
+
+				CloseHandler.close( session );
+			} );
 			return;
 		}
 
@@ -1264,6 +1270,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 				return;
 			}
 
+			final IoSession session = container.getSession();
+
 			boolean abend = true;
 			try {
                 if ( LOG.isDebugEnabled() ) {
@@ -1307,7 +1315,9 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 					// Notify listeners that we're giving up
 					connection_listener.connectionClosed( host_and_port.getHost(),
-						host_and_port.getPort(), local_vmid, null, attachment, false );
+						host_and_port.getPort(), local_vmid, null, attachment, false,
+						session == null ? null :
+							( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 					abend = false;
 					return;
 				}
@@ -1324,7 +1334,9 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 				// Notify listeners that we're giving up
 				connection_listener.connectionClosed( host_and_port.getHost(),
-					host_and_port.getPort(), local_vmid, null, attachment, false );
+					host_and_port.getPort(), local_vmid, null, attachment, false,
+					session == null ? null :
+						( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 				abend = false;
 			}
 			catch( Throwable ex ) {
@@ -1362,20 +1374,22 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 				if ( abend ) {
 					// Notify listeners that we're giving up
 					connection_listener.connectionClosed( host_and_port.getHost(),
-						host_and_port.getPort(), local_vmid, null, attachment, false );
+						host_and_port.getPort(), local_vmid, null, attachment, false,
+						session == null ? null :
+							( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 				}
 			}
 		}
 
 
 		@Override
-		public long getDelay( TimeUnit unit ) {
+		public long getDelay( @NotNull TimeUnit unit ) {
 			long nano_duration = next_run_time - System.nanoTime();
 			return unit.convert( nano_duration, TimeUnit.NANOSECONDS );
 		}
 
 		@Override
-		public int compareTo( Delayed o ) {
+		public int compareTo( @NotNull Delayed o ) {
 			ReconnectRunnable other = ( ReconnectRunnable ) o;
 
 			if ( next_run_time < other.next_run_time ) return -1;

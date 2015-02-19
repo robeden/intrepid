@@ -25,6 +25,8 @@
 
 package com.starlight.intrepid;
 
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
 
@@ -49,9 +51,10 @@ public interface ConnectionListener {
 	 * @param connection_type_description   An SPI-specific description of the connection
 	 * @param ack_rate_sec                  Rate of method acks in seconds.
 	 */
-	public void connectionOpened( InetAddress host, int port, Object attachment,
-		VMID source_vmid, VMID vmid, UserContextInfo user_context, VMID previous_vmid,
-		Object connection_type_description, byte ack_rate_sec );
+	public void connectionOpened( @NotNull InetAddress host, int port,
+		@Nullable Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+		@Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
+		@NotNull Object connection_type_description, byte ack_rate_sec );
 
 	/**
 	 * Called when a connection is broken.
@@ -61,9 +64,11 @@ public interface ConnectionListener {
 	 * @param vmid                          VMID of the peer for the connection.
 	 * @param attachment                    Connection attachment, if any.
 	 * @param will_attempt_reconnect        Indicates whether or not a reconnection
+	 * @param user_context                  User context, if any.
 	 */
-	public void connectionClosed( InetAddress host, int port, VMID source_vmid, VMID vmid,
-		Object attachment, boolean will_attempt_reconnect );
+	public void connectionClosed( @NotNull InetAddress host, int port,
+		@NotNull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
+		boolean will_attempt_reconnect, @Nullable UserContextInfo user_context );
 
 
 	/**
@@ -72,12 +77,14 @@ public interface ConnectionListener {
 	 *
 	 * @param connection_type_description   An SPI-specific description of the connection
 	 */
-	public void connectionOpening( InetAddress host, int port, Object attachment,
-		ConnectionArgs args, Object connection_type_description );
+	public void connectionOpening( @NotNull InetAddress host,
+		int port, @Nullable Object attachment, @Nullable ConnectionArgs args,
+		@NotNull Object connection_type_description );
 
 	/**
 	 * Called after {@link #connectionOpening} if the connection could not be made.
 	 */
-	public void connectionOpenFailed( InetAddress host, int port, Object attachment,
-		Exception error, boolean will_retry );
+	public void connectionOpenFailed( @NotNull InetAddress host,
+		int port, @Nullable Object attachment, @Nullable Exception error,
+		boolean will_retry );
 }

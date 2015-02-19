@@ -4,7 +4,6 @@ import com.starlight.intrepid.exception.InterruptedCallException;
 import com.starlight.intrepid.exception.ServerException;
 import com.starlight.thread.SharedThreadPool;
 import com.starlight.thread.ThreadKit;
-import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
@@ -182,29 +181,25 @@ public class AbnormalMethodTerminationTest extends TestCase {
 		@Override
 		public void dieByOutOfMemory() {
 			//noinspection MismatchedQueryAndUpdateOfCollection
-			List<byte[]> list_of_doom = new LinkedList<byte[]>();
+			List<byte[]> list_of_doom = new LinkedList<>();
 			//noinspection InfiniteLoopStatement
-			for( int i = 0; ; i++ ) {
+			while( true ) {
 				list_of_doom.add( new byte[ 102400 ] );
 			}
 		}
 
+		@SuppressWarnings( "deprecation" )
 		@Override
 		public void dieByThreadDeath() {
 			final Thread thread_to_kill = Thread.currentThread();
 
-			SharedThreadPool.INSTANCE.schedule( new Runnable() {
-				@SuppressWarnings( "deprecation" )
-				@Override
-				public void run() {
-					thread_to_kill.stop();
-				}
-			}, 1, TimeUnit.SECONDS );
+			SharedThreadPool.INSTANCE.schedule(
+				( Runnable ) thread_to_kill::stop, 1, TimeUnit.SECONDS );
 
 			ThreadKit.sleep( 5000 );
 
 			System.err.println( "Thread didn't die!" );
-			Assert.fail( "Thread didn't die!" );
+			fail( "Thread didn't die!" );
 		}
 
 		@Override

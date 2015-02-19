@@ -1,6 +1,7 @@
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.*;
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.thread.ObjectSlot;
@@ -43,32 +44,28 @@ public class BidirectionalConnectionsTest extends TestCase {
 		System.out.println();
 		ConnectionListener connection_listener = new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description,
-				byte ack_rate_sec ) {
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+				UserContextInfo user_context, VMID previous_vmid,
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( "Connection Opened (" + vmid + "): " + host + ":" + port );
-				// TODO: implement
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {
-				// TODO: implement
-			}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment,
+				boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {
-				// TODO: implement
-			}
+			public void connectionOpening( @NotNull InetAddress host, int port,
+				Object attachment, ConnectionArgs args,
+				@NotNull Object connection_type_description ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
-				Object attachment, Exception error, boolean will_retry ) {
-				// TODO: implement
-			}
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
+				Object attachment, Exception error, boolean will_retry ) {}
 		};
 
 
@@ -81,44 +78,36 @@ public class BidirectionalConnectionsTest extends TestCase {
 
 
 		// Bind server instances
-		a_instance.getLocalRegistry().bind( "a", new A() {
-			@Override
-			public void registerB( final int port ) throws Exception {
-				final ObjectSlot<Object> slot = new ObjectSlot<Object>();
+		a_instance.getLocalRegistry().bind( "a", ( A ) port -> {
+			final ObjectSlot<Object> slot = new ObjectSlot<>();
 
-				new Thread() {
-					@Override
-					public void run() {
-						try {
-							VMID b_vmid = a_instance.connect( InetAddress.getLocalHost(),
-								port, null, null );
+			new Thread() {
+				@Override
+				public void run() {
+					try {
+						VMID b_vmid = a_instance.connect( InetAddress.getLocalHost(),
+							port, null, null );
 
-							Registry registry = a_instance.getRemoteRegistry( b_vmid );
+						Registry registry = a_instance.getRemoteRegistry( b_vmid );
 
-							B b = ( B ) registry.lookup( "b" );
+						B b = ( B ) registry.lookup( "b" );
 
-							b.call();
+						b.call();
 
-							slot.set( Boolean.TRUE );
-						}
-						catch( Exception ex ) {
-							slot.set( ex );
-						}
+						slot.set( Boolean.TRUE );
 					}
-				}.start();
+					catch( Exception ex ) {
+						slot.set( ex );
+					}
+				}
+			}.start();
 
-				Object result = slot.waitForValue();
-				if ( result instanceof Exception ) throw ( Exception ) result;
-			}
+			Object result = slot.waitForValue();
+			if ( result instanceof Exception ) throw ( Exception ) result;
 		} );
 
 		final CountDownLatch call_latch = new CountDownLatch( 1 );
-		B b_impl = new B() {
-			@Override
-			public void call() {
-				call_latch.countDown();
-			}
-		};
+		B b_impl = call_latch::countDown;
 		b_instance.getLocalRegistry().bind( "b", b_impl );
 
 

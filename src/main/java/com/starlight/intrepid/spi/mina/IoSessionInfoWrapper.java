@@ -152,6 +152,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 			VMIDFuture future =
 				( VMIDFuture ) session.getAttribute( MINAIntrepidSPI.VMID_FUTURE_KEY );
 			assert future != null;
+			//noinspection ConstantConditions
 			if ( future != null ) future.setVMID( vmid );
 
 			// Make sure the session is set in the container
@@ -180,7 +181,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 
 				// Make sure nothing is pointing to the old key
 				if ( vmid_remap.containsValue( old_vmid ) ) {
-					Set<VMID> to_remap = new HashSet<VMID>();
+					Set<VMID> to_remap = new HashSet<>();
 					for( Map.Entry<VMID,VMID> entry : vmid_remap.entrySet() ) {
 						if ( entry.getValue().equals( old_vmid ) ) {
 							to_remap.add( entry.getKey() );
@@ -206,11 +207,11 @@ class IoSessionInfoWrapper implements SessionInfo {
 
 				InetSocketAddress address =
 					( InetSocketAddress ) session.getRemoteAddress();
-				connection_listener.connectionOpened( address.getAddress(),
-					address.getPort(),
-					session.getAttribute( MINAIntrepidSPI.ATTACHMENT_KEY ), local_vmid, vmid,
-					getUserContext(), old_vmid,
-					connection_type_description, ack_rate_sec );
+				connection_listener.connectionOpened(
+					address.getAddress(), address.getPort(),
+					session.getAttribute( MINAIntrepidSPI.ATTACHMENT_KEY ), local_vmid,
+					vmid, getUserContext(), old_vmid, connection_type_description,
+					ack_rate_sec );
 			}
 			else assert false : "Null SessionContainer: " + session;
 
@@ -254,6 +255,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 		VMIDFuture future =
 			( VMIDFuture ) session.getAttribute( MINAIntrepidSPI.VMID_FUTURE_KEY );
 		assert future != null;
+		//noinspection ConstantConditions
 		if ( future != null ) future.setVMID( vmid );
 	}
 
@@ -347,17 +349,9 @@ class IoSessionInfoWrapper implements SessionInfo {
 
 	@Override
 	public String toString() {
-		final StringBuilder sb =
-			new StringBuilder( "IoSessionInfoWrapper{" );
-		sb.append( ", connection_type_description='" )
-			.append( connection_type_description )
-			.append( '\'' );
-		sb.append( ", local_vmid=" ).append( local_vmid );
-		sb.append( ", outbound_session_map=" ).append( outbound_session_map );
-		sb.append( ", session=" ).append( session );
-		sb.append( ", session_map=" ).append( session_map );
-		sb.append( ", vmid_remap=" ).append( vmid_remap );
-		sb.append( '}' );
-		return sb.toString();
+		return "IoSessionInfoWrapper{" + ", connection_type_description='" +
+			connection_type_description + '\'' + ", local_vmid=" + local_vmid +
+			", outbound_session_map=" + outbound_session_map + ", session=" + session +
+			", session_map=" + session_map + ", vmid_remap=" + vmid_remap + '}';
 	}
 }

@@ -25,15 +25,14 @@
 
 package com.starlight.intrepid;
 
+import com.starlight.NotNull;
+import com.starlight.Nullable;
+import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.auth.SimpleUserContextInfo;
+import com.starlight.intrepid.auth.UserContextInfo;
 import junit.framework.TestCase;
-import com.starlight.intrepid.ConnectionListener;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.VMID;
-import com.starlight.intrepid.auth.*;
 
 import java.net.InetAddress;
-import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -67,8 +66,11 @@ public class ConnectionListenerTest extends TestCase {
 		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
 		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
 
-		server_instance = Intrepid.create( new IntrepidSetup().vmidHint( "server" )
-			.serverPort( 11751 ).openServer().connectionListener( s_listener ) );
+		server_instance = Intrepid.create( new IntrepidSetup()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.connectionListener( s_listener ) );
 
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" )
 			.connectionListener( c_listener ) );
@@ -153,17 +155,14 @@ public class ConnectionListenerTest extends TestCase {
 		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
 		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
 
-		server_instance = Intrepid.create( new IntrepidSetup().vmidHint( "server" )
-			.serverPort( 11751 ).connectionListener( s_listener ).authHandler(
-			new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
+		UserContextInfo user_context = new SimpleUserContextInfo( "test_user" );
 
-					return new SimpleUserContextInfo( "test_user" );
-				}
-			} ) );
+		server_instance = Intrepid.create( new IntrepidSetup()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.connectionListener( s_listener )
+			.authHandler(
+				( connection_args, remote_address, session_source ) -> user_context ) );
 
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" )
 			.connectionListener( c_listener ) );
@@ -186,8 +185,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( EventType.OPENED, info.type );
 		assertEquals( client_instance.getLocalVMID(), info.vmid );
 		assertNull( info.attachment );
-		assertNotNull( info.user_context ); // server will have user context
-		assertTrue( info.user_context instanceof SimpleUserContextInfo );
+		assertEquals( user_context, info.user_context );    // server will have context
 
 		// OPENING
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
@@ -219,14 +217,14 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( EventType.CLOSED, info.type );
 		assertEquals( client_instance.getLocalVMID(), info.vmid );
 		assertNull( info.attachment );
-		assertNull( info.user_context );
+		assertEquals( user_context, info.user_context );    // server will have context
 
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
 		assertNotNull( info );
 		assertEquals( EventType.CLOSED, info.type );
 		assertEquals( server_instance.getLocalVMID(), info.vmid );
 		assertEquals( client_attachment, info.attachment );
-		assertNull( info.user_context );
+		assertNull( info.user_context );    // client will not have user context
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
@@ -238,7 +236,7 @@ public class ConnectionListenerTest extends TestCase {
 
 	private class TestConnectionListener implements ConnectionListener {
 		private final BlockingQueue<ConnectionEventInfo> event_queue =
-			new LinkedBlockingQueue<ConnectionEventInfo>();
+			new LinkedBlockingQueue<>();
 
 		private final String id;
 
@@ -247,9 +245,10 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionOpened( InetAddress host, int port, Object attachment,
-			VMID source_vmid, VMID vmid, UserContextInfo user_context, VMID previous_vmid,
-			Object connection_type_description, byte ack_rate_sec ) {
+		public void connectionOpened( @NotNull InetAddress host, int port,
+			Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+			UserContextInfo user_context, VMID previous_vmid,
+			@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 			System.out.println( id + " connection opened: " + vmid );
 			event_queue.add( new ConnectionEventInfo( EventType.OPENED, vmid, attachment,
@@ -257,17 +256,18 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-			VMID vmid, Object attachment, boolean will_attempt_reconnect ) {
+		public void connectionClosed( @NotNull InetAddress host, int port,
+			@NotNull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
+			boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {
 
 			System.out.println( id + " connection closed: " + vmid );
 			event_queue.add( new ConnectionEventInfo( EventType.CLOSED, vmid, attachment,
-				will_attempt_reconnect, null, host, port, ( byte ) -1 ) );
+				will_attempt_reconnect, user_context, host, port, ( byte ) -1 ) );
 		}
 
 		@Override
-		public void connectionOpenFailed( InetAddress host, int port, Object attachment,
-			Exception error, boolean will_retry ) {
+		public void connectionOpenFailed( @NotNull InetAddress host, int port,
+			Object attachment, Exception error, boolean will_retry ) {
 
 			System.out.println( id + " connection open failed: " + host.getHostAddress() +
 				":" + port + " - " + error );
@@ -276,8 +276,9 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionOpening( InetAddress host, int port, Object attachment,
-			ConnectionArgs args, Object connection_type_description ) {
+		public void connectionOpening( @NotNull InetAddress host, int port,
+			Object attachment, ConnectionArgs args,
+			@NotNull Object connection_type_description ) {
 
 			System.out.println( id + " connection opening: " + host.getHostAddress() +
 				":" + port );
@@ -319,17 +320,10 @@ public class ConnectionListenerTest extends TestCase {
 
 		@Override
 		public String toString() {
-			final StringBuilder sb = new StringBuilder();
-			sb.append( "ConnectionEventInfo" );
-			sb.append( "{attachment=" ).append( attachment );
-			sb.append( ", type=" ).append( type );
-			sb.append( ", vmid=" ).append( vmid );
-			sb.append( ", will_reconnect=" ).append( will_reconnect );
-			sb.append( ", user_context=" ).append( user_context );
-			sb.append( ", host=" ).append( host );
-			sb.append( ", port=" ).append( port );
-			sb.append( '}' );
-			return sb.toString();
+			return "ConnectionEventInfo" + "{attachment=" + attachment + ", type=" +
+				type + ", vmid=" + vmid + ", will_reconnect=" + will_reconnect +
+				", user_context=" + user_context + ", host=" + host + ", port=" + port +
+				'}';
 		}
 	}
 }

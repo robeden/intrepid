@@ -25,7 +25,8 @@
 
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.*;
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.SimpleUserContextInfo;
 import com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler;
@@ -234,25 +235,28 @@ public class ReconnectTest extends TestCase {
 		final AtomicBoolean new_connection_flag = new AtomicBoolean( false );
 		client_instance.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description,
-				byte ack_rate_sec ) {
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+				UserContextInfo user_context, VMID previous_vmid,
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				new_connection_flag.set( true );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port,
+				Object attachment, ConnectionArgs args,
+				@NotNull Object connection_type_description ) {}
 		} );
 
 		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
@@ -284,25 +288,28 @@ public class ReconnectTest extends TestCase {
 		final AtomicInteger connections = new AtomicInteger( 0 );
 		client_instance.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description,
-				byte ack_rate_sec ) {
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+				UserContextInfo user_context, VMID previous_vmid,
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				connections.incrementAndGet();
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {}
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port,
+				Object attachment, ConnectionArgs args,
+				@NotNull Object connection_type_description ) {}
 		} );
 
 		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),

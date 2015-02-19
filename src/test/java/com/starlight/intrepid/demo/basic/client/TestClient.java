@@ -25,6 +25,8 @@
 
 package com.starlight.intrepid.demo.basic.client;
 
+import com.starlight.NotNull;
+import com.starlight.Nullable;
 import com.starlight.intrepid.*;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -135,18 +137,20 @@ public class TestClient implements ClientInterface {
 		} );
 		intrepid.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( InetAddress host, int port, Object attachment,
-				VMID source_vmid, VMID vmid, UserContextInfo user_context,
-				VMID previous_vmid, Object connection_type_description,
-				byte ack_rate_sec ) {
+			public void connectionOpened( @NotNull InetAddress host, int port,
+				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+				UserContextInfo user_context, VMID previous_vmid,
+				@NotNull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( ">>> Connection OPEN: " + vmid + " (" + attachment +
 					")" );
 			}
 
 			@Override
-			public void connectionClosed( InetAddress host, int port, VMID source_vmid,
-				VMID vmid, Object attachment, boolean will_attempt_reconnect ) {
+			public void connectionClosed( @NotNull InetAddress host, int port,
+				@NotNull VMID source_vmid, @Nullable VMID vmid,
+				@Nullable Object attachment, boolean will_attempt_reconnect,
+				@Nullable UserContextInfo user_context ) {
 
 				System.out.println( ">>> Connection CLOSE: " + vmid + " (" + attachment +
 					") - " + ( will_attempt_reconnect ? " WILL reconnect" :
@@ -154,12 +158,13 @@ public class TestClient implements ClientInterface {
 			}
 
 			@Override
-			public void connectionOpenFailed( InetAddress host, int port,
+			public void connectionOpenFailed( @NotNull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( InetAddress host, int port, Object attachment,
-				ConnectionArgs args, Object connection_type_description ) {}
+			public void connectionOpening( @NotNull InetAddress host, int port,
+				Object attachment, ConnectionArgs args,
+				@NotNull Object connection_type_description ) {}
 		} );
 
 		System.out.print( "Connecting..." );
