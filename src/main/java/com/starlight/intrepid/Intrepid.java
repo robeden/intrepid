@@ -137,6 +137,10 @@ public class Intrepid {
 						vmid_hint = local_host.getHostAddress();
 						// Weed out silly IP's.
 						if ( vmid_hint.equals( "127.0.0.1" ) ) vmid_hint = null;
+						else {
+							assert !vmid_hint.equals( "127.0.1.1" ) :
+								"127.0.1.1 for local host?!?";
+						}
 					}
 				}
 				catch ( UnknownHostException ex ) {

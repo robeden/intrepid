@@ -23,6 +23,8 @@ test {
 	systemProperty 'intrepid.lease.prune_interval', '1000'
 	systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
 	systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
+
+	ignoreFailures true
 }
 
 
