@@ -133,10 +133,8 @@ public class Intrepid {
 			else {
 				try {
 					InetAddress local_host = InetAddress.getLocalHost();
-					if ( local_host != null ) {
+					if ( !local_host.isLoopbackAddress() ) {
 						vmid_hint = local_host.getHostAddress();
-						// Weed out silly IP's.
-						if ( vmid_hint.startsWith( "127.0." ) ) vmid_hint = null;
 					}
 				}
 				catch ( UnknownHostException ex ) {

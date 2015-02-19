@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
  * as part of the {@link com.starlight.intrepid.message.SessionInitResponseIMessage}. When
  * provided, the client will supply the token back to the server in the
  * {@link com.starlight.intrepid.message.SessionInitIMessage} when reconnecting.
- * <p/>
+ * <p>
  * The reconnect token must be considered optional. That is, if the token cannot be passed
  * to the client (for example, due to a serialization error), the server should be able to
  * deal with not having the token provided.
@@ -75,11 +75,11 @@ public abstract class TokenReconnectAuthenticationHandler
 	 * than zero is return, the {@link #generateReconnectToken} method will be called at
 	 * this interval to recreate a token for sessions, which will then be given to the
 	 * client, if possible.
-	 * <p/>
+	 * <p>
 	 * It is advisable for the server to allow some overlap in tokens to allow for
 	 * transmission delays. For example, if the interval is 1 hour, making tokens valid
 	 * for an hour and ten minutes would be reasonable.
-	 * <p/>
+	 * <p>
 	 * The default implementation is 1 hour, but this can be overridden to adjust as
 	 * desired.
 	 *

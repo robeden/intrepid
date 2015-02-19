@@ -30,7 +30,7 @@ import org.apache.mina.core.buffer.IoBuffer;
 
 
 /**
- * Test encoding/decoding length using the dual short method.
+ * Test encoding/decoding length `using the dual short method.
  */
 public class LengthCodecTest extends TestCase {
 	public void testDualShortEncoding() throws Exception {

@@ -14,11 +14,11 @@ import java.io.ObjectOutput;
  *          Host A                  Host B
  *          ------                  ------
  *             |                      |
- *             |---------- 1 -------->|
+ *             |---------- 1 --------&gt;|
  *             |                      |
- *             |<--------- 2 ---------|
+ *             |&lt;--------- 2 ---------|
  *             |                      |
- *             |---------- 3 -------->|
+ *             |---------- 3 --------&gt;|
  * </pre>
  * <ol>
  *   <li><strong>Host A</strong> opens a connection to <strong>Host B</strong> using a

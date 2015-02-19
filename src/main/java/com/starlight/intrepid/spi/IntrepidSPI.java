@@ -74,7 +74,7 @@ public interface IntrepidSPI {
 	 * @param deserialization_context_vmid  A ThreadLocal in which <tt>vmid</tt> should
 	 *                                      be set when deserializing (at least) invoke
 	 *                                      and invoke return messages. See
-	 *          {@link com.starlight.intrepid.ProxyInvocationHandler#DESERIALIZING_VMID}
+	 *          {@code ProxyInvocationHandler.DESERIALIZING_VMID}
 	 */
 	public void init( InetAddress server_address, Integer server_port, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,

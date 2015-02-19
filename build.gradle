@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'java-library-distribution'
 
 
 repositories {
@@ -32,7 +33,39 @@ jar {
 	baseName 'intrepid'
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+	baseName = 'intrepid'
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
 
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	baseName = 'intrepid'
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+distributions {
+	main {
+		baseName = 'intrepid'
+        contents {
+	        from ( 'build/libs' ) {
+		        include '*sources.jar'
+		        include '*javadoc.jar'
+	        }
+	        from( '.' ) {
+		        include 'NOTICE.txt'
+		        include 'LICENSE*.txt'
+		        include 'README.md'
+	        }
+        }
+	}
+}
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.2.1'
