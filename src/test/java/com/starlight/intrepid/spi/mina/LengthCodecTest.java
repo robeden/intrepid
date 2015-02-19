@@ -25,81 +25,46 @@
 
 package com.starlight.intrepid.spi.mina;
 
-import com.starlight.thread.ObjectSlot;
 import junit.framework.TestCase;
-import com.starlight.intrepid.spi.mina.IMessageDecoder;
-import com.starlight.intrepid.spi.mina.IMessageEncoder;
 import org.apache.mina.core.buffer.IoBuffer;
-
-import java.util.concurrent.CountDownLatch;
 
 
 /**
  * Test encoding/decoding length using the dual short method.
  */
 public class LengthCodecTest extends TestCase {
-	private static final Throwable NO_PROBLEMS = new Throwable( "NOTHING TO SEE HERE" );
-
 	public void testDualShortEncoding() throws Exception {
-		// This is a long test, so provide ability to skip
-		if ( System.getProperty( "intrepid.test.skip.testDualShortEncoding" ) != null ) {
-			return;
-		}
-
-		Thread[] threads = new Thread[ Runtime.getRuntime().availableProcessors() ];
-
-		ObjectSlot<Throwable> error = new ObjectSlot<Throwable>();
-		CountDownLatch latch = new CountDownLatch( threads.length );
-
-		int range = Integer.MAX_VALUE / threads.length;
-		int next_index = 0;
-		for( int i = 0; i < threads.length; i++ ) {
-			int high = next_index + range;
-			if ( i == threads.length - 1 ) high = Integer.MAX_VALUE;
-
-			threads[ i ] = new EncodeTestThread( next_index, high, latch, error );
-			threads[ i ].start();
-			next_index += range;
-		}
-
-		Throwable t = error.waitForValue();
-		if ( t instanceof Exception ) throw ( Exception ) t;
-		else if ( t instanceof Error ) throw ( Error ) t;
-	}
+		int[] VALUES = {
+			Integer.MAX_VALUE,
+			Integer.MAX_VALUE - 1,
+			1000000000,
+			100000000,
+			10000000,
+			1000000,
+			100000,
+			10000,
+			1000,
+			100,
+			10,
+			9,
+			8,
+			7,
+			6,
+			5,
+			4,
+			3,
+			2,
+			1,
+			0,
+		};
 
 
-	private class EncodeTestThread extends Thread {
-		private final int min;
-		private final int max;
-		private final CountDownLatch latch;
-		private final ObjectSlot<Throwable> error;
-
-		EncodeTestThread( int min, int max, CountDownLatch latch,
-			ObjectSlot<Throwable> error ) {
-
-			this.min = min;
-			this.max = max;
-			this.latch = latch;
-			this.error = error;
-		}
-
-		@Override
-		public void run() {
-			try {
-				IoBuffer buffer = IoBuffer.allocate( 4 );
-				for( int i = min; i < max; i++ ) {
-					assertEquals( i, doEncodeDecode( i, buffer ) );
-				}
-			}
-			catch( Throwable t ) {
-				error.set( t );
-			}
-			finally {
-				latch.countDown();
-				if ( latch.getCount() == 0 ) error.set( NO_PROBLEMS );
-			}
+		IoBuffer buffer = IoBuffer.allocate( 4 );
+		for( int value : VALUES ) {
+			assertEquals( value, doEncodeDecode( value, buffer ) );
 		}
 	}
+
 
 
 	private int doEncodeDecode( int value, IoBuffer buffer ) {
