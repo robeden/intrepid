@@ -41,7 +41,7 @@ public class EncryptedCommTest extends CommTest {
 		SSLConfig config = new SSLConfig( SSLContext.getDefault() );
 		config.setNeedClientAuth( false );
 		config.setWantClientAuth( false );
-		config.setEnabledCipherSuites( new String[] { "SSL_DH_anon_WITH_RC4_128_MD5" } );
+		config.setEnabledCipherSuites( new String[] { "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" } );
 		config.setUseClientMode( !server );
 		return new MINAIntrepidSPI( false, config );
 	}
