@@ -43,6 +43,19 @@ public final class VMID implements Externalizable {
 	private String hint_text;
 
 
+
+	/**
+	 * Creates a new VMID object with a random ID for testing purposes.
+	 * Under normal circumstances, VMIDs should not be created as they are created by
+	 * Intrepid as needed. However, there are situations (for unit testing, in particular)
+	 * where creating an instance my be useful.
+	 */
+	public static VMID createForTesting() {
+		return new VMID( UUID.randomUUID(), null );
+	}
+
+
+
 	/** FOR EXTERNALIZATION ONLY!!! */
 	public VMID() {
 		assert IOKit.isBeingDeserialized();
