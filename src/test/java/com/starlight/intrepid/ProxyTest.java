@@ -27,13 +27,31 @@ package com.starlight.intrepid;
 
 import com.starlight.IOKit;
 import junit.framework.TestCase;
-import com.starlight.intrepid.Intrepid;
 
 
 /**
  *
  */
 public class ProxyTest extends TestCase {
+	private Intrepid intrepid;
+
+
+
+	@Override
+	protected void setUp() throws Exception {
+		intrepid = Intrepid.create( null );
+	}
+
+	@Override
+	protected void tearDown() throws Exception {
+		if ( intrepid != null ) {
+			intrepid.close();
+			intrepid = null;
+		}
+	}
+
+
+
 	/**
 	 * This tests a problem with the initial implementation in which methods were
 	 * pulled from the implementation class rather than the interfaces. So, final methods
@@ -42,27 +60,17 @@ public class ProxyTest extends TestCase {
 	public void testFinalAbstractMethod() throws Exception {
 		TestClass original = new TestClass();
 
-		Intrepid intrepid = Intrepid.create( null );
-
 		TestInterface proxy = ( TestInterface ) intrepid.createProxy( original );
 		proxy = ( TestInterface ) IOKit.deserialize( IOKit.serialize( proxy ) );
 
 		proxy.notFinalInAbstract();
 
-		try {
-			proxy.finalInAbstract();
-		}
-		catch( Exception ex ) {
-			ex.printStackTrace();
-			fail( ex.toString() );
-		}
+		proxy.finalInAbstract();
 	}
 
 
 	public void testEquals() throws Exception {
 		TestClass original = new TestClass();
-
-		Intrepid intrepid = Intrepid.create( null );
 
 		TestInterface proxy = ( TestInterface ) intrepid.createProxy( original );
 		assertEquals( proxy, proxy );
@@ -77,8 +85,6 @@ public class ProxyTest extends TestCase {
 
 	public void testMultipleCreate() throws Exception {
 		TestClass original = new TestClass();
-
-		Intrepid intrepid = Intrepid.create( null );
 
 		TestInterface proxy1 = ( TestInterface ) intrepid.createProxy( original );
 		TestInterface proxy2 = ( TestInterface ) intrepid.createProxy( original );

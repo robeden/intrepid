@@ -1,11 +1,7 @@
 package com.starlight.intrepid;
 
-import junit.framework.TestCase;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidContext;
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.*;
+import junit.framework.TestCase;
 
 import java.net.InetAddress;
 import java.net.SocketAddress;
@@ -39,7 +35,7 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup tail
 		TailInstance tail_proxy_instance = new TailInstance();
-		Intrepid tail_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		tail_instance = Intrepid.create( new IntrepidSetup().openServer() );
 		tail_instance.getLocalRegistry().bind( "lib/test", tail_proxy_instance );
 
 		// Setup head & connect to tail
@@ -64,7 +60,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		head_instance.getLocalRegistry().bind( "lib/test", head_proxy_instance );
 
 		// Setup client and connect to head
-		Intrepid client_instance = Intrepid.create( null );
+		client_instance = Intrepid.create( null );
 		vmid = client_instance.connect( InetAddress.getLocalHost(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );
@@ -90,7 +86,7 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup tail
 		TailInstance tail_proxy_instance = new TailInstance();
-		Intrepid tail_instance = Intrepid.create(
+		tail_instance = Intrepid.create(
 			new IntrepidSetup().serverPort( -1 ).authHandler(
 				new AuthenticationHandler() {
 					@Override
@@ -107,7 +103,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		tail_instance.getLocalRegistry().bind( "lib/test", tail_proxy_instance );
 
 		// Setup head & connect to tail
-		Intrepid head_instance = Intrepid.create(
+		head_instance = Intrepid.create(
 			new IntrepidSetup().serverPort( -1 ).authHandler( new AuthenticationHandler() {
 				@Override
 				public UserContextInfo checkConnection( ConnectionArgs connection_args,
@@ -130,7 +126,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		head_instance.getLocalRegistry().bind( "lib/test", head_proxy_instance );
 
 		// Setup client and connect to head
-		Intrepid client_instance = Intrepid.create( null );
+		client_instance = Intrepid.create( null );
 		vmid = client_instance.connect( InetAddress.getLocalHost(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );

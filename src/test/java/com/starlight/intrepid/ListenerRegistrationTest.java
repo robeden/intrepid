@@ -2,10 +2,6 @@ package com.starlight.intrepid;
 
 import com.starlight.thread.ThreadKit;
 import junit.framework.TestCase;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.ListenerRegistration;
-import com.starlight.intrepid.VMID;
 
 import java.net.InetAddress;
 import java.util.function.Consumer;
@@ -17,15 +13,28 @@ import static org.mockito.Mockito.*;
  *
  */
 public class ListenerRegistrationTest extends TestCase {
+	private Intrepid server;
+	private Intrepid client;
+
+
+
+	@Override
+	protected void tearDown() throws Exception {
+		if ( server != null ) server.close();
+		if ( client != null ) client.close();
+	}
+
+
+
 	public void testKeepListenerRegistered() throws Exception {
-		Intrepid server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.create( new IntrepidSetup().openServer() );
 		int server_port = server.getServerPort().intValue();
 
 		Server server_mock = mock( Server.class );
 		server.getLocalRegistry().bind( "server", server_mock );
 
 
-		Intrepid client = Intrepid.create( new IntrepidSetup() );
+		client = Intrepid.create( new IntrepidSetup() );
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
@@ -106,7 +115,7 @@ public class ListenerRegistrationTest extends TestCase {
 
 	@SuppressWarnings( "AutoBoxing" )
 	public void testKeepListenerRegisteredWithReturn() throws Exception {
-		Intrepid server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.create( new IntrepidSetup().openServer() );
 		int server_port = server.getServerPort().intValue();
 
 		Server server_mock = mock( Server.class );
@@ -118,7 +127,7 @@ public class ListenerRegistrationTest extends TestCase {
 		//noinspection unchecked
 		Consumer<Integer> consumer_mock = mock( Consumer.class );
 
-		Intrepid client = Intrepid.create( new IntrepidSetup() );
+		client = Intrepid.create( new IntrepidSetup() );
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 

@@ -28,10 +28,6 @@ package com.starlight.intrepid;
 import com.starlight.IOKit;
 import com.starlight.thread.ThreadKit;
 import junit.framework.TestCase;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.Registry;
-import com.starlight.intrepid.VMID;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -50,6 +46,20 @@ import java.util.TimerTask;
  *
  */
 public class LeaseTest extends TestCase {
+	private Intrepid instance = null;
+
+
+
+	@Override
+	protected void tearDown() throws Exception {
+		if ( instance != null ) {
+			instance.close();
+			instance = null;
+		}
+	}
+
+
+
 	public void testSystemProperties() {
 		assertEquals( "System property 'intrepid.lease.duration' must be set " +
 			"to '2000' when running unit tests.", "2000",
@@ -96,11 +106,11 @@ public class LeaseTest extends TestCase {
 
 			new OutputEcho( reader ).start();
 
-			Intrepid intrepid = Intrepid.create( null );
-			VMID vmid = intrepid.connect( InetAddress.getByName( "127.0.0.1" ), port,
+			instance = Intrepid.create( null );
+			VMID vmid = instance.connect( InetAddress.getByName( "127.0.0.1" ), port,
 				null, "server" );
 
-			Registry registry = intrepid.getRemoteRegistry( vmid );
+			Registry registry = instance.getRemoteRegistry( vmid );
 
 			LeaseServer server = ( LeaseServer ) registry.lookup( "server" );
 
@@ -109,7 +119,7 @@ public class LeaseTest extends TestCase {
 			original.add( "was" );
 			original.add( "here" );
 
-			List proxy = ( List ) intrepid.createProxy( original );
+			List proxy = ( List ) instance.createProxy( original );
 
 			ReferenceQueue<List> queue = new ReferenceQueue<List>();
 

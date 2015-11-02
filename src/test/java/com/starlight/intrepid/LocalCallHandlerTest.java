@@ -26,10 +26,6 @@
 package com.starlight.intrepid;
 
 import com.starlight.IOKit;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.LocalCallHandler;
-import com.starlight.intrepid.Proxy;
 import com.starlight.intrepid.exception.IllegalProxyDelegateException;
 import junit.framework.TestCase;
 
@@ -46,6 +42,17 @@ import java.util.concurrent.ConcurrentMap;
  *
  */
 public class LocalCallHandlerTest extends TestCase {
+	private Intrepid intrepid;
+
+
+
+	@Override
+	protected void tearDown() throws Exception {
+		if ( intrepid != null ) intrepid.close();
+	}
+
+
+
 	public void testFindProxyInterfaces() {
 		try {
 			Class[] c = LocalCallHandler.findProxyInterfaces( Object.class );
@@ -82,7 +89,7 @@ public class LocalCallHandlerTest extends TestCase {
 
 
 	public void testStringProxy() throws Exception {
-		Intrepid intrepid = Intrepid.create(
+		intrepid = Intrepid.create(
 			new IntrepidSetup().spi( new StubIntrepidSPI() ) );
 		try {
 			String source = "this is my test string";
@@ -107,7 +114,7 @@ public class LocalCallHandlerTest extends TestCase {
 
 
 	public void testSerializedStringProxy() throws Exception {
-		Intrepid intrepid =
+		intrepid =
 			Intrepid.create( new IntrepidSetup().spi( new StubIntrepidSPI() ) );
 		try {
 			String source = "this is my test string";
