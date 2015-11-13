@@ -38,6 +38,9 @@ import java.util.UUID;
  * 
  */
 public final class VMID implements Externalizable {
+	private static final long serialVersionUID = -5080590969060661856L;
+
+
 	private long lsb;
 	private long msb;
 	private String hint_text;
