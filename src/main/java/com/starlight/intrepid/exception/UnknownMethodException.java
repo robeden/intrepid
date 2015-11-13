@@ -32,6 +32,10 @@ import java.lang.reflect.Method;
  *
  */
 public class UnknownMethodException extends IntrepidRuntimeException {
+	private static final long serialVersionUID = -8955958339604358114L;
+
+
+
 	public UnknownMethodException( int method_id ) {
 		super( createDescription( method_id, null ) );
 	}

@@ -29,6 +29,10 @@ package com.starlight.intrepid.exception;
  *
  */
 public class IntrepidRuntimeException extends RuntimeException {
+	private static final long serialVersionUID = -5426698237335135265L;
+
+
+
 	public IntrepidRuntimeException() {
 		super();
 	}

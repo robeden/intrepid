@@ -30,6 +30,10 @@ package com.starlight.intrepid.exception;
  * server.
  */
 public class ServerException extends IntrepidRuntimeException {
+	private static final long serialVersionUID = -2955450262787978107L;
+
+
+
 	public ServerException( Throwable cause ) {
 		super( cause );
 	}

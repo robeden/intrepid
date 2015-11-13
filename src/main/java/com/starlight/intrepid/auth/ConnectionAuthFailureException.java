@@ -34,6 +34,10 @@ import com.starlight.locale.exception.LocalizedException;
  * authentication/authorization failure.
  */
 public class ConnectionAuthFailureException extends LocalizedException {
+	private static final long serialVersionUID = 7293621224222505486L;
+
+
+
 	public ConnectionAuthFailureException( ResourceKey<String> reason ) {
 		super( reason );
 	}

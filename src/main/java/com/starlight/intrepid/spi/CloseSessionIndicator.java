@@ -33,6 +33,10 @@ import com.starlight.locale.ResourceKey;
  * Throwable to indicate that the SPI should close the session.
  */
 public final class CloseSessionIndicator extends Throwable {
+	private static final long serialVersionUID = 3600263434401280315L;
+
+
+
 	private final SessionCloseIMessage reason_message;
 	private final ResourceKey<String> server_reason_message;
 

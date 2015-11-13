@@ -4,6 +4,10 @@ package com.starlight.intrepid;
  *
  */
 class NewIDIndicator extends Throwable {
+	private static final long serialVersionUID = -2949974007650857673L;
+
+
+
 	private final VMID new_vmid;
 	private final int new_object_id;
 	private final Object result;

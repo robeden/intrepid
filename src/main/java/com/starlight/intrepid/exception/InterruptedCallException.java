@@ -29,6 +29,10 @@ package com.starlight.intrepid.exception;
  * Thrown when interrupted while waiting for a method to return.
  */
 public class InterruptedCallException extends IntrepidRuntimeException {
+	private static final long serialVersionUID = -5684058685969940586L;
+
+
+
 	public InterruptedCallException() {
 		super();
 	}

@@ -37,6 +37,9 @@ import java.util.Arrays;
  *
  */
 class MethodIDTemplate implements Externalizable {
+	private static final long serialVersionUID = -6649789370370133387L;
+
+
 	private String name;
 	private String[] param_type_names;
 

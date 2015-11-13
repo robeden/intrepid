@@ -34,6 +34,10 @@ import com.starlight.locale.exception.LocalizedException;
  * by the server.
  */
 public class ChannelRejectedException extends LocalizedException {
+	private static final long serialVersionUID = 3804408035234994660L;
+
+
+
 	public ChannelRejectedException() {
 		super();
 	}

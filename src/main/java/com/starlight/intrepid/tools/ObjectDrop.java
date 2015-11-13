@@ -294,6 +294,9 @@ public class ObjectDrop implements ChannelAcceptor {
 
 	@SuppressWarnings( { "UnusedDeclaration" } )
 	public static class ID<T> implements Externalizable {
+		private static final long serialVersionUID = -3899261949742494011L;
+
+
 		private short drop_instance_id;
 		private int id;
 

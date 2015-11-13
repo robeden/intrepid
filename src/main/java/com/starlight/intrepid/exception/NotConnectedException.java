@@ -32,6 +32,10 @@ import com.starlight.intrepid.VMID;
  * Thrown if an attempt is made to send a message to a VM to which we are not connected.
  */
 public class NotConnectedException extends IntrepidRuntimeException{
+	private static final long serialVersionUID = 693196734576177027L;
+
+
+
 	public NotConnectedException( VMID vmid ) {
 		this( null, vmid );
 	}

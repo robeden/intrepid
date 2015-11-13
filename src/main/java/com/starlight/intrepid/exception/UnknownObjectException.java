@@ -32,6 +32,10 @@ import com.starlight.intrepid.VMID;
  * Thrown when a call is made for a proxy
  */
 public class UnknownObjectException extends IntrepidRuntimeException {
+	private static final long serialVersionUID = -5399894905874444529L;
+
+
+
 	public UnknownObjectException( int object_id, String persistent_name,
 		VMID target_vmid ) {
 

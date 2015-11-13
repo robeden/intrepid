@@ -43,6 +43,10 @@ import java.io.ObjectOutput;
 public class RequestUserCredentialReinit
 	implements ConnectionArgs, Externalizable {
 
+	private static final long serialVersionUID = 8194173945012265233L;
+
+
+
 	@Override
 	public void readExternal( ObjectInput in )
 		throws IOException, ClassNotFoundException {

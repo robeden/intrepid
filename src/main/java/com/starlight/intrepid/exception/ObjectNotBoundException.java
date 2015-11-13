@@ -33,6 +33,10 @@ import com.starlight.locale.exception.LocalizedRuntimeException;
  * Thrown when a lookup fails from {@link com.starlight.intrepid.Registry}.
  */
 public class ObjectNotBoundException extends LocalizedRuntimeException {
+	private static final long serialVersionUID = 2980156307277222327L;
+
+
+
 	public ObjectNotBoundException( ResourceKey<String> message ) {
 		super( message );
 	}

@@ -39,7 +39,9 @@ import java.io.ObjectOutput;
  * tracks the user's name.
  */
 public class SimpleUserContextInfo implements UserContextInfo, Externalizable {
-	static final long serialVersionUID = -8424532623990656703L;
+	private static final long serialVersionUID = -8424532623990656703L;
+
+
 
 	private String user_name;
 

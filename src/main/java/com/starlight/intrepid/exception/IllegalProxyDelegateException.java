@@ -31,6 +31,10 @@ package com.starlight.intrepid.exception;
  * documentation for more information on requirements.
  */
 public class IllegalProxyDelegateException extends IntrepidRuntimeException {
+	private static final long serialVersionUID = 1724571623955206232L;
+
+
+
 	public IllegalProxyDelegateException( Throwable cause ) {
 		super( cause );
 	}
