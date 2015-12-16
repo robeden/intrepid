@@ -32,6 +32,8 @@ import com.starlight.intrepid.exception.UnknownMethodException;
 import gnu.trove.iterator.TObjectIntIterator;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -49,6 +51,9 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 	private static final long serialVersionUID = 0L;
+
+	private static final Logger LOG =
+		LoggerFactory.getLogger( ProxyInvocationHandler.class );
 
 	private static final ThreadLocal<MethodIDTemplate> method_template_local =
 		new ThreadLocal<MethodIDTemplate>();
@@ -114,7 +119,13 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 		TObjectIntMap<MethodIDTemplate> method_to_id_map, String persistent_name,
 		Object delegate, VMID associated_vmid ) {
 
-//		System.out.println( "Local PIH (" + persistent_name + ") created: " + delegate );
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug( "Local PIH created for {}\n" +
+				"\tVMID / OID: {} / {}\n" +
+				"\tPersistent Name: {}\n" +
+				"\tMethod map: {}", delegate, vmid, Integer.valueOf( object_id ),
+				persistent_name, method_to_id_map );
+		}
 
 		this.vmid = vmid;
 		this.object_id = object_id;
@@ -219,8 +230,13 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 						method_id, persistent_name, args, method );
 				}
 				catch( NewIDIndicator id ) {
-//					System.out.println( "New IDs - VMID: " + id.getNewVMID() + "  OID: " +
-//						id.getNewObjectID() );
+					if ( LOG.isDebugEnabled() ) {
+						LOG.debug( "New IDs received: {} -> {}  and  {} -> {}", vmid,
+							Integer.valueOf( id.getNewObjectID() ),
+							Integer.valueOf( object_id ),
+							Integer.valueOf( id.getNewObjectID() ) );
+					}
+
 					if ( id.getNewVMID() != null ) vmid = id.getNewVMID();
 					object_id = id.getNewObjectID();
 

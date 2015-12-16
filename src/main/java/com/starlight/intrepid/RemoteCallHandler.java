@@ -29,6 +29,7 @@ import com.starlight.NotNull;
 import com.starlight.ValidationKit;
 import com.starlight.intrepid.auth.*;
 import com.starlight.intrepid.exception.*;
+import com.starlight.intrepid.message.*;
 import com.starlight.intrepid.spi.*;
 import com.starlight.listeners.ListenerSupport;
 import com.starlight.locale.FormattedTextResourceKey;
@@ -44,10 +45,6 @@ import gnu.trove.procedure.TIntProcedure;
 import gnu.trove.procedure.TObjectProcedure;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
-import com.starlight.intrepid.auth.*;
-import com.starlight.intrepid.exception.*;
-import com.starlight.intrepid.message.*;
-import com.starlight.intrepid.spi.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -263,7 +260,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				InvokeReturnIMessage return_message;
 				try {
 					// Wait for the response
-					LOG.debug( "Waiting for slot: {}", call_id_obj );
+					LOG.trace( "Waiting for slot: {}", call_id_obj );
 					return_message = return_slot.waitForValue();
 				}
 				catch( InterruptedException ex ) {
@@ -277,6 +274,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 					}
 					throw new InterruptedCallException( ex );
 				}
+
+				LOG.debug( "Receive return value for call slot {}: {}",
+					call_id_obj, return_message );
 
 				if ( has_perf_listeners ) {
 					performance_listeners.dispatch().remoteCallCompleted( local_vmid,
@@ -306,6 +306,12 @@ class RemoteCallHandler implements InboundMessageHandler {
 				else {
 					// If there's a new VMID or ObjectID, pass it on
 					if ( new_vmid != null || new_object_id != null ) {
+						if ( LOG.isDebugEnabled() ) {
+							LOG.debug( "Result of call {} indicates new IDs: " +
+								"\n\tVMID: {} -> {}" +
+								"\n\tOID:  {} -> {}", vmid, new_vmid,
+								Integer.valueOf( object_id ), new_object_id );
+						}
 						throw new NewIDIndicator( new_vmid,
 							new_object_id == null ? object_id : new_object_id.intValue(),
 							return_message.getValue(), false );
@@ -320,6 +326,12 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			// If there's a new VMID or ObjectID, pass it on
 			if ( new_vmid != null || new_object_id != null ) {
+				if ( LOG.isDebugEnabled() ) {
+					LOG.debug( "Result of call {} indicates new IDs: " +
+						"\n\tVMID: {} -> {}" +
+						"\n\tOID:  {} -> {}", vmid, new_vmid,
+						Integer.valueOf( object_id ), new_object_id );
+				}
 				throw new NewIDIndicator( new_vmid,
 					new_object_id == null ? object_id : new_object_id.intValue(),
 					t, true );
