@@ -129,6 +129,8 @@ public class LocalRegistry implements Registry {
 			proxy_map.put( name, proxy );
 			id_to_name_map.put( proxy.__intrepid__getObjectID(), name );
 
+			proxy.__intrepid__setPersistentName( name );
+
 			new_object_condition.signalAll();
 		}
 		finally {
@@ -136,8 +138,6 @@ public class LocalRegistry implements Registry {
 		}
 
 		instance.getLocalCallHandler().markBound( proxy.__intrepid__getObjectID(), true );
-
-		proxy.__intrepid__setPersistentName( name );
 	}
 
 
