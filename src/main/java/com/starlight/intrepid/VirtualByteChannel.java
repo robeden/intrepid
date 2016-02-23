@@ -27,6 +27,8 @@ package com.starlight.intrepid;
 
 
 import com.starlight.intrepid.exception.NotConnectedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,6 +46,11 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  */
 class VirtualByteChannel implements ByteChannel {
+	private static final Logger LOG =
+		LoggerFactory.getLogger( VirtualByteChannel.class );
+
+
+
 	// Put in the buffer to signal a "normal" close
 	private static final ByteBuffer CLOSED_FLAG = ByteBuffer.allocate( 1 );
 	// Put in the buffer to signal a forceful close
@@ -107,6 +114,10 @@ class VirtualByteChannel implements ByteChannel {
 	void putData( ByteBuffer buffer ) {
 		lock.lock();
 		try {
+			if ( LOG.isDebugEnabled() ) {
+				LOG.debug( "Put data buffer (size={}) for virtual channel {}",
+					Integer.valueOf( buffer.remaining() ), Short.valueOf( id ) );
+			}
 			buffer_queue.add( buffer );
 			data_available.signalAll();
 		}

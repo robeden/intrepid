@@ -496,6 +496,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 		while( data.position() < original_limit ) {
 			data.limit( Math.min( original_limit,
 				data.position() + MAX_CHANNEL_MESSAGE_DATA_SIZE ) );
+			if ( LOG.isDebugEnabled() ) {
+				LOG.debug( "Sending {} bytes to virtual channel {}",
+					Integer.valueOf( data.remaining() ), Short.valueOf( channel_id ) );
+			}
 			spi.sendMessage( destination,
 				new ChannelDataIMessage( channel_id, data ), null );
 		}
