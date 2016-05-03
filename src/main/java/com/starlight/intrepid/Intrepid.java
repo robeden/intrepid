@@ -159,8 +159,8 @@ public class Intrepid {
 		VMID vmid = new VMID( UUID.randomUUID(), vmid_hint );
 
 		// Create handlers
-		LocalCallHandler local_handler =
-			new LocalCallHandler( vmid, performance_listeners.dispatch() );
+		LocalCallHandler local_handler = new LocalCallHandler( vmid,
+			performance_listeners.dispatch(), setup.getPreInvocationValidator() );
 		RemoteCallHandler remote_handler = new RemoteCallHandler( spi, auth_handler,
 			local_handler, vmid, thread_pool, performance_listeners,
 			setup.getChannelAcceptor() );

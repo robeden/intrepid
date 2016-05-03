@@ -26,6 +26,9 @@
 package com.starlight.intrepid;
 
 import com.starlight.ArrayKit;
+import com.starlight.NotNull;
+import com.starlight.Nullable;
+import com.starlight.intrepid.auth.PreInvocationValidator;
 import com.starlight.intrepid.exception.IllegalProxyDelegateException;
 import com.starlight.intrepid.exception.UnknownMethodException;
 import com.starlight.intrepid.exception.UnknownObjectException;
@@ -49,6 +52,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -81,6 +85,7 @@ class LocalCallHandler {
 	private Intrepid instance;					// for call context info
 
 	private final PerformanceListener performance_listeners;
+	private final PreInvocationValidator pre_call_validator;
 
 	private final Lock map_lock = new ReentrantLock();
 	private final TObjectIntMap<Object> object_to_id_map =
@@ -97,9 +102,14 @@ class LocalCallHandler {
 	private final ReferenceQueue<Proxy> ref_queue = new ReferenceQueue<Proxy>();
 
 
-	LocalCallHandler( VMID vmid, PerformanceListener performance_listeners ) {
-		this.vmid = vmid;
-		this.performance_listeners = performance_listeners;
+	LocalCallHandler( @NotNull VMID vmid,
+		@NotNull PerformanceListener performance_listeners,
+		@Nullable PreInvocationValidator pre_call_validator ) {
+
+		this.vmid = Objects.requireNonNull( vmid );
+		this.performance_listeners = Objects.requireNonNull( performance_listeners );
+		this.pre_call_validator = pre_call_validator;
+
 		LeaseManager.registerLocalHandler( vmid, this );
 
 		local_registry = new LocalRegistry( vmid );
@@ -230,11 +240,20 @@ class LocalCallHandler {
 					" (source: " + IntrepidContext.getCallingVMID() + ")" );
 			}
 			method.setAccessible( true );
-			
-			// TODO: user context??
+
 			if ( local_origination ) {
 				IntrepidContext.setCallInfo( instance, vmid, null, null );
 			}
+
+			if ( pre_call_validator != null ) {
+				pre_call_validator.preCall(
+					IntrepidContext.getActiveInstance(),
+					IntrepidContext.getCallingVMID(),
+					IntrepidContext.getCallingHost(),
+					IntrepidContext.getUserInfo(),
+					method, proxy_info.delegate, args );
+			}
+
 			return method.invoke( proxy_info.delegate, args );
 		}
 		catch( InvocationTargetException ex ) {
