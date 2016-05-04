@@ -230,13 +230,13 @@ class RemoteCallHandler implements InboundMessageHandler {
 				}
 
 				Integer call_id_obj = Integer.valueOf( call_id );
-				LOG.debug( "Sending message {}", call_id_obj );
+				LOG.trace( "Sending message {}", call_id_obj );
 				assert message != null;
 				assert vmid != null;
 
 				SessionInfo session_info =
 					spi.sendMessage( vmid, message, protocol_version_slot );
-				LOG.debug( "Message sent: {}", call_id_obj );
+				LOG.trace( "Message sent: {}", call_id_obj );
 
 				VMID current_vmid = session_info.getVMID();
 				if ( current_vmid != null && !current_vmid.equals( vmid ) ) {
@@ -275,7 +275,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 					throw new InterruptedCallException( ex );
 				}
 
-				LOG.debug( "Receive return value for call slot {}: {}",
+				LOG.trace( "Receive return value for call slot {}: {}",
 					call_id_obj, return_message );
 
 				if ( has_perf_listeners ) {
@@ -288,6 +288,16 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 				if ( return_message.isThrown() ) {
 					t = ( Throwable ) return_message.getValue();
+
+					// Append the local call stack
+					final StackTraceElement[] local_stack = new Throwable().getStackTrace();
+					final StackTraceElement[] remote_stack = t.getStackTrace();
+					StackTraceElement[] new_stack = new StackTraceElement[ local_stack.length + remote_stack.length ];
+					System.arraycopy( remote_stack, 0, new_stack, 0, remote_stack.length );
+					new_stack[ remote_stack.length ] =
+						new StackTraceElement( " <<< Intrepid", "remote call to " + vmid + " >>>", null, -1 );
+					System.arraycopy( local_stack, 1, new_stack, remote_stack.length + 1, local_stack.length - 1 );// drop top
+					t.setStackTrace( new_stack );
 
 					// Look for an indicator that the object wasn't found. If that's the
 					// case and we have a persistent name available (and we haven't tried
@@ -556,7 +566,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	public IMessage receivedMessage( SessionInfo session_info, IMessage message )
 		throws CloseSessionIndicator {
 
-		LOG.debug( "receivedMessage from {}: {}", session_info.getVMID(), message );
+		LOG.trace( "receivedMessage from {}: {}", session_info.getVMID(), message );
 
 		IMessage response = null;
 		switch ( message.getType() ) {

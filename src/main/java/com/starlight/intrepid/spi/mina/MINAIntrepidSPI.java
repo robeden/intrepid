@@ -765,7 +765,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 		// Write the message and wait for it to be sent.
 		WriteFuture future = session.write( message );
-		LOG.debug( ">>>  return from session.write: {}  Waiting...", message_id );
+		LOG.trace( ">>>  return from session.write: {}  Waiting...", message_id );
 		try {
 			future.await();
 		}
@@ -773,7 +773,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 			throw new InterruptedIOException(
 				"Interrupted while waiting for message write" );
 		}
-		LOG.debug( ">>> return from future.await: {}", message_id );
+		LOG.trace( ">>> return from future.await: {}", message_id );
 
 		Throwable exception = future.getException();
 		if ( exception != null ) {
