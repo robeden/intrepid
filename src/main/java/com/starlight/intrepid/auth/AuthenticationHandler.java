@@ -51,7 +51,7 @@ public interface AuthenticationHandler {
 	 * @throws ConnectionAuthFailureException		Thrown if the connection should be
 	 * 												rejected.
 	 */
-	public UserContextInfo checkConnection( ConnectionArgs connection_args,
+	UserContextInfo checkConnection( ConnectionArgs connection_args,
 		SocketAddress remote_address, Object session_source )
 		throws ConnectionAuthFailureException;
 }

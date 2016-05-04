@@ -56,7 +56,7 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 		LoggerFactory.getLogger( ProxyInvocationHandler.class );
 
 	private static final ThreadLocal<MethodIDTemplate> method_template_local =
-		new ThreadLocal<MethodIDTemplate>();
+		new ThreadLocal<>();
 
 	private static final Method EQUALS_METHOD;
 	private static final Method HASHCODE_METHOD;
@@ -88,7 +88,7 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 	// Set by the SPI when we're deserializing packets so we can tell which instance the
 	// proxy is being deserialized into. This helps with finding the appropriate instance
 	// to make a call from when there are multiple active instances in a single VM.
-	static final ThreadLocal<VMID> DESERIALIZING_VMID = new ThreadLocal<VMID>();
+	static final ThreadLocal<VMID> DESERIALIZING_VMID = new ThreadLocal<>();
 
 
 	private VMID vmid;
@@ -357,7 +357,7 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 
 		// METHOD MAP
 		int size = in.readShort();
-		method_to_id_map = new TObjectIntHashMap<MethodIDTemplate>( size );
+		method_to_id_map = new TObjectIntHashMap<>( size );
 		for( int i = 0; i < size; i++ ) {
 			MethodIDTemplate method = ( MethodIDTemplate ) in.readObject();
 			int id = in.readInt();
