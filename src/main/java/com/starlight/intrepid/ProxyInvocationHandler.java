@@ -221,6 +221,14 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 				if ( instance == null ) {
 	                instance = Intrepid.findInstanceWithRemoteSession( vmid );
 				}
+				if ( instance == null ) {
+					// Try local instances again, this time not trying to shortcut
+	                instance = Intrepid.findLocalInstance( vmid, false );
+					if ( instance != null ) {
+						return instance.getLocalCallHandler().invoke( object_id,
+							method_id, args, true, persistent_name );
+					}
+				}
                 if ( instance == null ) {
                     throw new NotConnectedException( vmid );
                 }
