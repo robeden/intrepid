@@ -323,6 +323,11 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	public void shutdown() {
 		reconnect_manager.halt();
 
+		if ( acceptor != null ) {
+			acceptor.dispose( true );
+			acceptor = null;
+		}
+
 		// Shut down all sessions. Try to do it nicely, but don't wait too long.
 		map_lock.lock();
 		try {
@@ -360,10 +365,6 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		}
 
 
-		if ( acceptor != null ) {
-			acceptor.dispose( false );
-			acceptor = null;
-		}
 		if ( connector != null ) {
 			connector.dispose( false );
 			connector = null;
