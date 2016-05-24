@@ -27,12 +27,14 @@ package com.starlight.intrepid;
 
 import com.starlight.NotNull;
 import com.starlight.intrepid.auth.AuthenticationHandler;
+import com.starlight.intrepid.auth.PreInvocationValidator;
 import com.starlight.intrepid.spi.IntrepidSPI;
 import com.starlight.intrepid.spi.NoAuthenticationHandler;
 import com.starlight.intrepid.spi.UnitTestHook;
 import com.starlight.thread.ScheduledExecutor;
 
 import java.net.InetAddress;
+import java.util.Objects;
 
 
 /**
@@ -49,6 +51,7 @@ public class IntrepidSetup {
 	private ConnectionListener connection_listener;
 	private PerformanceListener performance_listener;
 	private ChannelAcceptor channel_acceptor;
+	private PreInvocationValidator validator;
 
 	private UnitTestHook unit_test_hook;
 
@@ -113,6 +116,13 @@ public class IntrepidSetup {
 		return this;
 	}
 
+	public IntrepidSetup preInvocationValidator(
+		@NotNull PreInvocationValidator validator ) {
+
+		this.validator = Objects.requireNonNull( validator );
+		return this;
+	}
+
 
 	public AuthenticationHandler getAuthHandler() {
 		return auth_handler;
@@ -148,6 +158,10 @@ public class IntrepidSetup {
 
 	public ChannelAcceptor getChannelAcceptor() {
 		return channel_acceptor;
+	}
+
+	PreInvocationValidator getPreInvocationValidator() {
+		return validator;
 	}
 
 
