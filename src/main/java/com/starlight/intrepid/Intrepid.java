@@ -64,14 +64,14 @@ public class Intrepid {
 	private static final long CONNECT_TIMEOUT =
 		Long.getLong( "intrepid.connect.timeout", 10000 ).longValue();
 
-	private static final Lock local_instance_map_lock = new ReentrantLock();
-	private static final Map<VMID,Intrepid> local_instance_map =
+	private static final Lock LOCAL_INSTANCE_MAP_LOCK = new ReentrantLock();
+	private static final Map<VMID,Intrepid> LOCAL_INSTANCE_MAP =
 		new HashMap<VMID,Intrepid>();
 
-	private static final ThreadLocal<Intrepid> thread_instance =
+	private static final ThreadLocal<Intrepid> THREAD_INSTANCE =
 		new InheritableThreadLocal<Intrepid>();
 
-	private static final ListenerSupport<IntrepidInstanceListener,Void> instance_listeners =
+	private static final ListenerSupport<IntrepidInstanceListener,Void> INSTANCE_LISTENERS =
 		ListenerSupportFactory.create( IntrepidInstanceListener.class, true );
 
 	/** This is a hook for testing while allows the "inter-instance bridging" provided
@@ -79,6 +79,7 @@ public class Intrepid {
 	 *  When disabled, calls to local instance will user the full stack. */
 	static volatile boolean disable_inter_instance_bridge =
 		System.getProperty( "intrepid.disable_inter_instance_bridge" ) != null;
+
 
 	private final IntrepidSPI spi;
 
@@ -177,7 +178,7 @@ public class Intrepid {
 		local_handler.initInstance( instance );
 		remote_handler.initInstance( instance );
 
-		instance_listeners.dispatch().instanceOpened( vmid, instance );
+		INSTANCE_LISTENERS.dispatch().instanceOpened( vmid, instance );
 
 		return instance;
 	}
@@ -226,7 +227,7 @@ public class Intrepid {
 		if ( isProxy( delegate ) ) return delegate;
 
 		// See if there's a thread instance set
-		Intrepid instance = thread_instance.get();
+		Intrepid instance = THREAD_INSTANCE.get();
 
 		// See if there is an active call context from which we can determine the instance
 		if ( instance == null ) {
@@ -235,18 +236,18 @@ public class Intrepid {
 
 		// If not, see if there is only one active instance
 		if ( instance == null ) {
-			local_instance_map_lock.lock();
+			LOCAL_INSTANCE_MAP_LOCK.lock();
 			try {
-				if ( local_instance_map.size() != 1 ) {
+				if ( LOCAL_INSTANCE_MAP.size() != 1 ) {
 					throw new IllegalStateException( "This method can only be used if " +
 						" is one and only one instance active but there are " +
-						local_instance_map.size() + " instances active." );
+						LOCAL_INSTANCE_MAP.size() + " instances active." );
 				}
 
-				instance = local_instance_map.values().iterator().next();
+				instance = LOCAL_INSTANCE_MAP.values().iterator().next();
 			}
 			finally {
-				local_instance_map_lock.unlock();
+				LOCAL_INSTANCE_MAP_LOCK.unlock();
 			}
 		}
 
@@ -263,8 +264,8 @@ public class Intrepid {
 	 * @param instance		The instance to be used or null to clear the current value.
 	 */
 	public static void setThreadInstance( Intrepid instance ) {
-		if ( instance == null ) thread_instance.remove();
-		else thread_instance.set( instance );
+		if ( instance == null ) THREAD_INSTANCE.remove();
+		else THREAD_INSTANCE.set( instance );
 	}
 
 
@@ -272,7 +273,7 @@ public class Intrepid {
 	 * Add a listener that will be notified when a new Intrepid instance is created.
 	 */
 	public static void addInstanceListener( IntrepidInstanceListener listener ) {
-		instance_listeners.add( listener );
+		INSTANCE_LISTENERS.add( listener );
 	}
 
 	/**
@@ -280,7 +281,7 @@ public class Intrepid {
 	 */
 	@SuppressWarnings( "UnusedDeclaration" )
 	public static void removeInstanceListener( IntrepidInstanceListener listener ) {
-		instance_listeners.remove( listener );
+		INSTANCE_LISTENERS.remove( listener );
 	}
 
 
@@ -292,12 +293,12 @@ public class Intrepid {
 	static Intrepid findLocalInstance( VMID vmid, boolean trying_to_shortcut ) {
 		if ( trying_to_shortcut && disable_inter_instance_bridge ) return null;
 
-		local_instance_map_lock.lock();
+		LOCAL_INSTANCE_MAP_LOCK.lock();
 		try {
-			return local_instance_map.get( vmid );
+			return LOCAL_INSTANCE_MAP.get( vmid );
 		}
 		finally {
-			local_instance_map_lock.unlock();
+			LOCAL_INSTANCE_MAP_LOCK.unlock();
 		}
 	}
 
@@ -307,21 +308,21 @@ public class Intrepid {
      */
     static Intrepid findInstanceWithRemoteSession( VMID remote_vmid ) {
 	    // Check the thread-specified instance first
-	    Intrepid t_instance = thread_instance.get();
+	    Intrepid t_instance = THREAD_INSTANCE.get();
 	    if ( t_instance != null && t_instance.spi.hasConnection( remote_vmid ) ) {
 		    return t_instance;
 	    }
 
-		local_instance_map_lock.lock();
+		LOCAL_INSTANCE_MAP_LOCK.lock();
 		try {
-            for( Intrepid instance : local_instance_map.values() ) {
+            for( Intrepid instance : LOCAL_INSTANCE_MAP.values() ) {
                 if ( instance.spi.hasConnection( remote_vmid ) ) return instance;
             }
 
             return null;
 		}
 		finally {
-			local_instance_map_lock.unlock();
+			LOCAL_INSTANCE_MAP_LOCK.unlock();
 		}
     }
 
@@ -340,12 +341,12 @@ public class Intrepid {
 
 		this.performance_control = new PerformanceControlWrapper();
 
-		local_instance_map_lock.lock();
+		LOCAL_INSTANCE_MAP_LOCK.lock();
 		try {
-			local_instance_map.put( vmid, this );
+			LOCAL_INSTANCE_MAP.put( vmid, this );
 		}
 		finally {
-			local_instance_map_lock.unlock();
+			LOCAL_INSTANCE_MAP_LOCK.unlock();
 		}
 	}
 
@@ -353,18 +354,18 @@ public class Intrepid {
 	public void close() {
 		closed = true;
 
-		local_instance_map_lock.lock();
+		LOCAL_INSTANCE_MAP_LOCK.lock();
 		try {
-			local_instance_map.remove( vmid );
+			LOCAL_INSTANCE_MAP.remove( vmid );
 		}
 		finally {
-			local_instance_map_lock.unlock();
+			LOCAL_INSTANCE_MAP_LOCK.unlock();
 		}
 
 		local_handler.shutdown();
 		spi.shutdown();
 
-		instance_listeners.dispatch().instanceClosed( getLocalVMID() );
+		INSTANCE_LISTENERS.dispatch().instanceClosed( getLocalVMID() );
 	}
 
 
