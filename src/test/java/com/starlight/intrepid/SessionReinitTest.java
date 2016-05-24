@@ -29,6 +29,8 @@ public class SessionReinitTest extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
 		if ( server != null ) server.close();
 		if ( client != null ) client.close();
 	}

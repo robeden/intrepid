@@ -55,6 +55,8 @@ public class ReconnectTest extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
+		IntrepidTesting.setInterInstanceBridgeDisabled( false );
+
 		if ( server_instance != null ) server_instance.close();
 		if ( client_instance != null ) client_instance.close();
 	}
