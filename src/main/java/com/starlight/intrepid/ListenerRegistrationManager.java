@@ -223,16 +223,21 @@ class ListenerRegistrationManager implements ConnectionListener {
 				if ( return_value_handler != null ) {
 					return_value_handler.accept( return_value );
 				}
+
+				connected.set( true );
 			}
-			catch( Exception ex ) {
+			catch( Throwable ex ) {
+				ex.printStackTrace();
+				LOG.warn( "Error re-registering listener (listener={} add_method={} " +
+					"proxy={})", listener, add_method, proxy, ex );
+
 				connected.set( false );
 				if ( schedule_on_fail ) {
 					deferred_add_listener_slot.set( SharedThreadPool.INSTANCE.schedule(
-						() -> addListener( true ), 5, TimeUnit.SECONDS ) );
+						() -> addListener( true ), 1, TimeUnit.SECONDS ) );
 				}
 				else throw ex;
 			}
-			connected.set( true );
 		}
 
 		void removeListener() {
