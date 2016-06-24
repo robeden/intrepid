@@ -6,6 +6,7 @@ import junit.framework.TestCase;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 import static org.mockito.Mockito.*;
@@ -107,9 +108,11 @@ public class ListenerRegistrationTest extends TestCase {
 			System.out.println( "Verify time: " + ( System.currentTimeMillis() - start ) );
 			reset( server_mock );
 
-			// NOTE: Race condition here
-			// Should indicate we're connected
-			assertTrue( listener_reg.isCurrentlyConnected() );
+			// NOTE: There's a race condition because the add method has to be called
+			//       before the currently connected flag can be set. It should follow
+			//       very quickly... but never underestimate TeamCity's ability to fail
+			//       on all the race conditions.
+			waitForTrue( listener_reg::isCurrentlyConnected, 1000 );
 
 			System.out.println( "Pass " + i + " succeeded" );
 		}
@@ -203,8 +206,11 @@ public class ListenerRegistrationTest extends TestCase {
 			verify( consumer_mock, timeout( 1000 ).times( 1 ) ).accept( i + 1 );
 			System.out.println( "Verify time: " + ( System.currentTimeMillis() - start ) );
 
-			// Should indicate we're connected
-			assertTrue( listener_reg.isCurrentlyConnected() );
+			// NOTE: There's a race condition because the add method has to be called
+			//       before the currently connected flag can be set. It should follow
+			//       very quickly... but never underestimate TeamCity's ability to fail
+			//       on all the race conditions.
+			waitForTrue( listener_reg::isCurrentlyConnected, 1000 );
 
 			System.out.println( "Pass " + i + " succeeded" );
 		}
@@ -218,7 +224,6 @@ public class ListenerRegistrationTest extends TestCase {
 		// Close the server
 		server.close();
 
-		// Wait 5 seconds
 		ThreadKit.sleep( 5000 );
 
 		// Make sure no methods were called on the server
@@ -331,6 +336,19 @@ public class ListenerRegistrationTest extends TestCase {
 		}
 
 		fail( "Desired value (" + desired_value + ") was not received: " + counter.get() );
+	}
+
+
+	private void waitForTrue( BooleanSupplier supplier, long timeout_ms ) {
+		long duration = 0;
+		while( duration < timeout_ms ) {
+			if ( supplier.getAsBoolean() ) return;
+
+			ThreadKit.sleep( 100 );
+			duration += 100;
+		}
+
+		fail( "Desired value (true) was not received" );
 	}
 
 
