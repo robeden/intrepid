@@ -107,6 +107,7 @@ public class ListenerRegistrationTest extends TestCase {
 			System.out.println( "Verify time: " + ( System.currentTimeMillis() - start ) );
 			reset( server_mock );
 
+			// NOTE: Race condition here
 			// Should indicate we're connected
 			assertTrue( listener_reg.isCurrentlyConnected() );
 
@@ -199,7 +200,7 @@ public class ListenerRegistrationTest extends TestCase {
 			//       come in, so need a big timeout
 			verify( server_mock, timeout( 10000 ).times( i + 2 ) )
 				.addListenerWithReturn( any( Listener.class ) );
-			verify( consumer_mock, times( 1 ) ).accept( i + 1 );
+			verify( consumer_mock, timeout( 1000 ).times( 1 ) ).accept( i + 1 );
 			System.out.println( "Verify time: " + ( System.currentTimeMillis() - start ) );
 
 			// Should indicate we're connected

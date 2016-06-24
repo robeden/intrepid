@@ -227,7 +227,6 @@ class ListenerRegistrationManager implements ConnectionListener {
 				connected.set( true );
 			}
 			catch( Throwable ex ) {
-				ex.printStackTrace();
 				LOG.warn( "Error re-registering listener (listener={} add_method={} " +
 					"proxy={})", listener, add_method, proxy, ex );
 
