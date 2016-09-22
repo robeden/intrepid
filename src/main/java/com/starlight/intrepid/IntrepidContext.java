@@ -34,13 +34,8 @@ import java.net.InetAddress;
  * Allows access to context information when inside a remote call.
  */
 public class IntrepidContext {
-	private static final ThreadLocal<VMID> calling_vmid = new ThreadLocal<VMID>();
-	private static final ThreadLocal<InetAddress> calling_address =
-		new ThreadLocal<InetAddress>();
-	private static final ThreadLocal<UserContextInfo> calling_user =
-		new ThreadLocal<UserContextInfo>();
-	private static final ThreadLocal<Intrepid> active_instance =
-		new ThreadLocal<Intrepid>();
+	private static final ThreadLocal<CallInfo> CALL_INFO = new ThreadLocal<>();
+
 
 	// Hidden constructor
 	private IntrepidContext() {}
@@ -51,7 +46,7 @@ public class IntrepidContext {
 	 * remote).
 	 */
 	public static boolean isCall() {
-		return calling_vmid.get() != null;
+		return CALL_INFO.get() != null;
 	}
 
 
@@ -61,7 +56,10 @@ public class IntrepidContext {
 	 * @see #isCall()
 	 */
 	public static VMID getCallingVMID() {
-		return calling_vmid.get();
+		CallInfo info = CALL_INFO.get();
+		return info == null
+			? null
+			: info.source;
 	}
 
 
@@ -74,7 +72,10 @@ public class IntrepidContext {
 	 * @see #isCall()
 	 */
 	public static InetAddress getCallingHost() {
-		return calling_address.get();
+		CallInfo info = CALL_INFO.get();
+		return info == null
+			? null
+			: info.source_address;
 	}
 
 
@@ -83,7 +84,10 @@ public class IntrepidContext {
 	 * it is possible to be inside a call but not have a UserContextInfo.
 	 */
 	public static UserContextInfo getUserInfo() {
-		return calling_user.get();
+		CallInfo info = CALL_INFO.get();
+		return info == null
+			? null
+			: info.user_context;
 	}
 
 
@@ -92,23 +96,37 @@ public class IntrepidContext {
 	 * call.
 	 */
 	public static Intrepid getActiveInstance() {
-		return active_instance.get();
+		CallInfo info = CALL_INFO.get();
+		return info == null
+			? null
+			: info.instance;
 	}
 
 
 	static void setCallInfo( Intrepid instance, VMID source, InetAddress source_address,
 		UserContextInfo user_context ) {
 
-		active_instance.set( instance );
-		calling_vmid.set( source );
-		calling_address.set( source_address );
-		calling_user.set( user_context );
+		CALL_INFO.set( new CallInfo( instance, source, source_address, user_context ) );
 	}
 
 	static void clearCallInfo() {
-		active_instance.remove();
-		calling_vmid.remove();
-		calling_address.remove();
-		calling_user.remove();
+		CALL_INFO.remove();
+	}
+
+
+	private static class CallInfo {
+		final Intrepid instance;
+		final VMID source;
+		final InetAddress source_address;
+		final UserContextInfo user_context;
+
+		CallInfo( Intrepid instance, VMID source, InetAddress source_address,
+			UserContextInfo user_context ) {
+
+			this.instance = instance;
+			this.source = source;
+			this.source_address = source_address;
+			this.user_context = user_context;
+		}
 	}
 }
