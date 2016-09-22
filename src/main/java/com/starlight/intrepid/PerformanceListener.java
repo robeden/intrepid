@@ -35,36 +35,36 @@ import java.lang.reflect.Method;
  * Interface that can be used to gather performance information
  */
 public interface PerformanceListener {
-	public void remoteCallStarted( VMID instance_vmid, long time, int call_id,
+	default void remoteCallStarted( VMID instance_vmid, long time, int call_id,
 		VMID destination_vmid, int object_id, int method_id, Method method, Object[] args,
-		UserContextInfo user_context, String persistent_name );
-	public void remoteCallCompleted( VMID instance_vmid, long time, int call_id,
-		Object result, boolean result_was_thrown, Long server_time );
+		UserContextInfo user_context, String persistent_name ) {}
+	default void remoteCallCompleted( VMID instance_vmid, long time, int call_id,
+		Object result, boolean result_was_thrown, Long server_time ) {}
 
 
-	public void inboundRemoteCallStarted( VMID instance_vmid, long time, int call_id,
+	default void inboundRemoteCallStarted( VMID instance_vmid, long time, int call_id,
 		VMID source_vmid, int object_id, int method_id, Method method, Object[] args,
-		UserContextInfo user_context, String persistent_name );
-	public void inboundRemoteCallCompleted( VMID instance_vmid, long time, int call_id,
-		Object result, boolean result_was_thrown );
+		UserContextInfo user_context, String persistent_name ) {}
+	default void inboundRemoteCallCompleted( VMID instance_vmid, long time, int call_id,
+		Object result, boolean result_was_thrown ) {}
 
 
-	public void virtualChannelOpened( VMID instance_vmid, VMID peer_vmid,
-		short channel_id );
-	public void virtualChannelClosed( VMID instance_vmid, VMID peer_vmid,
-		short channel_id );
-	public void virtualChannelDataReceived( VMID instance_vmid, VMID peer_vmid,
-		short channel_id, int bytes );
-	public void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-		short channel_id, int bytes );
+	default void virtualChannelOpened( VMID instance_vmid, VMID peer_vmid,
+		short channel_id ) {}
+	default void virtualChannelClosed( VMID instance_vmid, VMID peer_vmid,
+		short channel_id ) {}
+	default void virtualChannelDataReceived( VMID instance_vmid, VMID peer_vmid,
+		short channel_id, int bytes ) {}
+	default void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
+		short channel_id, int bytes ) {}
 
 
-	public void messageSent( VMID destination_vmid, IMessage message );
-	public void messageReceived( VMID source_vmid, IMessage message );
+	default void messageSent( VMID destination_vmid, IMessage message ) {}
+	default void messageReceived( VMID source_vmid, IMessage message ) {}
 
 
-	public void leaseInfoUpdated( VMID vmid, int object_id, String delegate_tostring,
+	default void leaseInfoUpdated( VMID vmid, int object_id, String delegate_tostring,
 		boolean holding_strong_reference, int leasing_vm_count, boolean renew,
-		boolean release );
-	public void leasedObjectRemoved( VMID vmid, int object_id );
+		boolean release ) {}
+	default void leasedObjectRemoved( VMID vmid, int object_id ) {}
 }
