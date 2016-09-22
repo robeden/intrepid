@@ -583,8 +583,13 @@ class RemoteCallHandler implements InboundMessageHandler {
 		// If a session IS NOT initialized, expect a SessionInit/Response message
 		else {
 			acceptable_message =
-				( locally_initiated_session && message instanceof SessionInitResponseIMessage ) ||
-				( !locally_initiated_session && message instanceof SessionInitIMessage );
+				( ( message instanceof SessionInitIMessage ) ||
+				( message instanceof SessionInitResponseIMessage ) );
+
+			// TODO: This is the algorithm without session re-init... which I'd like to drop
+//			acceptable_message =
+//				( locally_initiated_session && message instanceof SessionInitResponseIMessage ) ||
+//				( !locally_initiated_session && message instanceof SessionInitIMessage );
 		}
 
 		if ( !acceptable_message ) {
