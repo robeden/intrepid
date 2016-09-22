@@ -74,6 +74,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 
 /**
@@ -1068,33 +1069,13 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		final SessionInfo session_info =
 			( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );
 
-		performance_listener.messageReceived( session_info.getVMID(),
-			( IMessage ) message );
 
+		final boolean locally_initiated_session = Optional.ofNullable(
+			( Boolean ) session.getAttribute( LOCAL_INITIATE_KEY ) )
+			.orElse( Boolean.FALSE )
+			.booleanValue();
 
-		// See if there's a test hook that would like to drop the message
-		if ( unit_test_hook != null && unit_test_hook.dropMessageReceive(
-			session_info.getVMID(), ( IMessage ) message ) ) {
-
-			LOG.info( "Dropping message receive per UnitTestHook instructions: {} from {}",
-				message, session_info.getVMID() );
-			return;
-		}
-
-
-		final IMessage response;
-		try {
-			try {
-				response = message_handler.receivedMessage( session_info,
-					( IMessage ) message );
-			}
-			catch( ClassCastException ex ) {
-				throw new CloseSessionIndicator( new SessionCloseIMessage(
-					new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
-					message.getClass().getName() ), false ) );
-			}
-		}
-		catch ( final CloseSessionIndicator close_indicator ) {
+		final Consumer<CloseSessionIndicator> close_handler = close_indicator -> {
 			thread_pool.execute( () -> {
 				// If there's a message, write it first
 				try {
@@ -1141,6 +1122,49 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 				CloseHandler.close( session );
 			} );
+		};
+
+
+		try {
+			message_handler.validateReceivedMessage( session_info,
+				( IMessage ) message, locally_initiated_session );
+		}
+		catch( CloseSessionIndicator close_indicator ) {
+			performance_listener.invalidMessageReceived( session_info.getRemoteAddress(),
+				( IMessage ) message );
+
+			close_handler.accept( close_indicator );
+			return;
+		}
+
+
+		performance_listener.messageReceived( session_info.getVMID(),
+			( IMessage ) message );
+
+
+		// See if there's a test hook that would like to drop the message
+		if ( unit_test_hook != null && unit_test_hook.dropMessageReceive(
+			session_info.getVMID(), ( IMessage ) message ) ) {
+
+			LOG.info( "Dropping message receive per UnitTestHook instructions: {} from {}",
+				message, session_info.getVMID() );
+			return;
+		}
+
+		final IMessage response;
+		try {
+			try {
+				response = message_handler.receivedMessage( session_info,
+					( IMessage ) message, locally_initiated_session );
+			}
+			catch( ClassCastException ex ) {
+				throw new CloseSessionIndicator( new SessionCloseIMessage(
+					new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
+					message.getClass().getName() ), false ) );
+			}
+		}
+		catch ( final CloseSessionIndicator close_indicator ) {
+			close_handler.accept( close_indicator );
 			return;
 		}
 

@@ -42,7 +42,7 @@ public interface SessionInfo {
 	 *
 	 * @param key		The key of the attribute.
 	 */
-	public Object getAttribute( Object key );
+	Object getAttribute( Object key );
 
 	/**
 	 * Set an attribute for the session.
@@ -54,89 +54,100 @@ public interface SessionInfo {
 	 *
 	 * @return			The old value of the attribute if there was one, otherwise null.
 	 */
-	public Object setAttribute( Object key, Object value );
+	Object setAttribute( Object key, Object value );
 
 
 	/**
 	 * Returns the VMID of the session, if available.
 	 */
-	public VMID getVMID();
+	VMID getVMID();
 
 	/**
 	 * Sets the VMID and the invoke ack rate for the session. If the peer doesn't support
 	 * method ack, the value for ack_rate_sec is undefined.
 	 */
-	public void setVMID( VMID vmid, byte ack_rate_sec );
+	void setVMID( VMID vmid, byte ack_rate_sec );
+
+
+	/**
+	 * Indicates whether or not the session has been initialized. In order to be
+	 * initialized the VMID, protocol version and remote address must all be set.
+	 */
+	default boolean sessionIsInitialized() {
+		return getVMID() != null &&
+			getProtocolVersion() != null &&
+			getRemoteAddress() != null;
+	}
 
 
 	/**
 	 * Returns the protocol version of the session.
 	 */
-	public Byte getProtocolVersion();
+	Byte getProtocolVersion();
 
 	/**
 	 * Sets the protocol version for the session.
 	 */
-	public void setProtocolVersion( Byte version );
+	void setProtocolVersion( Byte version );
 
 
 	/**
 	 * Return the user context for the session, if any.
 	 */
-	public UserContextInfo getUserContext();
+	UserContextInfo getUserContext();
 
 	/**
 	 * Set the user context for the session.
 	 */
-	public void setUserContext( UserContextInfo user_context );
+	void setUserContext( UserContextInfo user_context );
 
 
 	/**
 	 * Returns the remote address of the session.
 	 */
-	public SocketAddress getRemoteAddress();
+	SocketAddress getRemoteAddress();
 
 
 	/**
 	 * Returns the SPI-dependent "source" for the session. In the normal case, this would
 	 * be a SocketChannel or Socket. This is optional and my return null if not supported.
 	 */
-	public Object getSessionSource();
+	Object getSessionSource();
 
 
 	/**
 	 * Set the server port used by the remote peer.
 	 */
-	public void setPeerServerPort( Integer port );
+	void setPeerServerPort( Integer port );
 
 	/**
 	 * Get the server port used by the remote peer.
 	 *
 	 * @see #setPeerServerPort(Integer)
 	 */
-	public Integer getPeerServerPort();
+	Integer getPeerServerPort();
 
 
 	/**
 	 * Return the reconnect token for the session.
 	 * @see com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler
 	 */
-	public Serializable getReconnectToken();
+	Serializable getReconnectToken();
 
-	public void setReconnectToken( Serializable reconnect_token );
+	void setReconnectToken( Serializable reconnect_token );
 
 
 	/**
 	 * This is the Future for the timer that regenerates reconnect tokens for the session,
 	 * if applicable.
 	 */
-	public ScheduledFuture<?> getReconnectTokenRegenerationTimer();
+	ScheduledFuture<?> getReconnectTokenRegenerationTimer();
 
-	public void setReconnectTokenRegenerationTimer( ScheduledFuture<?> timer );
+	void setReconnectTokenRegenerationTimer( ScheduledFuture<?> timer );
 
 
 	/**
 	 * Returns the ack rate (in seconds). If null, acks should be disabled.
 	 */
-	public Byte getAckRateSec();
+	Byte getAckRateSec();
 }

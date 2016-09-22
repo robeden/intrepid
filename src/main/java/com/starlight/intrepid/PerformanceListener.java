@@ -29,6 +29,7 @@ import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.message.IMessage;
 
 import java.lang.reflect.Method;
+import java.net.SocketAddress;
 
 
 /**
@@ -61,6 +62,7 @@ public interface PerformanceListener {
 
 	default void messageSent( VMID destination_vmid, IMessage message ) {}
 	default void messageReceived( VMID source_vmid, IMessage message ) {}
+	default void invalidMessageReceived( SocketAddress peer, IMessage message ) {}
 
 
 	default void leaseInfoUpdated( VMID vmid, int object_id, String delegate_tostring,
