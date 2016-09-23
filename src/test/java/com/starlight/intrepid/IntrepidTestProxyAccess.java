@@ -2,6 +2,9 @@ package com.starlight.intrepid;
 
 import com.starlight.intrepid.Proxy;
 import com.starlight.intrepid.VMID;
+import gnu.trove.map.TIntObjectMap;
+
+import java.lang.reflect.Method;
 
 
 /**
@@ -21,5 +24,10 @@ public class IntrepidTestProxyAccess {
 	public static VMID getHostVMID( Object proxy_obj ) {
 		Proxy proxy = ( Proxy ) proxy_obj;
 		return proxy.__intrepid__getHostVMID();
+	}
+
+
+	public static TIntObjectMap<Method> generateMethodMap( Class clazz ) {
+		return MethodMap.generateMethodMap( clazz );
 	}
 }

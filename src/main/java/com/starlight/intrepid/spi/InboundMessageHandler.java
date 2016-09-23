@@ -34,6 +34,13 @@ import com.starlight.intrepid.message.IMessage;
  */
 public interface InboundMessageHandler {
 	/**
+	 * Validates that the received message is permissible given the session state.
+	 */
+	void validateReceivedMessage( SessionInfo session_info, IMessage message,
+		boolean locally_initiated_session ) throws CloseSessionIndicator;
+
+
+	/**
 	 * Called when a message is received.
 	 *
 	 * @param session_info	Info for the session. Note that the VMID will not be available
@@ -43,8 +50,8 @@ public interface InboundMessageHandler {
 	 * @throws CloseSessionIndicator	To signal that the SPI should close the session
 	 * 									and free associated resources.
 	 */
-	public IMessage receivedMessage( SessionInfo session_info, IMessage message )
-		throws CloseSessionIndicator;
+	IMessage receivedMessage( SessionInfo session_info, IMessage message,
+		boolean locally_initiated_session ) throws CloseSessionIndicator;
 
 
 	/**
@@ -59,7 +66,7 @@ public interface InboundMessageHandler {
 	 *
 	 * @return	True if the SPI should attempt to reconnect the session.
 	 */
-	public boolean sessionClosed( SessionInfo session_info, boolean opened_locally,
+	boolean sessionClosed( SessionInfo session_info, boolean opened_locally,
 		boolean closed_locally, boolean can_reconnect );
 
 
@@ -75,6 +82,6 @@ public interface InboundMessageHandler {
 	 *
 	 * @return If non-null, this message will be sent to the session.
 	 */
-	public IMessage sessionOpened( SessionInfo session_info, boolean opened_locally,
+	IMessage sessionOpened( SessionInfo session_info, boolean opened_locally,
 		ConnectionArgs connection_args ) throws CloseSessionIndicator;
 }

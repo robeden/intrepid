@@ -563,10 +563,56 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 
 	@Override
-	public IMessage receivedMessage( SessionInfo session_info, IMessage message )
+	public void validateReceivedMessage( SessionInfo session_info,
+		IMessage message, boolean locally_initiated_session )
 		throws CloseSessionIndicator {
 
+		// Close messages are always acceptable
+		if ( message instanceof SessionCloseIMessage ) return;
+
+
+		final boolean acceptable_message;
+
+		// If a session IS initialized, anything other than session initialization
+		// messages are acceptable.
+		if ( session_info.sessionIsInitialized() ) {
+			acceptable_message = !
+				( ( message instanceof SessionInitIMessage ) ||
+				( message instanceof SessionInitResponseIMessage ) );
+		}
+		// If a session IS NOT initialized, expect a SessionInit/Response message
+		else {
+			acceptable_message =
+				( ( message instanceof SessionInitIMessage ) ||
+				( message instanceof SessionInitResponseIMessage ) );
+
+			// TODO: This is the algorithm without session re-init... which I'd like to drop
+//			acceptable_message =
+//				( locally_initiated_session && message instanceof SessionInitResponseIMessage ) ||
+//				( !locally_initiated_session && message instanceof SessionInitIMessage );
+		}
+
+		if ( !acceptable_message ) {
+			LOG.warn( "Invalid message ({}) received from session " +
+				"(locally_initiated_session={}): {}",
+				message.getClass().getSimpleName(),
+				Boolean.valueOf( locally_initiated_session ),
+				session_info );
+			throw new CloseSessionIndicator( new SessionCloseIMessage() );
+		}
+	}
+
+
+
+	@Override
+	public IMessage receivedMessage( SessionInfo session_info, IMessage message,
+		boolean locally_initiated_session ) throws CloseSessionIndicator {
+
 		LOG.trace( "receivedMessage from {}: {}", session_info.getVMID(), message );
+
+
+		validateReceivedMessage( session_info, message, locally_initiated_session );
+
 
 		IMessage response = null;
 		switch ( message.getType() ) {

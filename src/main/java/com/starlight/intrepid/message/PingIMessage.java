@@ -19,4 +19,22 @@ public class PingIMessage implements IMessage {
 	public short getSequenceNumber() {
 		return sequence_number;
 	}
+
+
+
+	@Override
+	public boolean equals( Object o ) {
+		if ( this == o ) return true;
+		if ( o == null || getClass() != o.getClass() ) return false;
+
+		PingIMessage that = ( PingIMessage ) o;
+
+		return sequence_number == that.sequence_number;
+
+	}
+
+	@Override
+	public int hashCode() {
+		return ( int ) sequence_number;
+	}
 }
