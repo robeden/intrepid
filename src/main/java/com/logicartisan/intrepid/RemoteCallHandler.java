@@ -770,33 +770,6 @@ class RemoteCallHandler implements InboundMessageHandler {
 				Byte.valueOf( message.getMinProtocolVersion() ),
 				Byte.valueOf( message.getPrefProtocolVersion() ) ), false ) );
 		}
-		
-		// Handle session re-init (see class docs on RequestUserCredentialReinit)
-		if ( message.getConnectionArgs() != null &&
-			message.getConnectionArgs() instanceof RequestUserCredentialReinit ) {
-
-			if ( auth_handler instanceof UserCredentialReinitAuthenticationHandler ) {
-				UserCredentialReinitAuthenticationHandler handler =
-					( UserCredentialReinitAuthenticationHandler ) auth_handler;
-
-				try {
-					UserCredentialsConnectionArgs new_args = handler.getUserCredentials(
-						session_info.getRemoteAddress(), session_info.getSessionSource() );
-					return new SessionInitIMessage( local_vmid, spi.getServerPort(),
-						new_args, ProtocolVersions.MIN_PROTOCOL_VERSION,
-						ProtocolVersions.PROTOCOL_VERSION,
-						session_info.getReconnectToken(), REQUEST_INVOKE_ACK_RATE_SEC );
-				}
-				catch( ConnectionAuthFailureException ex ) {
-					throw new CloseSessionIndicator(
-						new SessionCloseIMessage( ex.getMessageResourceKey(), true ) );
-				}
-			}
-			else {
-				throw new CloseSessionIndicator( new SessionCloseIMessage(
-					Resources.ERROR_USER_REINIT_CONNECTIONS_NOT_ALLOWED, true ) );
-			}
-		}
 
 		// "Normal" connection...
 		UserContextInfo user_context;
@@ -872,14 +845,6 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 	private void handleSessionClose( SessionCloseIMessage message )
 		throws CloseSessionIndicator {
-
-		if ( auth_handler instanceof UserCredentialReinitAuthenticationHandler &&
-			message.isAuthFailure() ) {
-
-			UserCredentialReinitAuthenticationHandler handler =
-				( UserCredentialReinitAuthenticationHandler ) auth_handler;
-			handler.notifyUserCredentialFailure( message.getReason() );
-		}
 
 //		System.out.println( "Notified of close for session with " + info.getVMID() +
 //			": " + message.getReason() );

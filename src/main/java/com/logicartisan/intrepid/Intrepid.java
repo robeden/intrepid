@@ -27,7 +27,6 @@ package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.auth.AuthenticationHandler;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
-import com.logicartisan.intrepid.auth.RequestUserCredentialReinit;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
 import com.logicartisan.intrepid.exception.ConnectionFailureException;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
@@ -472,14 +471,8 @@ public class Intrepid {
 	public VMID connect( InetAddress host, int port, ConnectionArgs args,
 		Object attachment ) throws IOException {
 
-		long timeout = CONNECT_TIMEOUT;
-		TimeUnit timeout_unit = TimeUnit.MILLISECONDS;
-		if ( args instanceof RequestUserCredentialReinit ) {
-			timeout = 5;
-			timeout_unit = TimeUnit.MINUTES;
-		}
-
-		return spi.connect( host, port, args, attachment, timeout, timeout_unit, false );
+		return spi.connect( host, port, args, attachment, CONNECT_TIMEOUT,
+			TimeUnit.MILLISECONDS, false );
 	}
 
 
