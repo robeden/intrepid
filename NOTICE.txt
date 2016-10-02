@@ -1,5 +1,5 @@
 Intrepid 2
-Copyright 2010-2011 Rob Eden.
+Copyright 2010-2016 Rob Eden.
 
 Please refer to each LICENSE.<component>.txt file for the
 license terms of the components that Intrepid 2 depends on.
