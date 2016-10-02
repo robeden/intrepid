@@ -2,8 +2,8 @@ package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
-import com.starlight.NotNull;
-import com.starlight.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.starlight.thread.ObjectSlot;
 import junit.framework.TestCase;
 
@@ -44,27 +44,27 @@ public class BidirectionalConnectionsTest extends TestCase {
 		System.out.println();
 		ConnectionListener connection_listener = new ConnectionListener() {
 			@Override
-			public void connectionOpened( @NotNull InetAddress host, int port,
-				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+			public void connectionOpened( @Nonnull InetAddress host, int port,
+				Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				@NotNull Object connection_type_description, byte ack_rate_sec ) {
+				@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( "Connection Opened (" + vmid + "): " + host + ":" + port );
 			}
 
 			@Override
-			public void connectionClosed( @NotNull InetAddress host, int port,
-				@NotNull VMID source_vmid, @Nullable VMID vmid,
+			public void connectionClosed( @Nonnull InetAddress host, int port,
+				@Nonnull VMID source_vmid, @Nullable VMID vmid,
 				@Nullable Object attachment,
 				boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpening( @NotNull InetAddress host, int port,
+			public void connectionOpening( @Nonnull InetAddress host, int port,
 				Object attachment, ConnectionArgs args,
-				@NotNull Object connection_type_description ) {}
+				@Nonnull Object connection_type_description ) {}
 
 			@Override
-			public void connectionOpenFailed( @NotNull InetAddress host, int port,
+			public void connectionOpenFailed( @Nonnull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 		};
 

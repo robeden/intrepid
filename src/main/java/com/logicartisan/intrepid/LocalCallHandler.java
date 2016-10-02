@@ -26,8 +26,8 @@
 package com.logicartisan.intrepid;
 
 import com.starlight.ArrayKit;
-import com.starlight.NotNull;
-import com.starlight.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.logicartisan.intrepid.auth.PreInvocationValidator;
 import com.logicartisan.intrepid.exception.IllegalProxyDelegateException;
 import com.logicartisan.intrepid.exception.UnknownMethodException;
@@ -102,8 +102,8 @@ class LocalCallHandler {
 	private final ReferenceQueue<Proxy> ref_queue = new ReferenceQueue<Proxy>();
 
 
-	LocalCallHandler( @NotNull VMID vmid,
-		@NotNull PerformanceListener performance_listeners,
+	LocalCallHandler( @Nonnull VMID vmid,
+		@Nonnull PerformanceListener performance_listeners,
 		@Nullable PreInvocationValidator pre_call_validator ) {
 
 		this.vmid = Objects.requireNonNull( vmid );
@@ -178,7 +178,6 @@ class LocalCallHandler {
 
 					class_loader = Intrepid.class.getClassLoader();
 				}
-
 
 				proxy = ( Proxy ) java.lang.reflect.Proxy.newProxyInstance(
 					class_loader,

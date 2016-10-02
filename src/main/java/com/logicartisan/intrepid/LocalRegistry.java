@@ -33,6 +33,7 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -106,8 +107,8 @@ public class LocalRegistry implements Registry {
 	 * Bind an object in the registry.
 	 */
 	public void bind( String name, Object object ) {
-		ValidationKit.checkNonnull( name, "name" );
-		ValidationKit.checkNonnull( object, "object" );
+		Objects.requireNonNull( name );
+		Objects.requireNonNull( object );
 
 		final Object original_object = object;
 

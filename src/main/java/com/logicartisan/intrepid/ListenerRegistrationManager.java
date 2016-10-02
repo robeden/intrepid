@@ -2,8 +2,8 @@ package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
-import com.starlight.NotNull;
-import com.starlight.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.starlight.thread.SharedThreadPool;
 import org.slf4j.Logger;
@@ -39,17 +39,17 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 
-	ListenerRegistrationManager( @NotNull Intrepid intrepid_instance ) {
+	ListenerRegistrationManager( @Nonnull Intrepid intrepid_instance ) {
 		this.intrepid_instance = Objects.requireNonNull( intrepid_instance );
 	}
 
 
 
 	@Override
-	public void connectionOpened( @NotNull InetAddress host, int port, Object attachment,
-		@NotNull VMID source_vmid, @NotNull VMID vmid, UserContextInfo user_context,
+	public void connectionOpened( @Nonnull InetAddress host, int port, Object attachment,
+		@Nonnull VMID source_vmid, @Nonnull VMID vmid, UserContextInfo user_context,
 		VMID previous_vmid,
-		@NotNull Object connection_type_description, byte ack_rate_sec ) {
+		@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
 		listeners_map_lock.lock();
 		try {
@@ -83,8 +83,8 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 	@Override
-	public void connectionClosed( @NotNull InetAddress host, int port,
-		@NotNull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
+	public void connectionClosed( @Nonnull InetAddress host, int port,
+		@Nonnull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
 		boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {
 
 		listeners_map_lock.lock();
@@ -102,19 +102,19 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 	@Override
-	public void connectionOpening( @NotNull InetAddress host, int port, Object attachment,
-		ConnectionArgs args, @NotNull Object connection_type_description ) {}
+	public void connectionOpening( @Nonnull InetAddress host, int port, Object attachment,
+		ConnectionArgs args, @Nonnull Object connection_type_description ) {}
 
 	@Override
-	public void connectionOpenFailed( @NotNull InetAddress host, int port, Object attachment,
+	public void connectionOpenFailed( @Nonnull InetAddress host, int port, Object attachment,
 		Exception error, boolean will_retry ) {}
 
 
 
-	<L,P,R> ListenerRegistration keepListenerRegistered( @NotNull L listener,
-		final @NotNull VMID vmid, @NotNull P proxy, @NotNull BiFunction<P,L,R> add_method,
+	<L,P,R> ListenerRegistration keepListenerRegistered( @Nonnull L listener,
+		final @Nonnull VMID vmid, @Nonnull P proxy, @Nonnull BiFunction<P,L,R> add_method,
 		@Nullable BiConsumer<P,L> remove_method,
-		@NotNull Consumer<R> return_value_handler ) throws IllegalArgumentException {
+		@Nonnull Consumer<R> return_value_handler ) throws IllegalArgumentException {
 
 		final ListenerInfo<L,P,R> info = new ListenerInfo<>( proxy, listener, add_method,
 			remove_method, return_value_handler );
@@ -174,8 +174,8 @@ class ListenerRegistrationManager implements ConnectionListener {
 	}
 
 	<P,L> ListenerRegistration keepListenerRegistered(
-		final @NotNull L listener, final @NotNull VMID vmid, final @NotNull P proxy,
-		final @NotNull BiConsumer<P,L> add_method,
+		final @Nonnull L listener, final @Nonnull VMID vmid, final @Nonnull P proxy,
+		final @Nonnull BiConsumer<P,L> add_method,
 		final @Nullable BiConsumer<P,L> remove_method )
 		throws IllegalArgumentException {
 

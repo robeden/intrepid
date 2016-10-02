@@ -32,9 +32,8 @@ import com.logicartisan.intrepid.exception.ConnectionFailureException;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
 import com.logicartisan.intrepid.spi.IntrepidSPI;
 import com.logicartisan.intrepid.spi.mina.MINAIntrepidSPI;
-import com.starlight.NotNull;
-import com.starlight.Nullable;
-import com.starlight.ValidationKit;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.starlight.listeners.ListenerSupport;
 import com.starlight.listeners.ListenerSupportFactory;
 import com.starlight.thread.ScheduledExecutor;
@@ -47,6 +46,7 @@ import java.net.UnknownHostException;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -496,7 +496,7 @@ public class Intrepid {
 		Object attachment, long timeout, TimeUnit timeout_units )
 		throws IOException, InterruptedException {
 
-		ValidationKit.checkNonnull( host, "host" );
+		Objects.requireNonNull( host );
 
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
@@ -511,7 +511,7 @@ public class Intrepid {
 	public void disconnect( VMID host_vmid ) {
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
-		ValidationKit.checkNonnull( host_vmid, "host_vmid" );
+		Objects.requireNonNull( host_vmid );
 
 		spi.disconnect( host_vmid );
 	}
@@ -535,7 +535,7 @@ public class Intrepid {
 	public ByteChannel createChannel( VMID destination, Serializable attachment )
 		throws IOException, ChannelRejectedException {
 
-		ValidationKit.checkNonnull( destination, "destination" );
+		Objects.requireNonNull( destination );
 
 		if ( destination.equals( vmid ) ) {
 			throw new IllegalArgumentException( "Destination cannot be local instance" );
@@ -648,8 +648,8 @@ public class Intrepid {
 	 * @throws java.lang.IllegalArgumentException       If the provided "proxy" object
 	 *                          is not {@link #isProxy(Object) actually a proxy}.
 	 */
-	public <L,P> ListenerRegistration keepListenerRegistered( @NotNull L listener,
-		@NotNull P proxy, @NotNull BiConsumer<P,L> add_method,
+	public <L,P> ListenerRegistration keepListenerRegistered( @Nonnull L listener,
+		@Nonnull P proxy, @Nonnull BiConsumer<P,L> add_method,
 		@Nullable BiConsumer<P,L> remove_method ) throws IllegalArgumentException {
 
 		VMID vmid = getProxyVMID( proxy );
@@ -684,10 +684,10 @@ public class Intrepid {
 	 * @throws java.lang.IllegalArgumentException       If the provided "proxy" object
 	 *                          is not {@link #isProxy(Object) actually a proxy}.
 	 */
-	public <L,P,R> ListenerRegistration keepListenerRegistered( @NotNull L listener,
-		@NotNull P proxy, @NotNull BiFunction<P,L,R> add_method,
+	public <L,P,R> ListenerRegistration keepListenerRegistered( @Nonnull L listener,
+		@Nonnull P proxy, @Nonnull BiFunction<P,L,R> add_method,
 		@Nullable BiConsumer<P,L> remove_method,
-		@NotNull Consumer<R> return_value_handler ) throws IllegalArgumentException {
+		@Nonnull Consumer<R> return_value_handler ) throws IllegalArgumentException {
 
 		VMID vmid = getProxyVMID( proxy );
 		if ( vmid == null ) {

@@ -26,8 +26,8 @@
 package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.auth.SimpleUserContextInfo;
-import com.starlight.NotNull;
-import com.starlight.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import junit.framework.TestCase;
@@ -245,10 +245,10 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionOpened( @NotNull InetAddress host, int port,
-			Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+		public void connectionOpened( @Nonnull InetAddress host, int port,
+			Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 			UserContextInfo user_context, VMID previous_vmid,
-			@NotNull Object connection_type_description, byte ack_rate_sec ) {
+			@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
 			System.out.println( id + " connection opened: " + vmid );
 			event_queue.add( new ConnectionEventInfo( EventType.OPENED, vmid, attachment,
@@ -256,8 +256,8 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionClosed( @NotNull InetAddress host, int port,
-			@NotNull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
+		public void connectionClosed( @Nonnull InetAddress host, int port,
+			@Nonnull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
 			boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {
 
 			System.out.println( id + " connection closed: " + vmid );
@@ -266,7 +266,7 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionOpenFailed( @NotNull InetAddress host, int port,
+		public void connectionOpenFailed( @Nonnull InetAddress host, int port,
 			Object attachment, Exception error, boolean will_retry ) {
 
 			System.out.println( id + " connection open failed: " + host.getHostAddress() +
@@ -276,9 +276,9 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionOpening( @NotNull InetAddress host, int port,
+		public void connectionOpening( @Nonnull InetAddress host, int port,
 			Object attachment, ConnectionArgs args,
-			@NotNull Object connection_type_description ) {
+			@Nonnull Object connection_type_description ) {
 
 			System.out.println( id + " connection opening: " + host.getHostAddress() +
 				":" + port );

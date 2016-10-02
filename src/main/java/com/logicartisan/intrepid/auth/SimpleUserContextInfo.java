@@ -26,12 +26,12 @@
 package com.logicartisan.intrepid.auth;
 
 import com.starlight.IOKit;
-import com.starlight.ValidationKit;
 
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Objects;
 
 
 /**
@@ -53,7 +53,7 @@ public class SimpleUserContextInfo implements UserContextInfo, Externalizable {
 
 
 	public SimpleUserContextInfo( String user_name ) {
-		ValidationKit.checkNonnull( user_name, "user_name" );
+		Objects.requireNonNull( user_name );
 
 		this.user_name = user_name;
 	}

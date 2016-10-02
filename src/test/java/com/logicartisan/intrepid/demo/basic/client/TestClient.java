@@ -30,8 +30,8 @@ import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.demo.basic.ClientInterface;
 import com.logicartisan.intrepid.demo.basic.ServerInterface;
-import com.starlight.NotNull;
-import com.starlight.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.logicartisan.intrepid.message.IMessage;
 import com.starlight.thread.ThreadKit;
 
@@ -137,18 +137,18 @@ public class TestClient implements ClientInterface {
 		} );
 		intrepid.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( @NotNull InetAddress host, int port,
-				Object attachment, @NotNull VMID source_vmid, @NotNull VMID vmid,
+			public void connectionOpened( @Nonnull InetAddress host, int port,
+				Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
-				@NotNull Object connection_type_description, byte ack_rate_sec ) {
+				@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
 				System.out.println( ">>> Connection OPEN: " + vmid + " (" + attachment +
 					")" );
 			}
 
 			@Override
-			public void connectionClosed( @NotNull InetAddress host, int port,
-				@NotNull VMID source_vmid, @Nullable VMID vmid,
+			public void connectionClosed( @Nonnull InetAddress host, int port,
+				@Nonnull VMID source_vmid, @Nullable VMID vmid,
 				@Nullable Object attachment, boolean will_attempt_reconnect,
 				@Nullable UserContextInfo user_context ) {
 
@@ -158,13 +158,13 @@ public class TestClient implements ClientInterface {
 			}
 
 			@Override
-			public void connectionOpenFailed( @NotNull InetAddress host, int port,
+			public void connectionOpenFailed( @Nonnull InetAddress host, int port,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( @NotNull InetAddress host, int port,
+			public void connectionOpening( @Nonnull InetAddress host, int port,
 				Object attachment, ConnectionArgs args,
-				@NotNull Object connection_type_description ) {}
+				@Nonnull Object connection_type_description ) {}
 		} );
 
 		System.out.print( "Connecting..." );

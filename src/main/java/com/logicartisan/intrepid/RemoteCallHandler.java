@@ -29,8 +29,7 @@ import com.logicartisan.intrepid.auth.*;
 import com.logicartisan.intrepid.exception.*;
 import com.logicartisan.intrepid.message.*;
 import com.logicartisan.intrepid.spi.*;
-import com.starlight.NotNull;
-import com.starlight.ValidationKit;
+import javax.annotation.Nonnull;
 import com.starlight.listeners.ListenerSupport;
 import com.starlight.locale.FormattedTextResourceKey;
 import com.starlight.thread.ObjectSlot;
@@ -59,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -1313,10 +1313,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 		final Lock ack_handler_lock = new ReentrantLock();
 
 
-		private CallInfoAndAckControl( @NotNull ScheduledExecutor executor,
-			@NotNull ObjectSlot<InvokeReturnIMessage> return_slot ) {
+		private CallInfoAndAckControl( @Nonnull ScheduledExecutor executor,
+			@Nonnull ObjectSlot<InvokeReturnIMessage> return_slot ) {
 
-			ValidationKit.checkNonnull( return_slot, "return_slot" );
+			Objects.requireNonNull( return_slot );
 
 			this.executor = executor;
 			this.return_slot = return_slot;

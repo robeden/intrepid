@@ -26,9 +26,10 @@
 package com.logicartisan.intrepid.spi.mina;
 
 import com.logicartisan.intrepid.auth.ConnectionArgs;
-import com.starlight.ValidationKit;
 import com.starlight.thread.ObjectSlot;
 import org.apache.mina.core.session.IoSession;
+
+import java.util.Objects;
 
 
 /**
@@ -43,12 +44,11 @@ class SessionContainer {
 	private volatile boolean canceled = false;
 
 	SessionContainer( HostAndPort host_and_port, ConnectionArgs connection_args ) {
-		ValidationKit.checkNonnull( host_and_port, "host_and_port" );
+		Objects.requireNonNull( host_and_port );
 
 		this.host_and_port = host_and_port;
 		this.connection_args = connection_args;
 	}
-
 
 	/**
 	 * Try to get the session, without waiting for it to be set if it isn't already.

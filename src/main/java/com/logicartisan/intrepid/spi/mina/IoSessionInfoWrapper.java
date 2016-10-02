@@ -29,8 +29,6 @@ import com.logicartisan.intrepid.ConnectionListener;
 import com.logicartisan.intrepid.VMID;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.spi.SessionInfo;
-import com.starlight.MiscKit;
-import com.starlight.ValidationKit;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.transport.socket.nio.NioSession;
 import org.slf4j.Logger;
@@ -42,6 +40,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
@@ -125,7 +124,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 	public void setVMID( VMID vmid, byte ack_rate_sec ) {
 		// Setting a null VMID is invalid. It will be null by default, but this is okay.
 		// Allowing null to be set would allow sessions to disappear from the session_map.
-		ValidationKit.checkNonnull( vmid, "VMID" );
+		Objects.requireNonNull( vmid );
 
 		session.setAttribute( MINAIntrepidSPI.INVOKE_ACK_RATE,
 			Byte.valueOf( ack_rate_sec ) );
@@ -147,7 +146,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 		}
 
 		// If the VMID is unchanged, exit
-		if ( MiscKit.equal( vmid, old_vmid ) ) {
+		if ( Objects.equals( vmid, old_vmid ) ) {
 			// Make sure the VMIDFuture is set
 			VMIDFuture future =
 				( VMIDFuture ) session.getAttribute( MINAIntrepidSPI.VMID_FUTURE_KEY );

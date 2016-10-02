@@ -25,9 +25,8 @@
 
 package com.logicartisan.intrepid.spi.mina;
 
-import com.starlight.MiscKit;
-
 import java.net.InetAddress;
+import java.util.Objects;
 
 
 /**
@@ -57,7 +56,7 @@ class HostAndPort {
 	}
 
 	public boolean equals( InetAddress host, int port ) {
-		return MiscKit.equal( host, this.host ) && this.port == port;
+		return Objects.equals( host, this.host ) && this.port == port;
 	}
 
 

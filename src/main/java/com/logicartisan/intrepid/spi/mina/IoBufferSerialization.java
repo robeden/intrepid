@@ -1,6 +1,5 @@
 package com.logicartisan.intrepid.spi.mina;
 
-import com.starlight.IOKit;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.io.*;
@@ -25,12 +24,8 @@ class IoBufferSerialization {
 
 	static Object getObject( IoBuffer buffer ) throws IOException, ClassNotFoundException {
 //		return buffer.getObject();
-		ObjectInputStream in = new ObjectInputStream( buffer.asInputStream() );
-		try {
+		try ( ObjectInputStream in = new ObjectInputStream( buffer.asInputStream() ) ) {
 			return in.readObject();
-		}
-		finally {
-			IOKit.close( ( Closeable ) in );
 		}
 	}
 

@@ -27,9 +27,8 @@
 
 package com.logicartisan.intrepid.message;
 
-import com.starlight.ValidationKit;
-
 import java.util.Arrays;
+import java.util.Objects;
 
 
 /**
@@ -39,7 +38,7 @@ public class LeaseIMessage implements IMessage {
 	private final int[] oids;
 
 	public LeaseIMessage( int... oids ) {
-		ValidationKit.checkNonnull( oids, "oids" );
+		Objects.requireNonNull( oids );
 
 		this.oids = oids;
 	}
