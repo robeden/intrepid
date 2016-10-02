@@ -22,9 +22,3 @@ which is open source software, written by JCraft, and copyright
 by JCraft.  The original software is available from
 
    http://www.jcraft.com/jzlib/
-
-
-Icons used in the GUI tools are copyright (C) Yusuke Kamiyamane. All rights reserved.
-Licensed under a Creative Commons Attribution 3.0 license.
-
-   http://p.yusukekamiyamane.com/
