@@ -25,12 +25,12 @@
 
 package com.logicartisan.intrepid.spi.mina;
 
-import com.logicartisan.intrepid.message.*;
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 import com.logicartisan.intrepid.VMID;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.exception.ServerException;
+import com.logicartisan.intrepid.message.*;
 import com.starlight.locale.FormattedTextResourceKey;
 import com.starlight.locale.ResourceKey;
 import org.apache.mina.core.buffer.IoBuffer;

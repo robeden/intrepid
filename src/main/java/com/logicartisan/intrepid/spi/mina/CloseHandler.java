@@ -1,6 +1,6 @@
 package com.logicartisan.intrepid.spi.mina;
 
-import com.starlight.thread.NamingThreadFactory;
+import com.logicartisan.common.core.thread.NamingThreadFactory;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.session.IoSession;
 

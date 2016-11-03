@@ -1,9 +1,9 @@
 package com.logicartisan.intrepid;
 
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
-import com.starlight.thread.ObjectSlot;
-import com.starlight.thread.SharedThreadPool;
+import com.logicartisan.common.core.thread.ObjectSlot;
+import com.logicartisan.common.core.thread.SharedThreadPool;
 import junit.framework.TestCase;
 
 import java.io.NotSerializableException;

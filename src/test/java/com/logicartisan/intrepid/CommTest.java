@@ -25,14 +25,14 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.IOKit;
+import com.logicartisan.common.core.thread.SharedThreadPool;
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.exception.InterruptedCallException;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
 import com.logicartisan.intrepid.exception.NotConnectedException;
 import com.logicartisan.intrepid.exception.ServerException;
 import com.logicartisan.intrepid.spi.IntrepidSPI;
-import com.starlight.IOKit;
-import com.starlight.thread.SharedThreadPool;
-import com.starlight.thread.ThreadKit;
 import junit.framework.TestCase;
 
 import java.io.*;

@@ -25,6 +25,7 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.exception.NotConnectedException;
 import com.logicartisan.intrepid.message.IMessage;
@@ -32,7 +33,6 @@ import com.logicartisan.intrepid.spi.InboundMessageHandler;
 import com.logicartisan.intrepid.spi.IntrepidSPI;
 import com.logicartisan.intrepid.spi.SessionInfo;
 import com.logicartisan.intrepid.spi.UnitTestHook;
-import com.starlight.thread.ScheduledExecutor;
 
 import java.io.IOException;
 import java.net.InetAddress;

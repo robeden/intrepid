@@ -2,8 +2,8 @@ package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
 import com.logicartisan.intrepid.exception.InterruptedCallException;
-import com.starlight.thread.SharedThreadPool;
-import com.starlight.thread.ThreadKit;
+import com.logicartisan.common.core.thread.SharedThreadPool;
+import com.logicartisan.common.core.thread.ThreadKit;
 import junit.framework.TestCase;
 
 import java.io.*;

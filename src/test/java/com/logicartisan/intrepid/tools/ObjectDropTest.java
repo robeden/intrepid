@@ -3,7 +3,7 @@ package com.logicartisan.intrepid.tools;
 import com.logicartisan.intrepid.IntrepidSetup;
 import com.logicartisan.intrepid.IntrepidTesting;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 import com.logicartisan.intrepid.Intrepid;
 import com.logicartisan.intrepid.VMID;
 import junit.framework.TestCase;

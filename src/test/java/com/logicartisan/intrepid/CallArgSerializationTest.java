@@ -1,6 +1,5 @@
 package com.logicartisan.intrepid;
 
-import com.starlight.ArrayKit;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
@@ -106,7 +105,7 @@ public class CallArgSerializationTest extends TestCase {
 		doCopyTest( Arrays.asList( "this", "is", "a", "lib/test" ), copy_server );
 
 		// Array
-		doCopyTest( ArrayKit.of( "this", "is", "a", "lib/test" ), copy_server );
+		doCopyTest( new String[] { "this", "is", "a", "lib/test" }, copy_server );
 
 		// Class objects (MINA IoBuffer.get/putBuffer has issues with these)
 		doCopyTest( Object.class, copy_server );

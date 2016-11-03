@@ -25,7 +25,7 @@
 
 package com.logicartisan.intrepid;
 
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -130,7 +130,7 @@ public final class VMID implements Externalizable {
 		lsb = in.readLong();
 
 		// HINT TEXT
-		hint_text = IOKit.readString( in );
+		if ( in.readBoolean() ) hint_text= in.readUTF();
 	}
 
 	@Override
@@ -145,6 +145,11 @@ public final class VMID implements Externalizable {
 		out.writeLong( lsb );
 
 		// HINT TEXT
-		IOKit.writeString( out, hint_text );
+		if ( hint_text == null )
+			out.writeBoolean( false );
+		else {
+			out.writeBoolean( true );
+			out.writeUTF( hint_text );
+		}
 	}
 }

@@ -1,11 +1,11 @@
 package com.logicartisan.intrepid;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
-import com.starlight.thread.ThreadKit;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 

@@ -25,16 +25,16 @@
 
 package com.logicartisan.intrepid.demo.basic.client;
 
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.*;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.demo.basic.ClientInterface;
 import com.logicartisan.intrepid.demo.basic.ServerInterface;
+import com.logicartisan.intrepid.message.IMessage;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import com.logicartisan.intrepid.message.IMessage;
-import com.starlight.thread.ThreadKit;
-
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;

@@ -1,9 +1,9 @@
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.Pair;
+import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
 import com.logicartisan.intrepid.message.*;
-import com.logicartisan.intrepid.auth.UserContextInfo;
-import com.starlight.types.Pair;
 import junit.framework.TestCase;
 
 import java.io.IOException;

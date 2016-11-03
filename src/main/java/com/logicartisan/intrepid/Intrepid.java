@@ -25,6 +25,10 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.listeners.ListenerSupport;
+import com.logicartisan.common.core.listeners.ListenerSupportFactory;
+import com.logicartisan.common.core.thread.ScheduledExecutor;
+import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.intrepid.auth.AuthenticationHandler;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
@@ -32,13 +36,9 @@ import com.logicartisan.intrepid.exception.ConnectionFailureException;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
 import com.logicartisan.intrepid.spi.IntrepidSPI;
 import com.logicartisan.intrepid.spi.mina.MINAIntrepidSPI;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import com.starlight.listeners.ListenerSupport;
-import com.starlight.listeners.ListenerSupportFactory;
-import com.starlight.thread.ScheduledExecutor;
-import com.starlight.thread.SharedThreadPool;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetAddress;

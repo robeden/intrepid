@@ -33,7 +33,7 @@ import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.demo.basic.ClientInterface;
 import com.logicartisan.intrepid.demo.basic.ServerInterface;
 import com.logicartisan.intrepid.message.IMessage;
-import com.starlight.thread.ThreadKit;
+import com.logicartisan.common.core.thread.ThreadKit;
 
 import java.lang.reflect.Method;
 

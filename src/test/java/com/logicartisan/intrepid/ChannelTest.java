@@ -25,15 +25,14 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.IOKit;
+import com.logicartisan.common.core.Triple;
+import com.logicartisan.common.core.thread.SharedThreadPool;
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
 import com.logicartisan.intrepid.message.*;
-import com.starlight.ArrayKit;
-import com.starlight.IOKit;
 import com.starlight.locale.ResourceKey;
 import com.starlight.locale.UnlocalizableTextResourceKey;
-import com.starlight.thread.SharedThreadPool;
-import com.starlight.thread.ThreadKit;
-import com.starlight.types.Triple;
 import junit.framework.TestCase;
 
 import java.io.IOException;
@@ -239,7 +238,7 @@ public class ChannelTest extends TestCase {
 		final AtomicReference<String> error_slot = new AtomicReference<String>();
 		PerformanceListener client_listener =
 			( PerformanceListener ) java.lang.reflect.Proxy.newProxyInstance(
-			ChannelTest.class.getClassLoader(), ArrayKit.of( PerformanceListener.class ),
+			ChannelTest.class.getClassLoader(), new Class[] { PerformanceListener.class },
 			new InvocationHandler() {
 				@Override
 				public Object invoke( Object proxy, Method method, Object[] args )

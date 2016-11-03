@@ -25,7 +25,6 @@
 
 package com.logicartisan.intrepid;
 
-import com.starlight.ValidationKit;
 import com.logicartisan.intrepid.exception.ObjectNotBoundException;
 import com.starlight.locale.FormattedTextResourceKey;
 import gnu.trove.map.TIntObjectMap;

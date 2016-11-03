@@ -25,9 +25,6 @@
 
 package com.logicartisan.intrepid;
 
-import com.starlight.ArrayKit;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import com.logicartisan.intrepid.auth.PreInvocationValidator;
 import com.logicartisan.intrepid.exception.IllegalProxyDelegateException;
 import com.logicartisan.intrepid.exception.UnknownMethodException;
@@ -44,6 +41,8 @@ import gnu.trove.strategy.IdentityHashingStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Externalizable;
 import java.io.Serializable;
 import java.lang.ref.ReferenceQueue;
@@ -51,10 +50,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
@@ -76,7 +72,6 @@ class LocalCallHandler {
 		Long.getLong( "intrepid.local_call_handler.initial_reservation",
 		TimeUnit.MINUTES.toMillis( 5 ) ).longValue() );   // 5 min
 
-	private static final Class[] PROXY_CLASS_ARRAY = new Class[] { Proxy.class };
 	private static final Class[] REGISTRY_CLASSES =
 		new Class[] { Registry.class, Proxy.class };
 
@@ -179,9 +174,12 @@ class LocalCallHandler {
 					class_loader = Intrepid.class.getClassLoader();
 				}
 
+				Class[] combined_interfaces =
+					Arrays.copyOf( interfaces, interfaces.length + 1 );
+				combined_interfaces[ combined_interfaces.length - 1 ] = Proxy.class;
+
 				proxy = ( Proxy ) java.lang.reflect.Proxy.newProxyInstance(
-					class_loader,
-					ArrayKit.combine( Class.class, interfaces, PROXY_CLASS_ARRAY ),
+					class_loader, combined_interfaces,
 					new ProxyInvocationHandler( vmid, object_id, reverse_method_map,
 					persistent_name, delegate ) );
 
