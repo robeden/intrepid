@@ -25,8 +25,8 @@
 
 package com.logicartisan.intrepid.spi.mina;
 
+import com.logicartisan.common.core.thread.ObjectSlot;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
-import com.starlight.thread.ObjectSlot;
 import org.apache.mina.core.session.IoSession;
 
 import java.util.Objects;

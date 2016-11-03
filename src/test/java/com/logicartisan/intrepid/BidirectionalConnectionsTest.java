@@ -4,7 +4,7 @@ import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import com.starlight.thread.ObjectSlot;
+import com.logicartisan.common.core.thread.ObjectSlot;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;

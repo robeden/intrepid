@@ -25,14 +25,14 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.thread.ScheduledExecutor;
+import com.logicartisan.intrepid.auth.AuthenticationHandler;
 import com.logicartisan.intrepid.auth.PreInvocationValidator;
 import com.logicartisan.intrepid.spi.IntrepidSPI;
 import com.logicartisan.intrepid.spi.NoAuthenticationHandler;
-import com.starlight.NotNull;
-import com.logicartisan.intrepid.auth.AuthenticationHandler;
 import com.logicartisan.intrepid.spi.UnitTestHook;
-import com.starlight.thread.ScheduledExecutor;
 
+import javax.annotation.Nonnull;
 import java.net.InetAddress;
 import java.util.Objects;
 
@@ -117,7 +117,7 @@ public class IntrepidSetup {
 	}
 
 	public IntrepidSetup preInvocationValidator(
-		@NotNull PreInvocationValidator validator ) {
+		@Nonnull PreInvocationValidator validator ) {
 
 		this.validator = Objects.requireNonNull( validator );
 		return this;
@@ -166,7 +166,7 @@ public class IntrepidSetup {
 
 
 
-	IntrepidSetup unitTestHook( @NotNull UnitTestHook hook ) {
+	IntrepidSetup unitTestHook( @Nonnull UnitTestHook hook ) {
 		this.unit_test_hook = hook;
 		return this;
 	}

@@ -3,7 +3,7 @@ package com.logicartisan.intrepid.demo.lease;
 import com.logicartisan.intrepid.Registry;
 import com.logicartisan.intrepid.Intrepid;
 import com.logicartisan.intrepid.VMID;
-import com.starlight.thread.SharedThreadPool;
+import com.logicartisan.common.core.thread.SharedThreadPool;
 
 import java.net.InetAddress;
 import java.util.Date;

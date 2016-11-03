@@ -26,7 +26,7 @@
 package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 import junit.framework.TestCase;
 import org.apache.mina.core.buffer.SimpleBufferAllocator;
 

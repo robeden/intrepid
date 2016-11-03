@@ -26,7 +26,7 @@
 package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.exception.ObjectNotBoundException;
-import com.starlight.thread.ThreadKit;
+import com.logicartisan.common.core.thread.ThreadKit;
 import junit.framework.TestCase;
 
 import java.util.concurrent.TimeUnit;

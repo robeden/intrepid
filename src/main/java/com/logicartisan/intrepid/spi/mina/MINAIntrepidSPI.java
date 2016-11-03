@@ -25,22 +25,20 @@
 
 package com.logicartisan.intrepid.spi.mina;
 
+import com.logicartisan.common.core.IOKit;
+import com.logicartisan.common.core.thread.ScheduledExecutor;
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.ConnectionListener;
+import com.logicartisan.intrepid.PerformanceListener;
+import com.logicartisan.intrepid.VMID;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.exception.ConnectionFailureException;
 import com.logicartisan.intrepid.exception.NotConnectedException;
+import com.logicartisan.intrepid.message.IMessage;
 import com.logicartisan.intrepid.message.SessionCloseIMessage;
 import com.logicartisan.intrepid.spi.*;
-import com.starlight.IOKit;
-import com.starlight.NotNull;
-import com.starlight.ValidationKit;
-import com.logicartisan.intrepid.PerformanceListener;
-import com.logicartisan.intrepid.VMID;
-import com.logicartisan.intrepid.message.IMessage;
 import com.starlight.locale.FormattedTextResourceKey;
-import com.starlight.thread.ScheduledExecutor;
-import com.starlight.thread.ThreadKit;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.future.WriteFuture;
@@ -60,6 +58,7 @@ import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -203,8 +202,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		PerformanceListener performance_listener, UnitTestHook unit_test_hook )
 		throws IOException {
 
-		ValidationKit.checkNonnull( message_handler, "message_handler" );
-		ValidationKit.checkNonnull( connection_listener, "connection_listener" );
+		Objects.requireNonNull( message_handler );
+		Objects.requireNonNull( connection_listener );
 
 		this.message_handler = message_handler;
 		this.connection_listener = connection_listener;
@@ -378,7 +377,9 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
 		throws IOException {
 
-		ValidationKit.checkGreaterThan( port, 0, "port" );
+		if ( port <= 0 ) {
+			throw new IllegalArgumentException( "Invalid port: " + port );
+		}
 
 		if ( timeout_unit == null ) timeout_unit = TimeUnit.MILLISECONDS;
 
@@ -1264,8 +1265,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		ReconnectRunnable( SessionContainer container, VMID original_vmid,
 			Object attachment, HostAndPort host_and_port, Serializable reconnect_token ) {
 
-			ValidationKit.checkNonnull( container, "container" );
-			ValidationKit.checkNonnull( host_and_port, "host_and_port" );
+			Objects.requireNonNull( container );
+			Objects.requireNonNull( host_and_port );
 
 			this.container = container;
 			this.original_vmid = original_vmid;
@@ -1408,13 +1409,13 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 
 
 		@Override
-		public long getDelay( @NotNull TimeUnit unit ) {
+		public long getDelay( @Nonnull TimeUnit unit ) {
 			long nano_duration = next_run_time - System.nanoTime();
 			return unit.convert( nano_duration, TimeUnit.NANOSECONDS );
 		}
 
 		@Override
-		public int compareTo( @NotNull Delayed o ) {
+		public int compareTo( @Nonnull Delayed o ) {
 			ReconnectRunnable other = ( ReconnectRunnable ) o;
 
 			if ( next_run_time < other.next_run_time ) return -1;

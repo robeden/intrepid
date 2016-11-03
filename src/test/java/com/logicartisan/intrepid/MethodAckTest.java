@@ -1,12 +1,12 @@
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.exception.MethodInvocationFailedException;
 import com.logicartisan.intrepid.message.IMessage;
 import com.logicartisan.intrepid.message.InvokeAckIMessage;
 import com.logicartisan.intrepid.message.InvokeIMessage;
 import com.logicartisan.intrepid.spi.UnitTestHook;
-import com.starlight.thread.ThreadKit;
 import junit.framework.TestCase;
 
 import java.io.IOException;

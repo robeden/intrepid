@@ -3,13 +3,14 @@ package com.logicartisan.intrepid.tools;
 import com.logicartisan.intrepid.ChannelAcceptor;
 import com.logicartisan.intrepid.VMID;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
-import com.starlight.ValidationKit;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.nio.channels.ByteChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 
 /**
@@ -25,8 +26,8 @@ public class PluggableChannelAcceptor implements ChannelAcceptor {
 	/**
 	 * Adds a new delegate acceptor to the end of the list.
 	 */
-	public void addDelegate( ChannelAcceptor delegate ) {
-		ValidationKit.checkNonnull( delegate, "delegate" );
+	public void addDelegate( @Nonnull ChannelAcceptor delegate ) {
+		Objects.requireNonNull( delegate );
 
 		delegates.add( delegate );
 	}
@@ -34,8 +35,8 @@ public class PluggableChannelAcceptor implements ChannelAcceptor {
 	/**
 	 * Adds a new delegate acceptor to the front of the list.
 	 */
-	public void addDelegateToFront( ChannelAcceptor delegate ) {
-		ValidationKit.checkNonnull( delegate, "delegate" );
+	public void addDelegateToFront( @Nonnull ChannelAcceptor delegate ) {
+		Objects.requireNonNull( delegate );
 
 		delegates.add( 0, delegate );
 	}

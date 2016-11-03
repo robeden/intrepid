@@ -25,16 +25,15 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.listeners.ListenerSupport;
+import com.logicartisan.common.core.thread.ObjectSlot;
+import com.logicartisan.common.core.thread.ScheduledExecutor;
+import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.intrepid.auth.*;
 import com.logicartisan.intrepid.exception.*;
 import com.logicartisan.intrepid.message.*;
 import com.logicartisan.intrepid.spi.*;
-import javax.annotation.Nonnull;
-import com.starlight.listeners.ListenerSupport;
 import com.starlight.locale.FormattedTextResourceKey;
-import com.starlight.thread.ObjectSlot;
-import com.starlight.thread.ScheduledExecutor;
-import com.starlight.thread.SharedThreadPool;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.TShortObjectMap;
@@ -47,6 +46,7 @@ import gnu.trove.set.hash.TIntHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.Serializable;
@@ -1368,7 +1368,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			ack_handler_lock.lock();
 			try {
-				return_slot.compareAndSet( null, flag );
+				return_slot.compareAndSet( ( InvokeReturnIMessage ) null, flag );
 				aborted_by_ack_fail = true;
 				ack_expect_future = null;
 			}

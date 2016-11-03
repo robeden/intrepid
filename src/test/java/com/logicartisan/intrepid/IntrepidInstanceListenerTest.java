@@ -1,6 +1,6 @@
 package com.logicartisan.intrepid;
 
-import com.starlight.thread.ObjectSlot;
+import com.logicartisan.common.core.thread.ObjectSlot;
 import junit.framework.TestCase;
 
 

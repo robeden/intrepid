@@ -25,8 +25,8 @@
 
 package com.logicartisan.intrepid.exception;
 
+import com.logicartisan.common.core.IOKit;
 import com.logicartisan.intrepid.IntrepidTesting;
-import com.starlight.IOKit;
 import junit.framework.TestCase;
 
 

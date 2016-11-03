@@ -25,14 +25,14 @@
 
 package com.logicartisan.intrepid.spi;
 
+import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.intrepid.ConnectionListener;
 import com.logicartisan.intrepid.PerformanceControl;
-import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.PerformanceListener;
 import com.logicartisan.intrepid.VMID;
+import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.exception.NotConnectedException;
 import com.logicartisan.intrepid.message.IMessage;
-import com.starlight.thread.ScheduledExecutor;
 
 import java.io.IOException;
 import java.net.InetAddress;

@@ -26,7 +26,7 @@
 package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.exception.IllegalProxyDelegateException;
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 import junit.framework.TestCase;
 
 import java.io.Serializable;

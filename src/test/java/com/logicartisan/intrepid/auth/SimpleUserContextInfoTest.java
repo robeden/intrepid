@@ -25,7 +25,7 @@
 
 package com.logicartisan.intrepid.auth;
 
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
 import junit.framework.TestCase;
 
 

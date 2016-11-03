@@ -25,18 +25,18 @@
 
 package com.logicartisan.intrepid;
 
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.SimpleUserContextInfo;
 import com.logicartisan.intrepid.auth.TokenReconnectAuthenticationHandler;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
 import com.logicartisan.intrepid.exception.NotConnectedException;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import com.starlight.thread.ThreadKit;
 import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.SocketAddress;

@@ -27,7 +27,6 @@ package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
 import com.logicartisan.intrepid.exception.NotConnectedException;
-import com.starlight.ExceptionKit;
 import com.logicartisan.intrepid.exception.UnknownMethodException;
 import gnu.trove.iterator.TObjectIntIterator;
 import gnu.trove.map.TObjectIntMap;
@@ -253,7 +252,7 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 			}
 		}
 		catch( Throwable t ) {
-			if ( !ExceptionKit.canThrow( method, t.getClass() ) ) {
+			if ( !canThrow( method, t.getClass() ) ) {
 				throw new IntrepidRuntimeException( t );
 			}
 			else throw t;
@@ -383,5 +382,22 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 
 		// Register with the lease manager
 		LeaseManager.registerProxy( this, vmid, object_id );
+	}
+
+
+	/**
+	 * Returns true if the given method can throw the given Throwable without wrapping it
+	 * in an UndeclaredThowableException.
+	 */
+	static boolean canThrow( Method method, Class<? extends Throwable> t ) {
+		if ( RuntimeException.class.isAssignableFrom( t ) ) return true;
+		if ( Error.class.isAssignableFrom( t ) ) return true;
+
+		Class[] exception_types = method.getExceptionTypes();
+		for( Class exception : exception_types ) {
+			if ( exception.isAssignableFrom( t ) ) return true;
+		}
+
+		return false;
 	}
 }

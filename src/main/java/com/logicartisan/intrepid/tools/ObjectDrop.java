@@ -1,13 +1,13 @@
 package com.logicartisan.intrepid.tools;
 
-import com.logicartisan.intrepid.exception.ChannelRejectedException;
-import com.starlight.IOKit;
+import com.logicartisan.common.core.IOKit;
+import com.logicartisan.common.core.thread.ObjectSlot;
 import com.logicartisan.intrepid.ChannelAcceptor;
 import com.logicartisan.intrepid.Intrepid;
 import com.logicartisan.intrepid.IntrepidContext;
 import com.logicartisan.intrepid.VMID;
+import com.logicartisan.intrepid.exception.ChannelRejectedException;
 import com.starlight.locale.FormattedTextResourceKey;
-import com.starlight.thread.ObjectSlot;
 import gnu.trove.map.TShortObjectMap;
 import gnu.trove.map.hash.TShortObjectHashMap;
 
