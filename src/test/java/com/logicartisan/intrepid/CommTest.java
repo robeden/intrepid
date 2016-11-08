@@ -567,13 +567,8 @@ public class CommTest extends TestCase {
 		Server server = ( Server ) server_registry.lookup( "server" );
 
 		final Thread to_interrupt = Thread.currentThread();
-		new Thread( "Interrupter" ) {
-			@Override
-			public void run() {
-				ThreadKit.sleep( 2000 );
-				to_interrupt.interrupt();
-			}
-		}.start();
+
+		SharedThreadPool.INSTANCE.schedule( to_interrupt::interrupt, 2, TimeUnit.SECONDS );
 
 		try {
 			server.waitALongTime();
@@ -616,13 +611,7 @@ public class CommTest extends TestCase {
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
 		Server server = ( Server ) server_registry.lookup( "server" );
 
-		new Thread( "Interrupter" ) {
-			@Override
-			public void run() {
-				ThreadKit.sleep( 2000 );
-				server_instance.close();
-			}
-		}.start();
+		SharedThreadPool.INSTANCE.schedule( server_instance::close, 2, TimeUnit.SECONDS );
 
 		try {
 			server.waitALongTime();
