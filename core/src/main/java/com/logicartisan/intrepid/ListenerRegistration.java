@@ -8,7 +8,7 @@ public interface ListenerRegistration {
 	 * Remove the listener (if a remove method was provided) and cancel listening for
 	 * connection events.
 	 */
-	public void remove();
+	void remove();
 
 
 	/**
@@ -16,5 +16,5 @@ public interface ListenerRegistration {
 	 *
 	 * @return  True if there is an active connection.
 	 */
-	public boolean isCurrentlyConnected();
+	boolean isCurrentlyConnected();
 }

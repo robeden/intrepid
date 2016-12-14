@@ -32,5 +32,5 @@ import java.io.Serializable;
  *
  */
 public interface UserContextInfo extends Serializable {
-	public String getUserName();
+	String getUserName();
 }

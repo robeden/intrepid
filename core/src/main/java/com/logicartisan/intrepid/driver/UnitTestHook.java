@@ -20,7 +20,7 @@ public interface UnitTestHook {
 	 *              {@link IntrepidDriver#sendMessage} to simulate
 	 *              an error during sending.
 	 */
-	public boolean dropMessageSend( VMID destination, IMessage message )
+	boolean dropMessageSend( VMID destination, IMessage message )
 		throws IOException;
 
 	/**
@@ -33,5 +33,5 @@ public interface UnitTestHook {
 	 *              {@link IntrepidDriver#sendMessage} to simulate
 	 *              an error during receive.
 	 */
-	public boolean dropMessageReceive( VMID source, IMessage message ) throws IOException;
+	boolean dropMessageReceive( VMID source, IMessage message ) throws IOException;
 }

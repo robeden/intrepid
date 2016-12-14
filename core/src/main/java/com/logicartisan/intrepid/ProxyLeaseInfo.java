@@ -1,6 +1,7 @@
 package com.logicartisan.intrepid;
 
-import org.apache.mina.util.IdentityHashSet;
+import gnu.trove.set.hash.TCustomHashSet;
+import gnu.trove.strategy.IdentityHashingStrategy;
 
 import java.util.Set;
 import java.util.concurrent.Delayed;
@@ -29,7 +30,7 @@ class ProxyLeaseInfo implements Delayed {
 	// WeakReference, not the object they're referencing (the PIH).
 	@SuppressWarnings( { "MismatchedQueryAndUpdateOfCollection" } )
 	private final Set<RemoteProxyWeakReference> ref_list =
-		new IdentityHashSet<RemoteProxyWeakReference>();
+		new TCustomHashSet<>( new IdentityHashingStrategy<>() );
 
 	ProxyLeaseInfo( VMID vmid, int object_id, long lease_duration_ms ) {
 		this.vmid = vmid;

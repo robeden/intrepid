@@ -29,5 +29,5 @@ package com.logicartisan.intrepid.message;
  * Base interface for a message.
  */
 public interface IMessage {
-	public IMessageType getType();
+	IMessageType getType();
 }

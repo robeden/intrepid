@@ -57,17 +57,17 @@ public interface IntrepidDriver {
 	 *
 	 * @return					The VMID of the host connected to.
 	 */
-	public VMID connect( InetAddress address, int port, ConnectionArgs args,
+	VMID connect( InetAddress address, int port, ConnectionArgs args,
 		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
 		throws IOException;
 	
-	public void disconnect( VMID vmid );
+	void disconnect( VMID vmid );
 
 
     /**
      * Returns true if a connection is currently held to the given VMID.
      */
-    public boolean hasConnection( VMID vmid );
+    boolean hasConnection( VMID vmid );
 
 
 	/**
@@ -77,14 +77,14 @@ public interface IntrepidDriver {
 	 *                                      and invoke return messages. See
 	 *          {@code ProxyInvocationHandler.DESERIALIZING_VMID}
 	 */
-	public void init( InetAddress server_address, Integer server_port, String vmid_hint,
+	void init( InetAddress server_address, Integer server_port, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
 		PerformanceListener performance_listener,
 		UnitTestHook unit_test_hook ) throws IOException;
 
-	public void shutdown();
+	void shutdown();
 
 
 	/**
@@ -100,14 +100,14 @@ public interface IntrepidDriver {
 	 * @return		If this VMID of the <tt>destination</tt> VM has changed, it will be
 	 * 				returned.
 	 */
-	public SessionInfo sendMessage( VMID destination, IMessage message,
+	SessionInfo sendMessage( VMID destination, IMessage message,
 		AtomicInteger protocol_version_slot ) throws IOException, NotConnectedException;
 
 
 	/**
 	 * Return the server port in use, if applicable.
 	 */
-	public Integer getServerPort();
+	Integer getServerPort();
 
 
 
@@ -117,5 +117,5 @@ public interface IntrepidDriver {
 	 *
 	 * @param delay_ms  The delay in milliseconds or null for none.
 	 */
-	public void setMessageSendDelay( Long delay_ms );
+	void setMessageSendDelay( Long delay_ms );
 }

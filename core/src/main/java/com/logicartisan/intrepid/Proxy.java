@@ -29,10 +29,10 @@ package com.logicartisan.intrepid;
  *
  */
 interface Proxy {
-	public Object __intrepid__getLocalDelegate();
-	public VMID __intrepid__getHostVMID();
-	public int __intrepid__getObjectID();
+	Object __intrepid__getLocalDelegate();
+	VMID __intrepid__getHostVMID();
+	int __intrepid__getObjectID();
 
-	public void __intrepid__setPersistentName( String name );
-	public String __intrepid__getPersistentName();
+	void __intrepid__setPersistentName( String name );
+	String __intrepid__getPersistentName();
 }

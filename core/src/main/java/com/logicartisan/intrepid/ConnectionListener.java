@@ -25,11 +25,11 @@
 
 package com.logicartisan.intrepid;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
 import com.logicartisan.intrepid.auth.UserContextInfo;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.InetAddress;
 
 
@@ -51,7 +51,7 @@ public interface ConnectionListener {
 	 * @param connection_type_description   An SPI-specific description of the connection
 	 * @param ack_rate_sec                  Rate of method acks in seconds.
 	 */
-	public void connectionOpened( @Nonnull InetAddress host, int port,
+	void connectionOpened( @Nonnull InetAddress host, int port,
 		@Nullable Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 		@Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
 		@Nonnull Object connection_type_description, byte ack_rate_sec );
@@ -66,7 +66,7 @@ public interface ConnectionListener {
 	 * @param will_attempt_reconnect        Indicates whether or not a reconnection
 	 * @param user_context                  User context, if any.
 	 */
-	public void connectionClosed( @Nonnull InetAddress host, int port,
+	void connectionClosed( @Nonnull InetAddress host, int port,
 		@Nonnull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
 		boolean will_attempt_reconnect, @Nullable UserContextInfo user_context );
 
@@ -77,14 +77,14 @@ public interface ConnectionListener {
 	 *
 	 * @param connection_type_description   An SPI-specific description of the connection
 	 */
-	public void connectionOpening( @Nonnull InetAddress host,
+	void connectionOpening( @Nonnull InetAddress host,
 		int port, @Nullable Object attachment, @Nullable ConnectionArgs args,
 		@Nonnull Object connection_type_description );
 
 	/**
 	 * Called after {@link #connectionOpening} if the connection could not be made.
 	 */
-	public void connectionOpenFailed( @Nonnull InetAddress host,
+	void connectionOpenFailed( @Nonnull InetAddress host,
 		int port, @Nullable Object attachment, @Nullable Exception error,
 		boolean will_retry );
 }

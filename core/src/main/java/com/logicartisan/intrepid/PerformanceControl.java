@@ -11,5 +11,5 @@ public interface PerformanceControl {
 	 *
 	 * @param delay_ms  The delay in milliseconds or null for none.
 	 */
-	public void setMessageSendDelay( Long delay_ms );
+	void setMessageSendDelay( Long delay_ms );
 }

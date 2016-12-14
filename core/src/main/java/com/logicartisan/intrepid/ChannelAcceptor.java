@@ -15,6 +15,6 @@ public interface ChannelAcceptor {
 	 * Called when a new inbound channel is received. This should return quickly and
 	 * should not do any I/O work with the channel in the same thread.
 	 */
-	public void newChannel( ByteChannel channel, VMID source_vmid,
+	void newChannel( ByteChannel channel, VMID source_vmid,
 		Serializable attachment ) throws ChannelRejectedException;
 }
