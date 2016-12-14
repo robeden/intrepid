@@ -1,119 +1,105 @@
-apply plugin: 'java'
-apply plugin: 'maven'
-apply plugin: 'signing'
+apply plugin: 'base'
 
 
 group = 'com.logicartisan'
-archivesBaseName = 'intrepid'
-
-sourceCompatibility = 1.8
-
-repositories {
-	mavenCentral()
-}
-
-dependencies {
-    compile 'com.logicartisan:common-core:1.1.0'
-    compile 'com.logicartisan:common-locale:1.0.0'
-
-	compile group: 'org.apache.mina', name: 'mina-core', version: '2.0.7'
-	compile group: 'org.apache.mina', name: 'mina-filter-compression', version: '2.0.7'
-	compile group: 'net.sf.trove4j', name: 'trove4j', version: '3.0.3'
-
-    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.21'
-    compile group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1';
-
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-    testCompile group: 'org.mockito', name: 'mockito-core', version: '2.2.7'
-	testCompile group: 'org.easymock', name: 'easymock', version: '3.+'
-}
-
-test {
-	systemProperty 'intrepid.lease.duration', '2000'
-	systemProperty 'intrepid.lease.prune_interval', '1000'
-	systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
-	systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
-
-	ignoreFailures true
-}
-
-
-jar {
-	baseName 'intrepid'
-}
 
 
 
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven'
+    apply plugin: 'signing'
+
+    sourceCompatibility = 1.8
 
 
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
-}
+    ext.subProjectName = project.name
 
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-artifacts {
-    archives javadocJar, sourcesJar
-}
+    println "Project: ${}"
 
 
-signing {
-    sign configurations.archives
-}
-
-
-javadoc {
-    options.addStringOption('Xdoclint:none', '-quiet')
-}
-
-
-
-uploadArchives {
     repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        mavenCentral()
+    }
 
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: sonatypeUsername, password: sonatypePassword)
-            }
 
-            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: sonatypeUsername, password: sonatypePassword)
-            }
 
-            pom.project {
-                name 'Intrepid'
-                packaging 'jar'
-                description 'A replacement for Java RMI (Remote Method Invocation) that allows for simpler and more transparent usage with more flexible control over session and security'
-                url 'https://bitbucket.org/robeden/intrepid'
+    task javadocJar(type: Jar) {
+        classifier = 'javadoc'
+        from javadoc
+    }
 
-                scm {
-                    connection 'scm:git:https://bitbucket.org/robeden/intrepid.git'
-                    developerConnection 'scm:git:https://bitbucket.org/robeden/intrepid.git'
-                    url 'https://bitbucket.org/robeden/intrepid/src'
+    task sourcesJar(type: Jar) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+    }
+
+    artifacts {
+        archives javadocJar, sourcesJar
+    }
+
+
+    signing {
+        sign configurations.archives
+    }
+
+
+    javadoc {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+    tasks.withType(Javadoc).all { enabled = false }     // opt-in
+
+    jar {
+        baseName = "${project.rootProject.name}-${subProjectName}"
+    }
+
+
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
                 }
 
-                licenses {
-                    license {
-                        name 'The Apache License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+
+                pom.project {
+                    name "${project.name}"
+                    packaging 'jar'
+//                    description 'A replacement for Java RMI (Remote Method Invocation) that allows for simpler and more transparent usage with more flexible control over session and security'
+                    url 'https://bitbucket.org/robeden/intrepid'
+
+                    scm {
+                        connection 'scm:git:https://bitbucket.org/robeden/intrepid.git'
+                        developerConnection 'scm:git:https://bitbucket.org/robeden/intrepid.git'
+                        url 'https://bitbucket.org/robeden/intrepid/src'
                     }
-                }
 
-                developers {
-                    developer {
-                        id 'robeden'
-                        name 'Rob Eden'
-                        email 'robeden1@gmail.com'
+                    licenses {
+                        license {
+                            name 'The Apache License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'robeden'
+                            name 'Rob Eden'
+                            email 'robeden1@gmail.com'
+                        }
                     }
                 }
             }
         }
     }
+    uploadArchives.dependsOn sourcesJar
+    uploadArchives.dependsOn javadocJar
 }
-uploadArchives.dependsOn sourcesJar
-uploadArchives.dependsOn javadocJar
+
+
