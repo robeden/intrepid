@@ -332,37 +332,37 @@ public class ReconnectTest extends TestCase {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 		TokenReconnectAuthenticationHandler mock_auth_handler =
-			createMock( TokenReconnectAuthenticationHandler.class );
+			EasyMock.createMock( TokenReconnectAuthenticationHandler.class );
 
 		UserContextInfo test_info = new SimpleUserContextInfo( "test_user" );
 
 		// Mock for first call - no token should be provided
-		expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
+		EasyMock.expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( test_info );
-		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
 			EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( "my test token" );
-		expect( Integer.valueOf(
+		EasyMock.expect( Integer.valueOf(
 			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
 			Integer.valueOf( 2 ) );
-		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
 			EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
-			eq( "my test token" ) ) ).andReturn( "my test token - TWO" );
-		expect( Integer.valueOf(
+			EasyMock.eq( "my test token" ) ) ).andReturn( "my test token - TWO" );
+		EasyMock.expect( Integer.valueOf(
 			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
 			Integer.valueOf( 2 ) );
-		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
 			EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
-			eq( "my test token - TWO" ) ) ).andReturn( "my test token - THREE" );
-		expect( Integer.valueOf(
+			EasyMock.eq( "my test token - TWO" ) ) ).andReturn( "my test token - THREE" );
+		EasyMock.expect( Integer.valueOf(
 			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
 			Integer.valueOf( 2 ) );
 
-		replay( mock_auth_handler );
+		EasyMock.replay( mock_auth_handler );
 
 		IntrepidSetup setup = new IntrepidSetup();
 		setup.authHandler( mock_auth_handler );
@@ -393,22 +393,22 @@ public class ReconnectTest extends TestCase {
 		System.out.println( "server instance closed" );
 
 		// Make sure checkConnection was called once and only once
-		verify( mock_auth_handler );
+		EasyMock.verify( mock_auth_handler );
 
 		// Mock for second call - token SHOULD be provided
-		reset( mock_auth_handler );
-		expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
+		EasyMock.reset( mock_auth_handler );
+		EasyMock.expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
-			eq( "my test token - THREE" ) ) ).andReturn( test_info );
-		expect( mock_auth_handler.generateReconnectToken( eq( test_info ),
+			EasyMock.eq( "my test token - THREE" ) ) ).andReturn( test_info );
+		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
 			EasyMock.<ConnectionArgs>isNull(), EasyMock.<SocketAddress>notNull(),
-			EasyMock.<SocketAddress>notNull(), eq( "my test token - THREE" ) ) )
+			EasyMock.<SocketAddress>notNull(), EasyMock.eq( "my test token - THREE" ) ) )
 			.andReturn( "my NEW test token" );
-		expect( Integer.valueOf(
+		EasyMock.expect( Integer.valueOf(
 			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
 			Integer.valueOf( 60 ) );
 
-		replay( mock_auth_handler );
+		EasyMock.replay( mock_auth_handler );
 
 
 		ThreadKit.sleep( 1000 );
@@ -440,6 +440,6 @@ public class ReconnectTest extends TestCase {
 
 
 		// Make sure checkConnection was called once and only once
-		verify( mock_auth_handler );
+		EasyMock.verify( mock_auth_handler );
 	}
 }

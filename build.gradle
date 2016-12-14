@@ -2,8 +2,10 @@ apply plugin: 'base'
 
 
 group = 'com.logicartisan'
+version = release == 'no' ? "${branch_version}-SNAPSHOT" : branch_version
 
 
+println "Version: ${version}"
 
 subprojects {
     apply plugin: 'java'
@@ -12,10 +14,10 @@ subprojects {
 
     sourceCompatibility = 1.8
 
+	group = project.rootProject.group
+	version = project.rootProject.version
 
-    ext.subProjectName = project.name
-
-    println "Project: ${}"
+	ext.sanitizedName = project.name.replace( '/', '-' )
 
 
     repositories {
@@ -26,11 +28,13 @@ subprojects {
 
     task javadocJar(type: Jar) {
         classifier = 'javadoc'
+        baseName = "intrepid-${sanitizedName}"
         from javadoc
     }
 
     task sourcesJar(type: Jar) {
         classifier = 'sources'
+        baseName = "intrepid-${sanitizedName}"
         from sourceSets.main.allSource
     }
 
@@ -50,7 +54,8 @@ subprojects {
     tasks.withType(Javadoc).all { enabled = false }     // opt-in
 
     jar {
-        baseName = "${project.rootProject.name}-${subProjectName}"
+        println "Group: ${project.group}   Name: ${project.name}   Sanitized: ${sanitizedName}"
+        baseName = "intrepid-${sanitizedName}"
     }
 
 
@@ -69,7 +74,8 @@ subprojects {
                 }
 
                 pom.project {
-                    name "${project.name}"
+	                artifactId "intrepid-${sanitizedName}"
+
                     packaging 'jar'
 //                    description 'A replacement for Java RMI (Remote Method Invocation) that allows for simpler and more transparent usage with more flexible control over session and security'
                     url 'https://bitbucket.org/robeden/intrepid'
@@ -101,5 +107,3 @@ subprojects {
     uploadArchives.dependsOn sourcesJar
     uploadArchives.dependsOn javadocJar
 }
-
-

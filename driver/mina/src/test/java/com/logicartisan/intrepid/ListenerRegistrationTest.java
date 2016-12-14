@@ -2,14 +2,14 @@ package com.logicartisan.intrepid;
 
 import com.logicartisan.common.core.thread.ThreadKit;
 import junit.framework.TestCase;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
-
-import static org.mockito.Mockito.*;
 
 
 /**
@@ -47,7 +47,7 @@ public class ListenerRegistrationTest extends TestCase {
 		server = Intrepid.create( new IntrepidSetup().openServer() );
 		int server_port = server.getServerPort().intValue();
 
-		Server server_mock = mock( Server.class );
+		Server server_mock = Mockito.mock( Server.class );
 		server.getLocalRegistry().bind( "server", server_mock );
 
 
@@ -77,8 +77,8 @@ public class ListenerRegistrationTest extends TestCase {
 			server_proxy, Server::addListener, Server::removeListener );
 
 		// Should immediately be added
-		verify( server_mock, times( 1 ) ).addListener( any( Listener.class ) );
-		reset( server_mock );
+		Mockito.verify( server_mock, Mockito.times( 1 ) ).addListener( ArgumentMatchers.any( Listener.class ) );
+		Mockito.reset( server_mock );
 
 		for( int i = 0; i < 5; i++ ) {
 			// Close the server
@@ -92,7 +92,7 @@ public class ListenerRegistrationTest extends TestCase {
 
 			// Should indicate we're NOT connected
 			assertNotConnected( listener_reg );
-			verifyNoMoreInteractions( server_mock );
+			Mockito.verifyNoMoreInteractions( server_mock );
 
 			// Bring the server back
 			server = Intrepid.create(
@@ -103,10 +103,10 @@ public class ListenerRegistrationTest extends TestCase {
 			long start = System.currentTimeMillis();
 			// NOTE: for some reason the "connection opened" messages can take a while to
 			//       come in, so need a big timeout
-			verify( server_mock, timeout( 10000 ).times( 1 ) )
-				.addListener( any( Listener.class ) );
+			Mockito.verify( server_mock, Mockito.timeout( 10000 ).times( 1 ) )
+				.addListener( ArgumentMatchers.any( Listener.class ) );
 			System.out.println( "Verify time: " + ( System.currentTimeMillis() - start ) );
-			reset( server_mock );
+			Mockito.reset( server_mock );
 
 			// NOTE: There's a race condition because the add method has to be called
 			//       before the currently connected flag can be set. It should follow
@@ -120,7 +120,7 @@ public class ListenerRegistrationTest extends TestCase {
 		// Cancel the registration
 		listener_reg.remove();
 
-		verify( server_mock, times( 1 ) ).removeListener( any( Listener.class ) );
+		Mockito.verify( server_mock, Mockito.times( 1 ) ).removeListener( ArgumentMatchers.any( Listener.class ) );
 
 		// Close the server
 		server.close();
@@ -129,7 +129,7 @@ public class ListenerRegistrationTest extends TestCase {
 		ThreadKit.sleep( 5000 );
 
 		// Make sure no methods were called on the server
-		verifyNoMoreInteractions( server_mock );
+		Mockito.verifyNoMoreInteractions( server_mock );
 	}
 
 
@@ -138,14 +138,14 @@ public class ListenerRegistrationTest extends TestCase {
 		server = Intrepid.create( new IntrepidSetup().openServer() );
 		int server_port = server.getServerPort().intValue();
 
-		Server server_mock = mock( Server.class );
+		Server server_mock = Mockito.mock( Server.class );
 		server.getLocalRegistry().bind( "server", server_mock );
 
-		when( server_mock.addListenerWithReturn( any( Listener.class ) ) )
+		Mockito.when( server_mock.addListenerWithReturn( ArgumentMatchers.any( Listener.class ) ) )
 			.thenReturn( 0, 1, 2, 3, 4, 5 );
 
 		//noinspection unchecked
-		Consumer<Integer> consumer_mock = mock( Consumer.class );
+		Consumer<Integer> consumer_mock = Mockito.mock( Consumer.class );
 
 		client = Intrepid.create( new IntrepidSetup() );
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
@@ -174,8 +174,8 @@ public class ListenerRegistrationTest extends TestCase {
 			consumer_mock );
 
 		// Should immediately be added
-		verify( server_mock, times( 1 ) ).addListenerWithReturn( any( Listener.class ) );
-		verify( consumer_mock, times( 1 ) ).accept( 0 );
+		Mockito.verify( server_mock, Mockito.times( 1 ) ).addListenerWithReturn( ArgumentMatchers.any( Listener.class ) );
+		Mockito.verify( consumer_mock, Mockito.times( 1 ) ).accept( 0 );
 
 		for( int i = 0; i < 5; i++ ) {
 			// Close the server
@@ -189,8 +189,8 @@ public class ListenerRegistrationTest extends TestCase {
 
 			// Should indicate we're NOT connected
 			assertNotConnected( listener_reg );
-			verifyNoMoreInteractions( server_mock );
-			verifyNoMoreInteractions( consumer_mock );
+			Mockito.verifyNoMoreInteractions( server_mock );
+			Mockito.verifyNoMoreInteractions( consumer_mock );
 
 			// Bring the server back
 			server = Intrepid.create(
@@ -201,9 +201,9 @@ public class ListenerRegistrationTest extends TestCase {
 			long start = System.currentTimeMillis();
 			// NOTE: for some reason the "connection opened" messages can take a while to
 			//       come in, so need a big timeout
-			verify( server_mock, timeout( 10000 ).times( i + 2 ) )
-				.addListenerWithReturn( any( Listener.class ) );
-			verify( consumer_mock, timeout( 1000 ).times( 1 ) ).accept( i + 1 );
+			Mockito.verify( server_mock, Mockito.timeout( 10000 ).times( i + 2 ) )
+				.addListenerWithReturn( ArgumentMatchers.any( Listener.class ) );
+			Mockito.verify( consumer_mock, Mockito.timeout( 1000 ).times( 1 ) ).accept( i + 1 );
 			System.out.println( "Verify time: " + ( System.currentTimeMillis() - start ) );
 
 			// NOTE: There's a race condition because the add method has to be called
@@ -218,8 +218,8 @@ public class ListenerRegistrationTest extends TestCase {
 		// Cancel the registration
 		listener_reg.remove();
 
-		verify( server_mock, times( 1 ) ).removeListener( any( Listener.class ) );
-		verifyNoMoreInteractions( consumer_mock );
+		Mockito.verify( server_mock, Mockito.times( 1 ) ).removeListener( ArgumentMatchers.any( Listener.class ) );
+		Mockito.verifyNoMoreInteractions( consumer_mock );
 
 		// Close the server
 		server.close();
@@ -227,8 +227,8 @@ public class ListenerRegistrationTest extends TestCase {
 		ThreadKit.sleep( 5000 );
 
 		// Make sure no methods were called on the server
-		verifyNoMoreInteractions( server_mock );
-		verifyNoMoreInteractions( consumer_mock );
+		Mockito.verifyNoMoreInteractions( server_mock );
+		Mockito.verifyNoMoreInteractions( consumer_mock );
 	}
 
 

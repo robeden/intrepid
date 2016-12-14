@@ -118,8 +118,15 @@ public class Intrepid {
 
 		IntrepidDriver driver = setup.getDriver();
 		if ( driver == null ) {
-			throw new UnsupportedOperationException("NYI");   // TODO!: implement
-//			driver = new MINAIntrepidSPI();
+			try {
+				driver = ( IntrepidDriver ) Class.forName(
+					"com.logicartisan.intrepid.driver.mina.MINAIntrepidDriver" ).newInstance();
+			}
+			catch( Exception ex ) {
+				throw new UnsupportedOperationException( "Unable to find a default " +
+					"driver. Either a known driver is needed in the classpath or " +
+					"a driver will need to be manually specified." );
+			}
 		}
 
 		ScheduledExecutor thread_pool = setup.getThreadPool();

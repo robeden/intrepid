@@ -17,13 +17,20 @@ Download [the latest JAR][1] or grab via Maven:
 ```xml
 <dependency>
   <groupId>com.logicartisan</groupId>
-  <artifactId>intrepid</artifactId>
+  <artifactId>intrepid-core</artifactId>
   <version>1.7.0</version>
+</dependency>
+<dependency>
+  <groupId>com.logicartisan</groupId>
+  <artifactId>intrepid-driver-mina</artifactId>
+  <version>1.7.0</version>
+  <scope>runtime</scope>
 </dependency>
 ```
 or Gradle:
 ```groovy
 compile 'com.logicartisan:intrepid:1.7.0'
+runtime 'com.logicartisan:intrepid-driver-mina:1.7.0'
 ```
 
 
