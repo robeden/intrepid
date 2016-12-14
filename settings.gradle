@@ -1,0 +1,4 @@
+rootProject.name = 'intrepid'
+
+include 'core',
+    'driver/mina'

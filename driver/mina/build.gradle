@@ -1,0 +1,20 @@
+dependencies {
+    compile project( ':core' )
+
+    compile 'org.apache.mina:mina-core:2.0.7'
+    compile 'org.apache.mina:mina-filter-compression:2.0.7'
+
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.mockito:mockito-core:2.2.7'
+    testCompile 'org.easymock:easymock:3.+'
+    testCompile project( ':core' ).sourceSets.test.output
+}
+
+test {
+    systemProperty 'intrepid.lease.duration', '2000'
+    systemProperty 'intrepid.lease.prune_interval', '1000'
+    systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
+    systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
+
+    ignoreFailures true
+}

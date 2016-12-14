@@ -1,0 +1,21 @@
+dependencies {
+    compile 'com.logicartisan:common-core:1.1.0'
+    compile 'com.logicartisan:common-locale:1.0.0'
+
+    compile 'net.sf.trove4j:trove4j:3.0.3'
+
+    compile 'org.slf4j:slf4j-api:1.7.21'
+    compile 'com.google.code.findbugs:jsr305:3.0.1'
+
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.mockito:mockito-core:2.2.7'
+}
+
+test {
+    systemProperty 'intrepid.lease.duration', '2000'
+    systemProperty 'intrepid.lease.prune_interval', '1000'
+    systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
+    systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
+
+    ignoreFailures true
+}

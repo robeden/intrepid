@@ -13,17 +13,25 @@ For more information, see [the website](http://intrepid.starlight-systems.com).
 Download
 --------
 
-Download [the latest JAR][1] or grab via Maven:
-```xml
+Download the [latest core JAR](https://search.maven.org/remote_content?g=com.logicartisan&a=intrepid-core&v=LATEST)
+and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan&a=intrepid-driver-mina&v=LATEST) or grab via Maven:
+```
 <dependency>
   <groupId>com.logicartisan</groupId>
-  <artifactId>intrepid</artifactId>
+  <artifactId>intrepid-core</artifactId>
   <version>1.7.0</version>
+</dependency>
+<dependency>
+  <groupId>com.logicartisan</groupId>
+  <artifactId>intrepid-driver-mina</artifactId>
+  <version>1.7.0</version>
+  <scope>runtime</scope>
 </dependency>
 ```
 or Gradle:
 ```groovy
 compile 'com.logicartisan:intrepid:1.7.0'
+runtime 'com.logicartisan:intrepid-driver-mina:1.7.0'
 ```
 
 
@@ -42,6 +50,3 @@ License
 	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 	See the License for the specific language governing permissions and
 	limitations under the License.
-
-
- [1]: https://search.maven.org/remote_content?g=com.logicartisan&a=intrepid&v=LATEST
