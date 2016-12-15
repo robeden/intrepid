@@ -1,5 +1,6 @@
 package com.logicartisan.intrepid.driver.mina;
 
+import com.logicartisan.common.core.IOKit;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.io.*;
@@ -23,9 +24,14 @@ class IoBufferSerialization {
 
 
 	static Object getObject( IoBuffer buffer ) throws IOException, ClassNotFoundException {
-//		return buffer.getObject();
+
+		// Hint to StarLight Common's IOKit that we're doing a bunch of deserialization
+		IOKit.DESERIALIZATION_HINT.set( Boolean.TRUE );
 		try ( ObjectInputStream in = new ObjectInputStream( buffer.asInputStream() ) ) {
 			return in.readObject();
+		}
+		finally {
+			IOKit.DESERIALIZATION_HINT.remove();
 		}
 	}
 
