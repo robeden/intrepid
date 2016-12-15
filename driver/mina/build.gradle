@@ -8,6 +8,8 @@ dependencies {
     testCompile 'org.mockito:mockito-core:2.2.7'
     testCompile 'org.easymock:easymock:3.+'
     testCompile project( ':core' ).sourceSets.test.output
+
+	testRuntime 'org.slf4j:slf4j-simple:1.7.21'
 }
 
 test {
@@ -16,5 +18,8 @@ test {
     systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
     systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
 
+	systemProperty 'org.slf4j.simpleLogger.defaultLogLevel', 'INFO'
+
     ignoreFailures true
+	enableAssertions true
 }

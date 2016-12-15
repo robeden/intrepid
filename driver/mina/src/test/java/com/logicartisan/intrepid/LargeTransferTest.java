@@ -26,8 +26,11 @@
 package com.logicartisan.intrepid;
 
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
-import junit.framework.TestCase;
 import org.apache.mina.core.buffer.SimpleBufferAllocator;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.Serializable;
 import java.net.InetAddress;
@@ -47,13 +50,13 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  *
  */
-public class LargeTransferTest extends TestCase {
+public class LargeTransferTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@After
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -61,8 +64,8 @@ public class LargeTransferTest extends TestCase {
 		if ( server_instance != null ) server_instance.close();
 	}
 
-	@Override
-	protected void setUp() throws Exception {
+	@Before
+	public void setUp() throws Exception {
 		final SimpleBufferAllocator delegate = new SimpleBufferAllocator();
 //		IoBuffer.setAllocator( new IoBufferAllocator() {
 //			@Override
@@ -91,7 +94,7 @@ public class LargeTransferTest extends TestCase {
 //		} );
 	}
 
-	public void testLargeTransfer() throws Exception {
+	@Test public void testLargeTransfer() throws Exception {
 		byte[] data = new byte[ 1024 * 1024 * 16 ];	// 16 M
 		new Random().nextBytes( data );
 
@@ -102,7 +105,7 @@ public class LargeTransferTest extends TestCase {
 		server_instance = Intrepid.create(
 			new IntrepidSetup().vmidHint( "server" ).openServer() );
 		Integer server_port = server_instance.getServerPort();
-		assertNotNull( server_port );
+		Assert.assertNotNull( server_port );
 		ServerImpl original_instance = new ServerImpl();
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
@@ -111,7 +114,7 @@ public class LargeTransferTest extends TestCase {
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_port.intValue(), null, null );
-		assertNotNull( server_vmid );
+		Assert.assertNotNull( server_vmid );
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -127,14 +130,14 @@ public class LargeTransferTest extends TestCase {
 			System.out.println( "Method round-trip time: " + transfer_time +
 				"  - " + NumberFormat.getNumberInstance().format( bps ) + " Bps" );
 
-			assertTrue( Arrays.equals( data, data_copy ) );
+			Assert.assertTrue( Arrays.equals( data, data_copy ) );
 		}
 		System.out.println( "Average Bps: " +
 			NumberFormat.getNumberInstance().format( total_bps / 5.0 ) );
 	}
 
 
-	public void testStreamingLargeTransfer() throws Exception {
+	@Test public void testStreamingLargeTransfer() throws Exception {
 		byte[] data = new byte[ 1024 * 1024 * 16 ];	// 16 M
 		new Random().nextBytes( data );
 
@@ -150,7 +153,7 @@ public class LargeTransferTest extends TestCase {
 			new IntrepidSetup().vmidHint( "server" ).openServer().channelAcceptor(
 			new TestAcceptor( data, read_latch, read_error_slot ) ) );
 		Integer server_port = server_instance.getServerPort();
-		assertNotNull( server_port );
+		Assert.assertNotNull( server_port );
 		ServerImpl original_instance = new ServerImpl();
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
@@ -159,7 +162,7 @@ public class LargeTransferTest extends TestCase {
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_port.intValue(), null, null );
-		assertNotNull( server_vmid );
+		Assert.assertNotNull( server_vmid );
 
 		double total_bps = 0;
 		for( int i = 0; i < RUNS; i++ ) {
@@ -184,20 +187,21 @@ public class LargeTransferTest extends TestCase {
 			System.out.println( "Client done writing in " + time + " ms: " +
 				NumberFormat.getNumberInstance().format( bps ) + " Bps" );
 			
-			assertFalse( read_error_slot.get() );
+			Assert.assertFalse( read_error_slot.get() );
 		}
 		
 		long start = System.currentTimeMillis();
 		read_latch.await();
 		long time = System.currentTimeMillis() - start;
-		assertTrue( "Waited too long for read_latch: " + time, time < 1000 );
+		Assert.assertTrue( "Waited too long for read_latch: " + time, time < 1000 );
 		
-		assertFalse( read_error_slot.get() );
+		Assert.assertFalse( read_error_slot.get() );
 		
 		System.out.println( "Average Bps: " +
 			NumberFormat.getNumberInstance().format( total_bps / ( double ) RUNS ) );
 	}
 
+	@Test( timeout = 60000 )
 	public void testConcurrentStreamingLargeTransfer() throws Exception {
 		final byte[] data = new byte[ 1024 * 1024 * 16 ];	// 16 M
 		new Random().nextBytes( data );
@@ -214,7 +218,7 @@ public class LargeTransferTest extends TestCase {
 			new IntrepidSetup().vmidHint( "server" ).openServer().channelAcceptor(
 			new TestAcceptor( data, read_latch, read_error_slot ) ) );
 		Integer server_port = server_instance.getServerPort();
-		assertNotNull( server_port );
+		Assert.assertNotNull( server_port );
 		ServerImpl original_instance = new ServerImpl();
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
@@ -224,7 +228,7 @@ public class LargeTransferTest extends TestCase {
 		final VMID server_vmid =
 			client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_port.intValue(), null, null );
-		assertNotNull( server_vmid );
+		Assert.assertNotNull( server_vmid );
 
 		// Allow 10 streams at a time
 		ExecutorService service = Executors.newFixedThreadPool( 10 );
@@ -261,7 +265,7 @@ public class LargeTransferTest extends TestCase {
 						System.out.println( "Client done writing in " + time + " ms: " +
 							NumberFormat.getNumberInstance().format( bps ) + " Bps" );
 
-						assertFalse( read_error_slot.get() );
+						Assert.assertFalse( read_error_slot.get() );
 					}
 					catch( Exception ex ) {
 						exception_slot.set( ex );
@@ -287,9 +291,9 @@ public class LargeTransferTest extends TestCase {
 		start = System.currentTimeMillis();
 		read_latch.await();
 		long time = System.currentTimeMillis() - start;
-		assertTrue( "Waited too long for read_latch: " + time, time < 1000 );
+		Assert.assertTrue( "Waited too long for read_latch: " + time, time < 1000 );
 
-		assertFalse( read_error_slot.get() );
+		Assert.assertFalse( read_error_slot.get() );
 
 		System.out.println( "Average Bps: " +
 			NumberFormat.getNumberInstance().format( total_bps / ( double ) RUNS ) );

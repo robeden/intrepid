@@ -9,6 +9,10 @@ dependencies {
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:2.2.7'
+
+	testCompile 'com.squareup.okio:okio:1.11.0'
+
+    testRuntime 'org.slf4j:slf4j-simple:1.7.21'
 }
 
 test {
@@ -18,4 +22,5 @@ test {
     systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
 
     ignoreFailures true
+	enableAssertions true
 }

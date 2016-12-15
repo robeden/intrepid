@@ -23,66 +23,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.logicartisan.intrepid.driver.mina;
+package com.logicartisan.intrepid.driver;
 
-import junit.framework.TestCase;
-import org.apache.mina.core.buffer.IoBuffer;
+import com.starlight.locale.ResourceKey;
+import com.starlight.locale.ResourceList;
+import com.starlight.locale.TextResourceKey;
 
 
 /**
- * Test encoding/decoding length `using the dual short method.
+ *
  */
-public class LengthCodecTest extends TestCase {
-	public void testDualShortEncoding() throws Exception {
-		int[] VALUES = {
-			Integer.MAX_VALUE,
-			Integer.MAX_VALUE - 1,
-			1000000000,
-			100000000,
-			10000000,
-			1000000,
-			100000,
-			10000,
-			1000,
-			100,
-			10,
-			9,
-			8,
-			7,
-			6,
-			5,
-			4,
-			3,
-			2,
-			1,
-			0,
-		};
-
-
-		IoBuffer buffer = IoBuffer.allocate( 4 );
-		for( int value : VALUES ) {
-			assertEquals( value, doEncodeDecode( value, buffer ) );
-		}
-	}
-
-
-
-	private int doEncodeDecode( int value, IoBuffer buffer ) {
-		buffer.clear();
-
-		buffer.position( 4 );
-		boolean used_int = IMessageEncoder.putDualShortLength( buffer, value, 0 );
-		assertEquals( value > 0x7FFF, used_int );
-		buffer.flip();
-//		System.out.println( "Hex: " + buffer.getHexDump() );
-		try {
-			return IMessageDecoder.getDualShortLength(
-				used_int ? buffer : buffer.position( 2 ) );
-		}
-		catch( RuntimeException ex ) {
-			System.err.println( "Buffer at error: " + buffer );
-			System.err.println( "Value at error: " + value );
-			throw ex;
-		}
-	}
+class Resources extends ResourceList {
+	static final ResourceKey<String> INVALID_MESSAGE_TYPE =
+		new TextResourceKey( "Invalid message type: {0}" );
+	static final ResourceKey<String> ERROR_DESERIALIZING_SESSION_INIT_INFO =
+		new TextResourceKey( "Unable to de-serialize session init info: {0}" );
+	static final ResourceKey<String> ERROR_DESERIALIZING_CHANNEL_ATTACHMENT =
+		new TextResourceKey( "Unable to de-serialize channel attachment: {0}" );
+	static final ResourceKey<String> USER_INITIATED_DISCONNECT =
+		new TextResourceKey( "User-initiated disconnect" );
 }

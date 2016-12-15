@@ -23,7 +23,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.logicartisan.intrepid.driver.mina;
+package com.logicartisan.intrepid.driver;
 
 import com.logicartisan.common.core.IOKit;
 import com.logicartisan.intrepid.VMID;
@@ -33,13 +33,14 @@ import com.logicartisan.intrepid.exception.ServerException;
 import com.logicartisan.intrepid.message.*;
 import com.starlight.locale.FormattedTextResourceKey;
 import com.starlight.locale.ResourceKey;
-import org.apache.mina.core.buffer.IoBuffer;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.filter.codec.CumulativeProtocolDecoder;
-import org.apache.mina.filter.codec.ProtocolDecoderOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -50,158 +51,147 @@ import java.nio.charset.CharsetDecoder;
 /**
  *
  */
-class IMessageDecoder extends CumulativeProtocolDecoder {
-	private static final Logger LOG = LoggerFactory.getLogger( IMessageDecoder.class );
-
-	private static final boolean DEBUG = false;
+public final class MessageDecoder {
+	private static final Logger LOG = LoggerFactory.getLogger( MessageDecoder.class );
 
 	private static final CharsetDecoder STRING_DECODER =
 		Charset.forName( "UTF-16" ).newDecoder();
 
-	private final VMID vmid;
-	private final ThreadLocal<VMID> deserialization_context_vmid;
-
-	IMessageDecoder( VMID vmid, ThreadLocal<VMID> deserialization_context_vmid ) {
-		this.vmid = vmid;
-		this.deserialization_context_vmid = deserialization_context_vmid;
-	}
 
 
-	@Override
-	protected boolean doDecode( IoSession session, IoBuffer in,
-		ProtocolDecoderOutput out ) throws Exception {
+	/**
+	 * @return      The message, if the content was successfully consumed. The meaning of
+	 *              null will vary for implementations. For a blocking I/O
+	 *              implementation, this false will indicate that stream is bad
+	 *              because we were unable to retrieve enough data before the end of the
+	 *              stream was reached. For a non-blocking implementation (such as MINA),
+	 *              this will likely mean that the position of the buffer should be reset
+	 *              to its original position (before the decode attempt) and further data
+	 *              should be awaited.
+	 */
+	public static @Nullable IMessage decode( @Nonnull DataSource buffer,
+		@Nonnull ResponseHandler response_handler ) {
 
-		deserialization_context_vmid.set( vmid );
-
-		// Hint to StarLight Common's IOKit that we're doing a bunch of deserialization
-		IOKit.DESERIALIZATION_HINT.set( Boolean.TRUE );
-		try {
-			IMessage message = decode( in, session );
-
-			if ( message == null ) return false;
-			else {
-				out.write( message );
-				return true;
-			}
+		if ( LOG.isTraceEnabled() ) {
+			LOG.trace( "Decoder called: {}", buffer.hex() );
 		}
-		finally {
-			IOKit.DESERIALIZATION_HINT.remove();
-			deserialization_context_vmid.remove();
-		}
-	}
-
-
-	static IMessage decode( IoBuffer buffer, IoSession session ) {
-		if ( DEBUG ) System.out.println( "*** Decoder called: " + buffer.getHexDump() );
 
 		// Need at least 4 bytes
-		if ( buffer.remaining() < 4 ) return null;
-
-		// Remember the initial position
-		int starting_position = buffer.position();
+		if ( !buffer.request( 4 ) ) return null;
 
 		// LENGTH
 		int length = getDualShortLength( buffer );
-		if ( buffer.remaining() < length ) {
-			if ( DEBUG ) System.out.println( "*** Decoder not enough data. Remaining: " +
-				buffer.remaining() + "  Length: " + length + "  Buffer: " + buffer );
-			buffer.position( starting_position );
+		if ( !buffer.request( length ) ) {
+			LOG.trace( "Decoder not enough data. Length: {} Buffer: {}", length, buffer );
 			return null;
 		}
 
-		int position_after_length = buffer.position();
+		final DataSource.Tracking tracking_source = buffer.trackRead();
 
 		// TYPE
-		byte type = buffer.get();
+		byte type = tracking_source.get();
 		IMessageType message_type = IMessageType.findByID( type );
 		assert message_type != null : "Unknown type: " + type;
 
-		if ( DEBUG ) System.out.println( "*** Message type: " + message_type );
+		LOG.trace( "Message type: {}", message_type );
 
 		final IMessage message;
 		switch ( message_type ) {
 			case SESSION_INIT:
-				message = decodeSessionInit( buffer, session );
+				message = decodeSessionInit( tracking_source, response_handler );
 				break;
 
 			case SESSION_INIT_RESPONSE:
-				message = decodeSessionInitResponse( buffer, session );
+				message = decodeSessionInitResponse( tracking_source, response_handler );
 				break;
 
 			case SESSION_TOKEN_CHANGE:
-				message = decodeSessionTokenChange( buffer );
+				message = decodeSessionTokenChange( tracking_source );
 				break;
 
 			case SESSION_CLOSE:
-				message = decodeSessionClose( buffer );
+				message = decodeSessionClose( tracking_source );
 				break;
 
 			case INVOKE:
-				message = decodeInvoke( buffer, session );
+				message = decodeInvoke( tracking_source, response_handler );
 				break;
 
 			case INVOKE_RETURN:
-				message = decodeInvokeReturn( buffer );
+				message = decodeInvokeReturn( tracking_source );
 				break;
 
 			case INVOKE_INTERRUPT:
-				message = decodeInvokeInterrupt( buffer );
+				message = decodeInvokeInterrupt( tracking_source );
 				break;
 
 			case INVOKE_ACK:
-				message = decodeInvokeAck( buffer );
+				message = decodeInvokeAck( tracking_source );
 				break;
 
 			case LEASE:
-				message = decodeLease( buffer );
+				message = decodeLease( tracking_source );
 				break;
 
 			case LEASE_RELEASE:
-				message = decodeLeaseRelease( buffer );
+				message = decodeLeaseRelease( tracking_source );
 				break;
 
 			case CHANNEL_INIT:
-				message = decodeChannelInit( buffer, session );
+				message = decodeChannelInit( tracking_source, response_handler );
 				break;
 
 			case CHANNEL_INIT_RESPONSE:
-				message = decodeChannelInitResponse( buffer );
+				message = decodeChannelInitResponse( tracking_source );
 				break;
 
 			case CHANNEL_DATA:
-				message = decodeChannelData( buffer );
+				try {
+					message = decodeChannelData( tracking_source );
+				}
+				catch ( EOFException e ) {
+					return null;           // Didn't have enough data
+				}
 				break;
 
 			case CHANNEL_CLOSE:
-				message = decodeChannelClose( buffer );
+				message = decodeChannelClose( tracking_source );
 				break;
 
 			case PING:
-				message = decodePing( buffer );
+				message = decodePing( tracking_source );
 				break;
 
 			case PING_RESPONSE:
-				message = decodePingResponse( buffer );
+				message = decodePingResponse( tracking_source );
 				break;
 
 			default:
 				assert false : "Unhandled type: " + message_type;
-				message = null;
+				response_handler.sendMessage( new SessionCloseIMessage(
+					new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
+						message_type ), false ),
+					SessionCloseOption.ATTEMPT_FLUSH );
+				return null;
 		}
 
-		// Make sure all the expected data was consumed
-		if ( buffer.position() < position_after_length + length ) {
-			if ( DEBUG ) System.err.println( "WARNING: Unconsumed data from decode of " +
-				message_type + ": " +
-				( ( position_after_length + length ) - buffer.position() ) );
-			buffer.position( position_after_length + length );
+		if ( tracking_source.bytesRead() < length ) {
+			LOG.warn( "Read too few bytes. Expected: {} Read: {}",
+				length, tracking_source.bytesRead() );
+			assert false :
+				"Too little data read: " + length + " < " + tracking_source.bytesRead();
+			while( tracking_source.bytesRead() < length ) {
+				tracking_source.get();
+			}
 		}
 
 		return message;
 	}
 
 
-	static InvokeIMessage decodeInvoke(IoBuffer buffer, IoSession session ) {
+	private static InvokeIMessage decodeInvoke( @Nonnull DataSource buffer,
+		@Nonnull ResponseHandler response_handler ) {
+
 		// VERSION
 		buffer.get();
 
@@ -230,16 +220,16 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 				int length = buffer.get() & 0xFF;					// WARNING: Max of 255
 				args = new Object[ length ];
 				for( int i = 0; i < args.length; i++ ) {
-//					args[ i ] = readObject( buffer, call_id );
-					args[ i ] = IoBufferSerialization.getObject( buffer );
+					args[ i ] = readObject( buffer );
 				}
 			}
 			catch( Exception ex ) {
 				LOG.info( "Unable to de-serialize method argument", ex );
 				// Write an error and return nothing
-				session.write( new InvokeReturnIMessage( call_id,
-					new ServerException( "Error de-serializing method argument", ex ),
-					true, null, null ) );
+				response_handler.sendMessage(
+					new InvokeReturnIMessage( call_id,
+						new ServerException( "Error de-serializing method argument", ex ),
+						true, null, null ), null );
 				return null;
 			}
 		}
@@ -248,25 +238,17 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		String persistent_name = null;
 		if ( has_persistent_name ) {
 			try {
-				if ( DEBUG ) {
-					System.out.println( "(In) Position before persistent name: " +
-						buffer.position() );
-				}
+				persistent_name = buffer.getString( STRING_DECODER, c -> {} );
 
-				persistent_name = buffer.getString( STRING_DECODER );
-
-				if ( DEBUG ) {
-					System.out.println( "  decoded persistent name: " + persistent_name );
-					System.out.println( "(In) Position after persistent name: " +
-						buffer.position() );
-				}
+				LOG.trace( "  decoded persistent name: {}", persistent_name );
 			}
 			catch ( CharacterCodingException ex ) {
 				LOG.info( "Error decoding object persistent name", ex );
 				// Write an error and return nothing
-				session.write( new InvokeReturnIMessage( call_id,
-					new ServerException( "Error decoding object persistent name", ex ),
-					true, null, null ) );
+				response_handler.sendMessage(
+					new InvokeReturnIMessage( call_id,
+						new ServerException( "Error decoding object persistent name", ex ),
+						true, null, null ), null );
 				return null;
 			}
 		}
@@ -275,22 +257,19 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		UserContextInfo user_context = null;
 		if ( has_user_context ) {
 			try {
-				if ( DEBUG ) {
-					System.out.println( "(In) Position before user context: " +
-						buffer.position() );
-					System.out.println( "Hex dump after context position: " +
-						buffer.getHexDump() );
+				if ( LOG.isTraceEnabled() ) {
+					LOG.trace( "Hex dump after context position: {}", buffer.hex() );
 				}
 
-				user_context =
-					( UserContextInfo ) IoBufferSerialization.getObject( buffer );
+				user_context = ( UserContextInfo ) readObject( buffer );
 			}
 			catch( Exception ex ) {
 				LOG.info( "Error de-serializing user context", ex );
 				// Write an error and return nothing
-				session.write( new InvokeReturnIMessage( call_id,
-					new ServerException( "Error de-serializing user context", ex ),
-					true, null, null ) );
+				response_handler.sendMessage(
+					new InvokeReturnIMessage( call_id,
+						new ServerException( "Error de-serializing user context", ex ),
+						true, null, null ), null );
 				return null;
 			}
 		}
@@ -300,7 +279,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static InvokeReturnIMessage decodeInvokeReturn( IoBuffer buffer ) {
+	private static InvokeReturnIMessage decodeInvokeReturn( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -325,8 +304,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		// VALUE
 		if ( has_normal_value || has_thrown_value ) {
 			try {
-//				value = readObject( buffer, -call_id );
-				value = IoBufferSerialization.getObject( buffer );
+				value = readObject( buffer );
 				is_thrown = has_thrown_value;
 			}
 			catch ( Exception e ) {
@@ -353,7 +331,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static InvokeInterruptIMessage decodeInvokeInterrupt(IoBuffer buffer ) {
+	private static InvokeInterruptIMessage decodeInvokeInterrupt(
+		@Nonnull DataSource buffer ) {
+
 		// VERSION
 		buffer.get();
 
@@ -364,7 +344,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static InvokeAckIMessage decodeInvokeAck( IoBuffer buffer ) {
+	private static InvokeAckIMessage decodeInvokeAck( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -375,8 +355,8 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static SessionInitIMessage decodeSessionInit( IoBuffer buffer,
-		IoSession session ) {
+	private static SessionInitIMessage decodeSessionInit( @Nonnull DataSource buffer,
+		@Nonnull ResponseHandler response_handler ) {
 		
 		// VERSION
 		byte version = buffer.get();
@@ -391,12 +371,11 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		ConnectionArgs connection_args;
 		try {
 			// VMID
-			vmid = ( VMID ) IoBufferSerialization.getObject( buffer );
+			vmid = ( VMID ) readObject( buffer );
 
 			// CONNECTION ARGS
 			if ( buffer.get() > 0 ) {
-				connection_args =
-					( ConnectionArgs ) IoBufferSerialization.getObject( buffer );
+				connection_args = ( ConnectionArgs ) readObject( buffer );
 			}
 			else connection_args = null;
 		}
@@ -404,10 +383,11 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			LOG.info( "Error while decoding session init vmid/args", ex );
 
 			// Write an error, close the session and return nothing
-			session.write( new SessionCloseIMessage( new FormattedTextResourceKey(
-				Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
-				false ) );
-			CloseHandler.close( session );
+			response_handler.sendMessage(
+				new SessionCloseIMessage( new FormattedTextResourceKey(
+					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
+					false ),
+				SessionCloseOption.ATTEMPT_FLUSH );
 			return null;
 		}
 
@@ -426,8 +406,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			if ( buffer.get() == 0 ) reconnect_token = null;
 			else {
 				try {
-					reconnect_token =
-						( Serializable ) IoBufferSerialization.getObject( buffer );
+					reconnect_token = ( Serializable ) readObject( buffer );
 				}
 				catch( Exception ex ) {
 					LOG.info( "Error while decoding session init reconnect token", ex );
@@ -445,8 +424,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static SessionInitResponseIMessage decodeSessionInitResponse( IoBuffer buffer,
-		IoSession session ) {
+	private static SessionInitResponseIMessage decodeSessionInitResponse(
+		@Nonnull DataSource buffer,
+		@Nonnull ResponseHandler response_handler ) {
 
 		// VERSION
 		byte version = buffer.get();
@@ -457,16 +437,17 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		VMID vmid;
 		try {
 			// VMID
-			vmid = ( VMID ) IoBufferSerialization.getObject( buffer );
+			vmid = ( VMID ) readObject( buffer );
 		}
 		catch( Exception ex ) {
 			LOG.info( "Error while decoding session init response vmid", ex );
 
 			// Write an error, close the session and return nothing
-			session.write( new SessionCloseIMessage( new FormattedTextResourceKey(
-				Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
-				false ) );
-			CloseHandler.close( session );
+			response_handler.sendMessage(
+				new SessionCloseIMessage( new FormattedTextResourceKey(
+					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
+					false ),
+				SessionCloseOption.ATTEMPT_FLUSH );
 			return null;
 		}
 
@@ -485,13 +466,11 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			if ( buffer.get() == 0 ) reconnect_token = null;
 			else {
 				try {
-					reconnect_token =
-						( Serializable ) IoBufferSerialization.getObject( buffer );
+					reconnect_token = ( Serializable ) readObject( buffer );
 				}
 				catch( Exception ex ) {
 					LOG.warn(
-						"Error while decoding session init response reconnect " + "token",
-						ex );
+						"Error while decoding session init response reconnect token", ex );
 					reconnect_token = null;
 				}
 			}
@@ -507,7 +486,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static SessionTokenChangeIMessage decodeSessionTokenChange( IoBuffer buffer ) {
+	private static SessionTokenChangeIMessage decodeSessionTokenChange(
+		@Nonnull DataSource buffer ) {
+
 		// VERSION
 		buffer.get();
 
@@ -516,14 +497,12 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		Serializable reconnect_token;
 		try {
 			if ( buffer.get() > 0 ) {
-				reconnect_token =
-					( Serializable ) IoBufferSerialization.getObject( buffer );
+				reconnect_token = ( Serializable ) readObject( buffer );
 			}
 			else reconnect_token = null;
 		}
 		catch( Exception ex ) {
-			LOG.warn( "Error while decoding session token change reconnect " +
-				"token", ex );
+			LOG.warn( "Error while decoding session token change reconnect token", ex );
 			reconnect_token = null;
 		}
 
@@ -531,7 +510,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static SessionCloseIMessage decodeSessionClose( IoBuffer buffer ) {
+	private static SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -540,7 +519,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		try {
 			if ( buffer.get() > 0 ) {
 				//noinspection unchecked
-				reason = ( ResourceKey<String> ) IoBufferSerialization.getObject( buffer );
+				reason = ( ResourceKey<String> ) readObject( buffer );
 			}
 			else reason = null;
 		}
@@ -557,7 +536,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private static LeaseIMessage decodeLease( IoBuffer buffer ) {
+	private static LeaseIMessage decodeLease( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -570,7 +549,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		return new LeaseIMessage( oids );
 	}
 
-	private static LeaseReleaseIMessage decodeLeaseRelease( IoBuffer buffer ) {
+	private static LeaseReleaseIMessage decodeLeaseRelease( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -584,8 +563,8 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	static ChannelInitIMessage decodeChannelInit( IoBuffer buffer,
-		IoSession session ) {
+	private static ChannelInitIMessage decodeChannelInit( @Nonnull DataSource buffer,
+		@Nonnull ResponseHandler response_handler ) {
 
 		// VERSION
 		buffer.get();
@@ -597,16 +576,17 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		Serializable attachment = null;
 		if ( buffer.get() != 0 ) {
 			try {
-				attachment = ( Serializable ) IoBufferSerialization.getObject( buffer );
+				attachment = ( Serializable ) readObject( buffer );
 			}
 			catch( Exception ex ) {
-			LOG.info( "Error while decoding channel init attachment", ex );
+				LOG.info( "Error while decoding channel init attachment", ex );
 
 				// Write an error, close the session and return nothing
-				session.write( new ChannelInitResponseIMessage( request_id,
-					new FormattedTextResourceKey(
-					Resources.ERROR_DESERIALIZING_CHANNEL_ATTACHMENT, ex.toString() ) ) );
-				CloseHandler.close( session );
+				response_handler.sendMessage(
+					new ChannelInitResponseIMessage( request_id,
+						new FormattedTextResourceKey(
+						Resources.ERROR_DESERIALIZING_CHANNEL_ATTACHMENT, ex.toString() ) ),
+					SessionCloseOption.ATTEMPT_FLUSH );
 				return null;
 			}
 		}
@@ -617,7 +597,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		return new ChannelInitIMessage( request_id, attachment, channel_id );
 	}
 
-	static ChannelInitResponseIMessage decodeChannelInitResponse( IoBuffer buffer ) {
+	private static ChannelInitResponseIMessage decodeChannelInitResponse(
+		@Nonnull DataSource buffer ) {
+
 		// VERSION
 		buffer.get();
 
@@ -634,8 +616,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 			else {
 				try {
 					//noinspection unchecked
-					reject_reason =
-						( ResourceKey<String> ) IoBufferSerialization.getObject( buffer );
+					reject_reason = ( ResourceKey<String> ) readObject( buffer );
 				}
 				catch( Exception ex ) {
 					reject_reason = null;
@@ -647,7 +628,9 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		else return new ChannelInitResponseIMessage( request_id );
 	}
 
-	private static ChannelDataIMessage decodeChannelData( IoBuffer buffer ) {
+	private static ChannelDataIMessage decodeChannelData( @Nonnull DataSource buffer )
+		throws EOFException {
+
 		// VERSION
 		buffer.get();
 
@@ -659,13 +642,13 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 
 		// TODO: caching?
 		byte[] data = new byte[ length ];
-		buffer.get( data );
+		buffer.getFully( data );
 		ByteBuffer data_buffer = ByteBuffer.wrap( data );
 
 		return new ChannelDataIMessage( channel_id, data_buffer );
 	}
 
-	private static ChannelCloseIMessage decodeChannelClose( IoBuffer buffer ) {
+	private static ChannelCloseIMessage decodeChannelClose( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -675,7 +658,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		return new ChannelCloseIMessage( channel_id );
 	}
 
-	private static PingIMessage decodePing( IoBuffer buffer ) {
+	private static PingIMessage decodePing( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -685,7 +668,7 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 		return new PingIMessage( seq_number );
 	}
 
-	private static PingResponseIMessage decodePingResponse( IoBuffer buffer ) {
+	private static PingResponseIMessage decodePingResponse( @Nonnull DataSource buffer ) {
 		// VERSION
 		buffer.get();
 
@@ -773,12 +756,28 @@ class IMessageDecoder extends CumulativeProtocolDecoder {
 //	}
 
 
-	static int getDualShortLength( IoBuffer buffer ) {
+	// Visible for testing
+	static int getDualShortLength( @Nonnull DataSource buffer ) {
 		short s_length = buffer.getShort();
 		if ( s_length < 0 ) {
 			short low_short = buffer.getShort();
 			return ( ( s_length & 0x7FFF ) << 16 ) | ( low_short & 0xFFFF );
 		}
 		else return s_length & 0xFFFF;
+	}
+
+
+
+	private static Object readObject( DataSource source )
+		throws IOException, ClassNotFoundException {
+
+		// Hint to StarLight Common's IOKit that we're doing a bunch of deserialization
+		IOKit.DESERIALIZATION_HINT.set( Boolean.TRUE );
+		try ( ObjectInputStream in = new ObjectInputStream( source.inputStream() ) ) {
+			return in.readObject();
+		}
+		finally {
+			IOKit.DESERIALIZATION_HINT.remove();
+		}
 	}
 }

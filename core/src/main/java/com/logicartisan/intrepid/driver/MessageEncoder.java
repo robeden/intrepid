@@ -23,18 +23,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.logicartisan.intrepid.driver.mina;
+package com.logicartisan.intrepid.driver;
 
 import com.logicartisan.intrepid.message.*;
-import org.apache.mina.core.buffer.BufferDataException;
-import org.apache.mina.core.buffer.IoBuffer;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.filter.codec.ProtocolEncoder;
-import org.apache.mina.filter.codec.ProtocolEncoderOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 
@@ -42,12 +37,7 @@ import java.nio.charset.CharsetEncoder;
 /**
  *
  */
-class IMessageEncoder implements ProtocolEncoder {
-	private static final Logger LOG = LoggerFactory.getLogger( IMessageEncoder.class );
-
-	private static final int DEFAULT_BUFFER_SIZE =
-		Integer.getInteger( "intrepid.mina.encoder.buffer_size", 1024 * 1024 ).intValue();
-
+public final class MessageEncoder  {
 	private static final CharsetEncoder STRING_ENCODER =
 		Charset.forName( "UTF-16" ).newEncoder();
 
@@ -55,140 +45,106 @@ class IMessageEncoder implements ProtocolEncoder {
 	private static final int DUAL_SHORT_FLAG = 0x8000;
 
 
-	@Override
-	public void encode( IoSession session, Object message_obj, ProtocolEncoderOutput out )
-		throws Exception {
 
-		IMessage message = ( IMessage ) message_obj;
+	/**
+	 * Encode the data necessary to write the message. The first piece of the encoding
+	 * is the content length, which is a big tricky because it's not known prior to
+	 * writing. To make this work in a generic way with driver implementation, the data
+	 * is written to two buffers: the length and data. Once the encoding is done, the
+	 * complete message is written by writing the length buffer, followed by the data
+	 * buffer.
+	 *
+	 * @param length_sink     Sink to which the first part of the message will be
+	 *                        written. No more than an int worth of data will be written.
+	 * @param data_sink       Buffer to which the majority of the message data will be
+	 *                        written (could be large).
+	 */
+	public static void encode( IMessage message, DataSink length_sink,
+		DataSink data_sink ) throws Exception {
 
-		// TODO: this auto-growing IOBuffer should be replaced with a pool of fixed size
-		//       buffers.
-		IoBuffer buffer = IoBuffer.allocate(  1 << 18 ); // 256KB
-		buffer.setAutoExpand( true );
-
-		encode( message, buffer );
-
-		out.write( buffer );
-	}
-
-
-	static void encode( IMessage message, IoBuffer buffer ) throws Exception {
-		// LENGTH
-		// NOTE: The length will either be a short or an int. This causes issues since
-		//       we need to pre-allocate the size in the buffer. So, what is done is to
-		//       allocate the space for the int. Then we'll set the starting position
-		//       before we write to the "0" position if we need the full int or the "1"
-		//       position if we only need a byte.
-		buffer.putInt( 0 );
-
-		int position_after_length = buffer.position();
-
+		final DataSink.Tracking tracking_sink = data_sink.trackWritten();
+			
 		// TYPE
-		buffer.put( message.getType().getID() );
+		tracking_sink.put( message.getType().getID() );
 
-		try {
-			switch ( message.getType() ) {
-				case SESSION_INIT:
-					encodeSessionInit( (SessionInitIMessage) message, buffer );
-					break;
+		switch ( message.getType() ) {
+			case SESSION_INIT:
+				encodeSessionInit( ( SessionInitIMessage ) message, tracking_sink );
+				break;
 
-				case SESSION_INIT_RESPONSE:
-					encodeSessionInitResponse( (SessionInitResponseIMessage) message,
-						buffer );
-					break;
+			case SESSION_INIT_RESPONSE:
+				encodeSessionInitResponse( ( SessionInitResponseIMessage ) message,
+					tracking_sink );
+				break;
 
-				case SESSION_TOKEN_CHANGE:
-					encodeSesssionTokenChange( (SessionTokenChangeIMessage) message,
-						buffer );
-					break;
+			case SESSION_TOKEN_CHANGE:
+				encodeSesssionTokenChange( ( SessionTokenChangeIMessage ) message,
+					tracking_sink );
+				break;
 
-				case SESSION_CLOSE:
-					encodeSessionClose( (SessionCloseIMessage) message, buffer );
-					break;
+			case SESSION_CLOSE:
+				encodeSessionClose( ( SessionCloseIMessage ) message, tracking_sink );
+				break;
 
-				case INVOKE:
-					encodeInvoke( ( InvokeIMessage ) message, buffer );
-					break;
+			case INVOKE:
+				encodeInvoke( ( InvokeIMessage ) message, tracking_sink );
+				break;
 
-				case INVOKE_RETURN:
-					encodeInvokeReturn( ( InvokeReturnIMessage ) message, buffer );
-					break;
+			case INVOKE_RETURN:
+				encodeInvokeReturn( ( InvokeReturnIMessage ) message, tracking_sink );
+				break;
 
-				case INVOKE_INTERRUPT:
-					encodeInvokeInterrupt( ( InvokeInterruptIMessage ) message, buffer );
-					break;
+			case INVOKE_INTERRUPT:
+				encodeInvokeInterrupt( ( InvokeInterruptIMessage ) message, tracking_sink );
+				break;
 
-				case INVOKE_ACK:
-					encodeInvokeAck( ( InvokeAckIMessage ) message, buffer );
-					break;
+			case INVOKE_ACK:
+				encodeInvokeAck( ( InvokeAckIMessage ) message, tracking_sink );
+				break;
 
-				case LEASE:
-					encodeLease( ( LeaseIMessage ) message, buffer );
-					break;
+			case LEASE:
+				encodeLease( ( LeaseIMessage ) message, tracking_sink );
+				break;
 
-				case LEASE_RELEASE:
-					encodeLeaseRelease( ( LeaseReleaseIMessage ) message, buffer );
-					break;
+			case LEASE_RELEASE:
+				encodeLeaseRelease( ( LeaseReleaseIMessage ) message, tracking_sink );
+				break;
 
-				case CHANNEL_INIT:
-					encodeChannelInit( ( ChannelInitIMessage ) message, buffer );
-					break;
+			case CHANNEL_INIT:
+				encodeChannelInit( ( ChannelInitIMessage ) message, tracking_sink );
+				break;
 
-				case CHANNEL_INIT_RESPONSE:
-					encodeChannelInitResponse(
-						( ChannelInitResponseIMessage ) message, buffer );
-					break;
+			case CHANNEL_INIT_RESPONSE:
+				encodeChannelInitResponse(
+					( ChannelInitResponseIMessage ) message, tracking_sink );
+				break;
 
-				case CHANNEL_DATA:
-					encodeChannelData( ( ChannelDataIMessage ) message, buffer );
-					break;
+			case CHANNEL_DATA:
+				encodeChannelData( ( ChannelDataIMessage ) message, tracking_sink );
+				break;
 
-				case CHANNEL_CLOSE:
-					encodeChannelClose( ( ChannelCloseIMessage ) message, buffer );
-					break;
+			case CHANNEL_CLOSE:
+				encodeChannelClose( ( ChannelCloseIMessage ) message, tracking_sink );
+				break;
 
-				case PING:
-					encodePing( ( PingIMessage ) message, buffer );
-					break;
+			case PING:
+				encodePing( ( PingIMessage ) message, tracking_sink );
+				break;
 
-				case PING_RESPONSE:
-					encodePingResponse( ( PingResponseIMessage ) message, buffer );
-					break;
+			case PING_RESPONSE:
+				encodePingResponse( ( PingResponseIMessage ) message, tracking_sink );
+				break;
 
-				default:
-					throw new UnsupportedOperationException( "Unknown message type: " +
-						message );
-			}
-		}
-		catch( BufferDataException ex ) {
-			if ( ex.getCause() != null && ex.getCause() instanceof Exception ) {
-				throw ( Exception ) ex.getCause();
-			}
-			else throw ex;
+			default:
+				throw new UnsupportedOperationException( "Unknown message type: " +
+					message );
 		}
 
-		int length = buffer.position() - position_after_length;
-
-		LOG.trace( ">>> BEFORE dual short: {}", buffer );
-		boolean uses_int = putDualShortLength( buffer, length, 0 );
-		LOG.trace( ">>> AFTER dual short: {}", buffer );
-
-		buffer.flip();
-		LOG.trace( ">>> AFTER flip: {}", buffer );
-		if ( !uses_int ) buffer.position( 2 );	// skip the first short
-		LOG.trace( ">>> AFTER dual short position adjust: {}", buffer );
-
-		if ( LOG.isTraceEnabled() ) {
-			LOG.trace( "*** Encoder writing: ", buffer.getHexDump() );
-		}
+		putDualShortLength( length_sink, tracking_sink.bytesWritten() );
 	}
 
 
-	@Override
-	public void dispose( IoSession session ) throws Exception {}
-
-
-	private static void encodeInvoke( InvokeIMessage message, IoBuffer buffer )
+	private static void encodeInvoke( InvokeIMessage message, DataSink buffer )
 		throws Exception {
 
 		// VERSION
@@ -216,48 +172,24 @@ class IMessageEncoder implements ProtocolEncoder {
 		if ( args != null ) {
 			buffer.put( ( byte ) args.length );
 			for ( Object arg : args ) {
-				IoBufferSerialization.putObject( arg, buffer );
-//				writeObject( arg, buffer, message.getCallID() );
+				putObject( arg, buffer );
 			}
 		}
 
 		// PERSISTENT NAME
 		if ( message.getPersistentName() != null ) {
-			if ( LOG.isDebugEnabled() ) {
-				LOG.trace( "(Out) Position before persistent name: {}",
-					Integer.valueOf( buffer.position() ) );
-				LOG.trace( "  Persistent name: {}", message.getPersistentName() );
-			}
-
-			buffer.putString( message.getPersistentName(), STRING_ENCODER );
-
-			// NULL terminate string!!
-			// NOTE: Since UTF-16 is 2 bytes, need to insert 2 bytes properly terminate
-			buffer.putShort( ( short ) 0x00 );
-
-			if ( LOG.isTraceEnabled() ) {
-				LOG.trace( "(Out) Position after persistent name: {}",
-					Integer.valueOf( buffer.position() ) );
-			}
+			buffer.putString( message.getPersistentName(), STRING_ENCODER, c -> {} );
 		}
 
 		// USER CONTEXT
 		if ( message.getUserContext() != null ) {
-			LOG.trace( "(Out) Position before user context: {}",
-				Integer.valueOf( buffer.position() ) );
-
-			IoBufferSerialization.putObject( message.getUserContext(), buffer );
-
-			if ( LOG.isTraceEnabled() ) {
-				LOG.trace( "(Out) Position after user context: {}",
-					Integer.valueOf( buffer.position() ) );
-			}
+			putObject( message.getUserContext(), buffer );
 		}
 	}
 
 
 	private static void encodeInvokeReturn( InvokeReturnIMessage message,
-		IoBuffer buffer ) throws Exception {
+		DataSink buffer ) throws Exception {
 
 		// VERSION
 		buffer.put( ( byte ) 0 );
@@ -285,7 +217,7 @@ class IMessageEncoder implements ProtocolEncoder {
 
 		// VALUE
 		if ( value != null ) {
-			IoBufferSerialization.putObject( value, buffer );
+			putObject( value, buffer );
 //			writeObject( value, buffer, message.getCallID() );
 		}
 
@@ -302,7 +234,7 @@ class IMessageEncoder implements ProtocolEncoder {
 
 
 	private static void encodeInvokeInterrupt( InvokeInterruptIMessage message,
-		IoBuffer buffer ) {
+		DataSink buffer ) {
 
 		// VERSION
 		buffer.put( ( byte ) 0 );
@@ -312,7 +244,7 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 
-	private static void encodeInvokeAck( InvokeAckIMessage message, IoBuffer buffer ) {
+	private static void encodeInvokeAck( InvokeAckIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -321,7 +253,7 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 
-	private static void encodeSessionInit( SessionInitIMessage message, IoBuffer buffer )
+	private static void encodeSessionInit( SessionInitIMessage message, DataSink buffer )
 		throws IOException {
 
 		// VERSION
@@ -334,13 +266,13 @@ class IMessageEncoder implements ProtocolEncoder {
 		buffer.put( message.getPrefProtocolVersion() );
 
 		// VMID
-		IoBufferSerialization.putObject( message.getInitiatorVMID(), buffer );
+		putObject( message.getInitiatorVMID(), buffer );
 
 		// CONNECTION ARGS
 		if ( message.getConnectionArgs() == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
-			IoBufferSerialization.putObject( message.getConnectionArgs(), buffer );
+			putObject( message.getConnectionArgs(), buffer );
 		}
 
 		// SERVER PORT
@@ -354,7 +286,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
-			IoBufferSerialization.putObject( message.getReconnectToken(), buffer );
+			putObject( message.getReconnectToken(), buffer );
 		}
 
 		// REQUESTED ACK RATE
@@ -363,7 +295,7 @@ class IMessageEncoder implements ProtocolEncoder {
 
 
 	private static void encodeSessionInitResponse( SessionInitResponseIMessage message,
-		IoBuffer buffer ) throws IOException {
+		DataSink buffer ) throws IOException {
 
 		// VERSION
 		buffer.put( ( byte ) 3 );
@@ -372,7 +304,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		buffer.put( message.getProtocolVersion() );
 
 		// VMID
-		IoBufferSerialization.putObject( message.getResponderVMID(), buffer );
+		putObject( message.getResponderVMID(), buffer );
 
 		// SERVER PORT
 		if ( message.getResponderServerPort() == null ) buffer.put( ( byte ) 0 );
@@ -385,7 +317,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
-			IoBufferSerialization.putObject( message.getReconnectToken(), buffer );
+			putObject( message.getReconnectToken(), buffer );
 		}
 
 		// ACK RATE
@@ -394,7 +326,7 @@ class IMessageEncoder implements ProtocolEncoder {
 
 
 	private static void encodeSesssionTokenChange( SessionTokenChangeIMessage message,
-		IoBuffer buffer ) throws IOException {
+		DataSink buffer ) throws IOException {
 
 		// VERSION
 		buffer.put( ( byte ) 0 );
@@ -403,12 +335,12 @@ class IMessageEncoder implements ProtocolEncoder {
 		if ( message.getNewReconnectToken() == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
-			IoBufferSerialization.putObject( message.getNewReconnectToken(), buffer );
+			putObject( message.getNewReconnectToken(), buffer );
 		}
 	}
 
 
-	private static void encodeSessionClose( SessionCloseIMessage message, IoBuffer buffer )
+	private static void encodeSessionClose( SessionCloseIMessage message, DataSink buffer )
 		throws IOException {
 		// VERSION
 		buffer.put( ( byte ) 0 );
@@ -417,7 +349,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		if ( message.getReason() == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
-			IoBufferSerialization.putObject( message.getReason(), buffer );
+			putObject( message.getReason(), buffer );
 		}
 
 		// AUTH FAILURE
@@ -425,7 +357,7 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 
-	private static void encodeLease( LeaseIMessage message, IoBuffer buffer ) {
+	private static void encodeLease( LeaseIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -438,7 +370,7 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 
-	private static void encodeLeaseRelease( LeaseReleaseIMessage message, IoBuffer buffer ) {
+	private static void encodeLeaseRelease( LeaseReleaseIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -451,7 +383,7 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 
-	static void encodeChannelInit( ChannelInitIMessage message, IoBuffer buffer )
+	static void encodeChannelInit( ChannelInitIMessage message, DataSink buffer )
 		throws IOException {
 		
 		// VERSION
@@ -464,7 +396,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		if ( message.getAttachment() == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
-			IoBufferSerialization.putObject( message.getAttachment(), buffer );
+			putObject( message.getAttachment(), buffer );
 		}
 		
 		// CHANNEL ID
@@ -472,7 +404,7 @@ class IMessageEncoder implements ProtocolEncoder {
 	}
 
 	static void encodeChannelInitResponse( ChannelInitResponseIMessage message,
-		IoBuffer buffer ) throws IOException {
+		DataSink buffer ) throws IOException {
 
 		// VERSION
 		buffer.put( ( byte ) 0 );
@@ -488,7 +420,7 @@ class IMessageEncoder implements ProtocolEncoder {
 			if ( message.getRejectReason() == null ) buffer.put( ( byte ) 0 );
 			else {
 				buffer.put( ( byte ) 1 );
-				IoBufferSerialization.putObject( message.getRejectReason(), buffer );
+				putObject( message.getRejectReason(), buffer );
 			}
 		}
 		else {
@@ -496,7 +428,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		}
 	}
 
-	private static void encodeChannelData( ChannelDataIMessage message, IoBuffer buffer ) {
+	private static void encodeChannelData( ChannelDataIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -511,14 +443,21 @@ class IMessageEncoder implements ProtocolEncoder {
 		}
 		buffer.putInt( length );
 
-		buffer.expand( length );
+		buffer.prepareForData( length );
 
+		byte[] copy_buffer = new byte[ 102400 ];
 		for( int i = 0; i < buffer_count; i++ ) {
-			buffer.put( message.getBuffer( i ) );
+			ByteBuffer nio_buffer = message.getBuffer( i );
+
+			while( nio_buffer.hasRemaining() ) {
+				int to_read = Math.min( copy_buffer.length, nio_buffer.remaining() );
+				nio_buffer.get( copy_buffer, 0, to_read );
+				buffer.put( copy_buffer, 0, to_read );
+			}
 		}
 	}
 
-	private static void encodeChannelClose( ChannelCloseIMessage message, IoBuffer buffer ) {
+	private static void encodeChannelClose( ChannelCloseIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -526,7 +465,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		buffer.putShort( message.getChannelID() );
 	}
 
-	private static void encodePing( PingIMessage message, IoBuffer buffer ) {
+	private static void encodePing( PingIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -534,7 +473,7 @@ class IMessageEncoder implements ProtocolEncoder {
 		buffer.putShort( message.getSequenceNumber() );
 	}
 
-	private static void encodePingResponse( PingResponseIMessage message, IoBuffer buffer ) {
+	private static void encodePingResponse( PingResponseIMessage message, DataSink buffer ) {
 		// VERSION
 		buffer.put( ( byte ) 0 );
 
@@ -631,18 +570,24 @@ class IMessageEncoder implements ProtocolEncoder {
 	/**
 	 * @return		True if it's using a full int
 	 */
-	static boolean putDualShortLength( IoBuffer buffer, int length, int index ) {
+	static boolean putDualShortLength( DataSink buffer, int length ) {
 		assert length >= 0 : "Invalid length: " + length;
 
 		if ( length > MAX_SINGLE_SHORT_LENGTH ) {
-			buffer.putShort( index, ( short ) ( ( length >>> 16 ) | DUAL_SHORT_FLAG ) );
-			buffer.putShort( index + 2, ( short ) length );
+			buffer.putShort( ( short ) ( ( length >>> 16 ) | DUAL_SHORT_FLAG ) );
+			buffer.putShort( ( short ) length );
 			return true;
 		}
 		else {
-			buffer.putShort( index, ( byte ) 0 );	// doesn't matter
-			buffer.putShort( index + 2, ( short ) length );
+			buffer.putShort( ( short ) length );
 			return false;
+		}
+	}
+
+
+	private static void putObject( Object object, DataSink buffer ) throws IOException {
+		try ( ObjectOutputStream out = new ObjectOutputStream( buffer.outputStream() ) ) {
+			out.writeUnshared( object );
 		}
 	}
 }

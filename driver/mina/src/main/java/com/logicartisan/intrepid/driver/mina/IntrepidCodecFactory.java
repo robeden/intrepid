@@ -37,11 +37,11 @@ import org.apache.mina.filter.codec.ProtocolEncoder;
  */
 class IntrepidCodecFactory implements ProtocolCodecFactory {
 	private final ProtocolDecoder DECODER;
-	private final ProtocolEncoder ENCODER = new IMessageEncoder();
+	private final ProtocolEncoder ENCODER = new MINAIMessageEncoder();
 
 
 	IntrepidCodecFactory( VMID vmid,ThreadLocal<VMID> deserialization_context_vmid ) {
-		DECODER = new IMessageDecoder( vmid, deserialization_context_vmid );
+		DECODER = new MINAIMessageDecoder( vmid, deserialization_context_vmid );
 	}
 
 
