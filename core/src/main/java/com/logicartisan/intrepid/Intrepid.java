@@ -26,15 +26,14 @@
 package com.logicartisan.intrepid;
 
 import com.logicartisan.common.core.listeners.ListenerSupport;
-import com.logicartisan.common.core.listeners.ListenerSupportFactory;
 import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.intrepid.auth.AuthenticationHandler;
 import com.logicartisan.intrepid.auth.ConnectionArgs;
+import com.logicartisan.intrepid.driver.IntrepidDriver;
 import com.logicartisan.intrepid.exception.ChannelRejectedException;
 import com.logicartisan.intrepid.exception.ConnectionFailureException;
 import com.logicartisan.intrepid.exception.IntrepidRuntimeException;
-import com.logicartisan.intrepid.driver.IntrepidDriver;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -64,14 +63,12 @@ public class Intrepid {
 		Long.getLong( "intrepid.connect.timeout", 10000 ).longValue();
 
 	private static final Lock LOCAL_INSTANCE_MAP_LOCK = new ReentrantLock();
-	private static final Map<VMID,Intrepid> LOCAL_INSTANCE_MAP =
-		new HashMap<VMID,Intrepid>();
+	private static final Map<VMID,Intrepid> LOCAL_INSTANCE_MAP = new HashMap<>();
 
-	private static final ThreadLocal<Intrepid> THREAD_INSTANCE =
-		new InheritableThreadLocal<Intrepid>();
+	private static final ThreadLocal<Intrepid> THREAD_INSTANCE = new InheritableThreadLocal<>();
 
-	private static final ListenerSupport<IntrepidInstanceListener,Void> INSTANCE_LISTENERS =
-		ListenerSupportFactory.create( IntrepidInstanceListener.class, true );
+	private static final ListenerSupport<IntrepidInstanceListener,?> INSTANCE_LISTENERS =
+		ListenerSupport.forType( IntrepidInstanceListener.class ).asynchronous().build();
 
 	/** This is a hook for testing while allows the "inter-instance bridging" provided
 	 *  by {@link #findLocalInstance(VMID,boolean)} to be disabled when trying to shortcut.
@@ -87,8 +84,8 @@ public class Intrepid {
 	private final LocalCallHandler local_handler;
 	private final RemoteCallHandler remote_handler;
 
-	private final ListenerSupport<ConnectionListener,Void> connection_listeners;
-	private final ListenerSupport<PerformanceListener,Void> performance_listeners;
+	private final ListenerSupport<ConnectionListener,?> connection_listeners;
+	private final ListenerSupport<PerformanceListener,?> performance_listeners;
 
 	private final PerformanceControl performance_control;
 
@@ -153,14 +150,14 @@ public class Intrepid {
 			}
 		}
 
-		ListenerSupport<ConnectionListener,Void> connection_listeners =
-			ListenerSupportFactory.create( ConnectionListener.class, false );
+		ListenerSupport<ConnectionListener,?> connection_listeners =
+			ListenerSupport.forType( ConnectionListener.class ).build();
 		if ( setup.getConnectionListener() != null ) {
 			connection_listeners.add( setup.getConnectionListener() );
 		}
 
-		ListenerSupport<PerformanceListener,Void> performance_listeners =
-			ListenerSupportFactory.create( PerformanceListener.class, false );
+		ListenerSupport<PerformanceListener,?> performance_listeners =
+			ListenerSupport.forType( PerformanceListener.class ).build();
 		final PerformanceListener perf_listener = setup.getPerformanceListener();
 		if ( perf_listener != null ) {
 			performance_listeners.add( perf_listener );
@@ -338,8 +335,8 @@ public class Intrepid {
 
 	private Intrepid( IntrepidDriver spi, VMID vmid, LocalCallHandler local_handler,
 		RemoteCallHandler remote_handler,
-		ListenerSupport<ConnectionListener,Void> connection_listeners,
-		ListenerSupport<PerformanceListener,Void> performance_listeners ) {
+		ListenerSupport<ConnectionListener,?> connection_listeners,
+		ListenerSupport<PerformanceListener,?> performance_listeners ) {
 
 		this.spi = spi;
 		this.vmid = vmid;
