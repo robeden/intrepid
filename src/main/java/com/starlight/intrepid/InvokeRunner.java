@@ -208,7 +208,7 @@ class InvokeRunner implements Runnable {
 
 		// Try to wrap the object in a proxy
 		try {
-			return local_handler.createProxy( arg, null );
+			return local_handler.createProxy( arg, null, cl -> true );
 		}
 		catch( IllegalProxyDelegateException ex ) {
 			// skip the switch-out

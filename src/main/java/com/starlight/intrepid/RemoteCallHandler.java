@@ -26,7 +26,6 @@
 package com.starlight.intrepid;
 
 import com.starlight.NotNull;
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.auth.*;
 import com.starlight.intrepid.exception.*;
 import com.starlight.intrepid.message.*;
@@ -59,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -118,30 +118,30 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 	private final Lock call_wait_map_lock = new ReentrantLock();
 	private final TIntObjectMap<CallInfoAndAckControl> call_wait_map =
-		new TIntObjectHashMap<CallInfoAndAckControl>();
+		new TIntObjectHashMap<>();
 
 	// Map of VMID to active calls
-	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<VMID,TIntSet>();
+	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<>();
 
 
 	private final Lock ping_wait_map_lock = new ReentrantLock();
 	private final TShortObjectHashMap<ObjectSlot<PingResponseIMessage>> ping_wait_map =
-		new TShortObjectHashMap<ObjectSlot<PingResponseIMessage>>();
+		new TShortObjectHashMap<>();
 
 
 	private final Lock channel_map_lock = new ReentrantLock();
 	private final TIntObjectMap<ObjectSlot<ChannelInitResponseIMessage>> channel_init_wait_map =
-		new TIntObjectHashMap<ObjectSlot<ChannelInitResponseIMessage>>();
+		new TIntObjectHashMap<>();
 
 	// Map of active virtual channels
 	private final Map<VMID,TShortObjectMap<VirtualByteChannel>> channel_map =
-		new HashMap<VMID,TShortObjectMap<VirtualByteChannel>>();
+		new HashMap<>();
 
 	private final AtomicInteger channel_id_counter = new AtomicInteger();
 
 
 	private final TIntObjectMap<InvokeRunner> runner_map =
-		new TIntObjectHashMap<InvokeRunner>();
+		new TIntObjectHashMap<>();
 	private final Lock runner_map_lock = new ReentrantLock();
 
 	RemoteCallHandler( IntrepidSPI spi, AuthenticationHandler auth_handler,
@@ -169,7 +169,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		int call_id = call_id_counter.getAndIncrement();
 
 		final ObjectSlot<InvokeReturnIMessage> return_slot =
-			new ObjectSlot<InvokeReturnIMessage>();
+			new ObjectSlot<>();
 
 		// Make sure args are serializable and wrap in proxy if they're not
 		if ( args != null && args.length > 0 ) checkArgsForSerialization( args );
@@ -199,11 +199,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		try {
 			call_wait_map.put( call_id, call_info );
 
-			TIntSet call_id_set = vmid_call_wait_map.get( vmid );
-			if ( call_id_set == null ) {
-				call_id_set = new TIntHashSet();
-				vmid_call_wait_map.put( vmid, call_id_set );
-			}
+			TIntSet call_id_set =
+				vmid_call_wait_map.computeIfAbsent( vmid, v -> new TIntHashSet() );
 			call_id_set.add( call_id );
 		}
 		finally {
@@ -372,7 +369,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		final int call_id = call_id_counter.getAndIncrement();
 
 		ObjectSlot<ChannelInitResponseIMessage> response_slot =
-			new ObjectSlot<ChannelInitResponseIMessage>();
+			new ObjectSlot<>();
 		boolean successful = false;
 		short channel_id = -1;
 		try {
@@ -384,13 +381,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 				// Prepare for the response with the call ID
 				channel_init_wait_map.put( call_id, response_slot );
 
-				
+
 				TShortObjectMap<VirtualByteChannel> channel_id_map =
-					channel_map.get( destination );
-				if ( channel_id_map == null ) {
-					channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
-					channel_map.put( destination, channel_id_map );
-				}
+					channel_map.computeIfAbsent( destination,
+					k -> new TShortObjectHashMap<>() );
 
 				// Determine a free channel ID	
 				while( true ) {
@@ -526,7 +520,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		short id = ( short ) call_id_counter.getAndIncrement();
 
 		ObjectSlot<PingResponseIMessage> response_slot =
-			new ObjectSlot<PingResponseIMessage>();
+			new ObjectSlot<>();
 
 		ping_wait_map_lock.lock();
 		try {
@@ -1015,11 +1009,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		channel_map_lock.lock();
 		try {
-			TShortObjectMap<VirtualByteChannel> channel_id_map = channel_map.get( vmid );
-			if ( channel_id_map == null ) {
-				channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
-				channel_map.put( vmid, channel_id_map );
-			}
+			TShortObjectMap<VirtualByteChannel> channel_id_map =
+				channel_map.computeIfAbsent( vmid, k -> new TShortObjectHashMap<>() );
 
 			channel = new VirtualByteChannel( vmid, message.getChannelID(), this );
 
@@ -1181,7 +1172,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			// Try to wrap the object in a proxy
 			try {
-				Proxy proxy = local_handler.createProxy( arg, null );
+				Proxy proxy = local_handler.createProxy( arg, null, cl -> true );
 				if ( array_type != null && proxy != null &&
 					array_type.isAssignableFrom( proxy.getClass() ) ) {
 					
@@ -1232,7 +1223,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 
 	private static class InvokeCloseFlag extends InvokeReturnIMessage {
-		public InvokeCloseFlag() {
+		InvokeCloseFlag() {
 			//noinspection ThrowableResultOfMethodCallIgnored
 			super( -1, buildException(), true, null, null );
 		}
@@ -1256,7 +1247,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	 */
 	private static class InvokeNotAckedFlag extends InvokeReturnIMessage {
 
-		public InvokeNotAckedFlag( boolean received_any_acks ) {
+		InvokeNotAckedFlag( boolean received_any_acks ) {
 			//noinspection ThrowableResultOfMethodCallIgnored
 			super( -1, buildException( received_any_acks ), true, null, null );
 		}
@@ -1351,10 +1342,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		private CallInfoAndAckControl( @NotNull ScheduledExecutor executor,
 			@NotNull ObjectSlot<InvokeReturnIMessage> return_slot ) {
 
-			ValidationKit.checkNonnull( return_slot, "return_slot" );
-
-			this.executor = executor;
-			this.return_slot = return_slot;
+			this.executor = Objects.requireNonNull( executor );
+			this.return_slot = Objects.requireNonNull( return_slot );
 
 			// Default, should be overridden
 			setSessionAckRateSec( REQUEST_INVOKE_ACK_RATE_SEC );
@@ -1403,7 +1392,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			ack_handler_lock.lock();
 			try {
-				return_slot.compareAndSet( null, flag );
+				return_slot.compareAndSet( ( InvokeReturnIMessage ) null, flag );
 				aborted_by_ack_fail = true;
 				ack_expect_future = null;
 			}
@@ -1413,7 +1402,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		}
 
 
-		public void dispose() {
+		void dispose() {
 			final ScheduledFuture<?> future = ack_expect_future;
 			if ( future != null ) future.cancel( false );
 		}

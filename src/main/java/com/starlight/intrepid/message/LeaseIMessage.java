@@ -27,8 +27,6 @@
 
 package com.starlight.intrepid.message;
 
-import com.starlight.ValidationKit;
-
 import java.util.Arrays;
 
 
@@ -39,9 +37,7 @@ public class LeaseIMessage implements IMessage {
 	private final int[] oids;
 
 	public LeaseIMessage( int... oids ) {
-		ValidationKit.checkNonnull( oids, "oids" );
-
-		this.oids = oids;
+		this.oids = Arrays.copyOf( oids, oids.length );
 	}
 
 	@Override

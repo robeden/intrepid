@@ -55,7 +55,7 @@ public class LocalCallHandlerTest extends TestCase {
 
 	public void testFindProxyInterfaces() {
 		try {
-			Class[] c = LocalCallHandler.findProxyInterfaces( Object.class );
+			Class[] c = LocalCallHandler.findProxyInterfaces( Object.class, cl -> true );
 			fail( "Shouldn't have found interfaces: " + Arrays.toString( c ) );
 		}
 		catch( IllegalProxyDelegateException ex ) {
@@ -63,8 +63,8 @@ public class LocalCallHandlerTest extends TestCase {
 		}
 
 		try {
-			Class[] c = LocalCallHandler.findProxyInterfaces( String.class );
-			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+			Class[] c = LocalCallHandler.findProxyInterfaces( String.class, cl -> true );
+			Set<Class> class_set = new HashSet<>( Arrays.asList( c ) );
 
 			assertTrue( class_set.contains( Serializable.class ) );
 			assertTrue( class_set.contains( Comparable.class ) );
@@ -74,9 +74,26 @@ public class LocalCallHandlerTest extends TestCase {
 			fail( "Should be a valid proxy: " + ex );
 		}
 
+		// With filter for classes with names starting with "C"
 		try {
-			Class[] c = LocalCallHandler.findProxyInterfaces( ConcurrentHashMap.class );
-			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+			Class[] c = LocalCallHandler.findProxyInterfaces( String.class,
+				cl -> !cl.equals( CharSequence.class ) );
+			Set<Class> class_set = new HashSet<>( Arrays.asList( c ) );
+
+			// Reminder: proxies are always serializable
+			assertTrue( class_set.contains( Serializable.class ) );
+
+			assertTrue( class_set.contains( Comparable.class ) );
+			assertFalse( class_set.contains( CharSequence.class ) );    // EXCLUDED
+		}
+		catch( IllegalProxyDelegateException ex ) {
+			fail( "Should be a valid proxy: " + ex );
+		}
+
+		try {
+			Class[] c = LocalCallHandler.findProxyInterfaces(
+				ConcurrentHashMap.class, cl -> true );
+			Set<Class> class_set = new HashSet<>( Arrays.asList( c ) );
 
 			assertTrue( class_set.contains( Serializable.class ) );
 			assertTrue( class_set.contains( Map.class ) );

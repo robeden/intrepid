@@ -27,7 +27,6 @@ package com.starlight.intrepid.spi.mina;
 
 import com.starlight.IOKit;
 import com.starlight.NotNull;
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.ConnectionListener;
 import com.starlight.intrepid.PerformanceListener;
 import com.starlight.intrepid.VMID;
@@ -203,11 +202,8 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		PerformanceListener performance_listener, UnitTestHook unit_test_hook )
 		throws IOException {
 
-		ValidationKit.checkNonnull( message_handler, "message_handler" );
-		ValidationKit.checkNonnull( connection_listener, "connection_listener" );
-
-		this.message_handler = message_handler;
-		this.connection_listener = connection_listener;
+		this.message_handler = Objects.requireNonNull( message_handler );
+		this.connection_listener = Objects.requireNonNull( connection_listener );
 		this.performance_listener = performance_listener;
 		this.unit_test_hook = unit_test_hook;
 		this.thread_pool = thread_pool;
@@ -309,7 +305,7 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 	/**
 	 * Local address for the server socket, if applicable.
 	 */
-	public InetSocketAddress getServerAddress() {
+	InetSocketAddress getServerAddress() {
 		if ( acceptor == null ) return null;
 		return acceptor.getLocalAddress();
 	}
@@ -378,7 +374,9 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
 		throws IOException {
 
-		ValidationKit.checkGreaterThan( port, 0, "port" );
+		if ( port <= 0 ) {
+			throw new IllegalArgumentException( "Invalid port: " + port );
+		}
 
 		if ( timeout_unit == null ) timeout_unit = TimeUnit.MILLISECONDS;
 
@@ -642,12 +640,9 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		try {
 			container = session_map.remove( vmid );
 
-			// Find any remaped VMID's that point to this one
+			// Find any remapped VMID's that point to this one
 			// TODO: possibly keep this around?
-			Iterator<VMID> it = vmid_remap.values().iterator();
-			while( it.hasNext() ) {
-				if ( it.next().equals( vmid ) ) it.remove();
-			}
+			vmid_remap.values().removeIf( v -> v.equals( vmid ) );
 
 			if ( container != null ) {
 				outbound_session_map.remove( container.getHostAndPort() );
@@ -1264,14 +1259,11 @@ public class MINAIntrepidSPI implements IntrepidSPI, IoHandler {
 		ReconnectRunnable( SessionContainer container, VMID original_vmid,
 			Object attachment, HostAndPort host_and_port, Serializable reconnect_token ) {
 
-			ValidationKit.checkNonnull( container, "container" );
-			ValidationKit.checkNonnull( host_and_port, "host_and_port" );
-
-			this.container = container;
+			this.container = Objects.requireNonNull( container );
 			this.original_vmid = original_vmid;
 			this.attachment = attachment;
 			this.reconnect_token = reconnect_token;
-			this.host_and_port = host_and_port;
+			this.host_and_port = Objects.requireNonNull( host_and_port );
 
 			// Random delay between 1 and 10 seconds for initial firing. This works around
 			// "oscillation" problems with single connection negotiation where each side
