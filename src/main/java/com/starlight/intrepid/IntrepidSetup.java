@@ -35,6 +35,7 @@ import com.starlight.thread.ScheduledExecutor;
 
 import java.net.InetAddress;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 
 /**
@@ -52,6 +53,7 @@ public class IntrepidSetup {
 	private PerformanceListener performance_listener;
 	private ChannelAcceptor channel_acceptor;
 	private PreInvocationValidator validator;
+	private Predicate<Class> proxy_class_filter = c -> true;	// default accepts all
 
 	private UnitTestHook unit_test_hook;
 
@@ -123,6 +125,18 @@ public class IntrepidSetup {
 		return this;
 	}
 
+	/**
+	 * A proxy class filter controls the classes that are allowed for inclusion in a proxy
+	 * via {@link Intrepid#createProxy(Object)} or via automatic creation. During
+	 * creation, eligible classes will be tested against the filter and included if the
+	 * filter indicates that they are acceptable. The default filter accepts all classes.
+	 */
+	public void proxyClassFilter( @NotNull Predicate<Class> filter ) {
+		this.proxy_class_filter = Objects.requireNonNull( filter );
+	}
+
+
+
 
 	public AuthenticationHandler getAuthHandler() {
 		return auth_handler;
@@ -162,6 +176,10 @@ public class IntrepidSetup {
 
 	PreInvocationValidator getPreInvocationValidator() {
 		return validator;
+	}
+
+	@NotNull Predicate<Class> getProxyClassFilter() {
+		return proxy_class_filter;
 	}
 
 

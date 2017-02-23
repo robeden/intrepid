@@ -25,7 +25,6 @@
 
 package com.starlight.intrepid;
 
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.exception.ObjectNotBoundException;
 import com.starlight.locale.FormattedTextResourceKey;
 import gnu.trove.map.TIntObjectMap;
@@ -33,6 +32,7 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -46,8 +46,8 @@ public class LocalRegistry implements Registry {
 	private final VMID vmid;
 
 	private final Lock map_lock = new ReentrantLock();
-	private final Map<String,Proxy> proxy_map = new HashMap<String, Proxy>();
-	private final TIntObjectMap<String> id_to_name_map = new TIntObjectHashMap<String>();
+	private final Map<String,Proxy> proxy_map = new HashMap<>();
+	private final TIntObjectMap<String> id_to_name_map = new TIntObjectHashMap<>();
 
 	private final Condition new_object_condition = map_lock.newCondition();
 
@@ -106,10 +106,9 @@ public class LocalRegistry implements Registry {
 	 * Bind an object in the registry.
 	 */
 	public void bind( String name, Object object ) {
-		ValidationKit.checkNonnull( name, "name" );
-		ValidationKit.checkNonnull( object, "object" );
+		Objects.requireNonNull( name );
 
-		final Object original_object = object;
+		final Object original_object = Objects.requireNonNull( object );
 
 		// Make sure it's a proxy
 		if ( !ProxyKit.isProxy( object ) ) {
@@ -144,6 +143,7 @@ public class LocalRegistry implements Registry {
 	/**
 	 * Remove an object from the registry.
 	 */
+	@SuppressWarnings( "WeakerAccess" )
 	public void unbind( String name ) {
 		Proxy proxy;
 
