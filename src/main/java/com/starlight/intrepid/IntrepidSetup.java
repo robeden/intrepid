@@ -42,6 +42,7 @@ import java.util.function.Predicate;
  * <a href="http://en.wikipedia.org/wiki/Builder_pattern">Builder</a> class to initialize
  * an Intrepid instance.
  */
+@SuppressWarnings( "WeakerAccess" )
 public class IntrepidSetup {
 	private IntrepidSPI spi;
 	private InetAddress server_address;
@@ -67,32 +68,32 @@ public class IntrepidSetup {
 		return this;
 	}
 
-	public IntrepidSetup serverAddress( InetAddress server_address ) {
+	public @NotNull IntrepidSetup serverAddress( InetAddress server_address ) {
 		this.server_address = server_address;
 		return this;
 	}
 
-	public IntrepidSetup serverPort( int server_port ) {
+	public @NotNull IntrepidSetup serverPort( int server_port ) {
 		this.server_port = Integer.valueOf( server_port );
 		return this;
 	}
 
-	public IntrepidSetup spi( IntrepidSPI spi ) {
+	public @NotNull IntrepidSetup spi( IntrepidSPI spi ) {
 		this.spi = spi;
 		return this;
 	}
 
-	public IntrepidSetup threadPool( ScheduledExecutor thread_pool ) {
+	public @NotNull IntrepidSetup threadPool( ScheduledExecutor thread_pool ) {
 		this.thread_pool = thread_pool;
 		return this;
 	}
 
-	public IntrepidSetup vmidHint( String vmid_hint ) {
+	public @NotNull IntrepidSetup vmidHint( String vmid_hint ) {
 		this.vmid_hint = vmid_hint;
 		return this;
 	}
 
-	public IntrepidSetup openServer() {
+	public @NotNull IntrepidSetup openServer() {
 		if ( this.auth_handler != null ) {
 			throw new IllegalStateException(
 				"An AuthenticationHandler is already installed." );
@@ -103,22 +104,22 @@ public class IntrepidSetup {
 		return this;
 	}
 
-	public IntrepidSetup connectionListener( ConnectionListener listener ) {
+	public @NotNull IntrepidSetup connectionListener( ConnectionListener listener ) {
 		this.connection_listener = listener;
 		return this;
 	}
 
-	public IntrepidSetup performanceListener( PerformanceListener listener ) {
+	public @NotNull IntrepidSetup performanceListener( PerformanceListener listener ) {
 		this.performance_listener = listener;
 		return this;
 	}
 
-	public IntrepidSetup channelAcceptor( ChannelAcceptor acceptor ) {
+	public @NotNull IntrepidSetup channelAcceptor( ChannelAcceptor acceptor ) {
 		this.channel_acceptor = acceptor;
 		return this;
 	}
 
-	public IntrepidSetup preInvocationValidator(
+	public @NotNull IntrepidSetup preInvocationValidator(
 		@NotNull PreInvocationValidator validator ) {
 
 		this.validator = Objects.requireNonNull( validator );
@@ -131,8 +132,9 @@ public class IntrepidSetup {
 	 * creation, eligible classes will be tested against the filter and included if the
 	 * filter indicates that they are acceptable. The default filter accepts all classes.
 	 */
-	public void proxyClassFilter( @NotNull Predicate<Class> filter ) {
+	public @NotNull IntrepidSetup proxyClassFilter( @NotNull Predicate<Class> filter ) {
 		this.proxy_class_filter = Objects.requireNonNull( filter );
+		return this;
 	}
 
 
