@@ -166,6 +166,19 @@ class RemoteCallHandler implements InboundMessageHandler {
 	public Object invoke( VMID vmid, int object_id, int method_id, String persistent_name,
 		Object[] args, Method method ) throws Throwable {
 
+		if ( vmid.equals( local_vmid ) ) {
+			throw new AssertionError(
+				"Logic error detected: should not be making call to local instance via " +
+				"RemoteCallHandler:" +
+				"\n  local_vmid: " + local_vmid +
+				"\n  [destination] vmid: " + vmid +
+				"\n  object_id: " + object_id +
+				"\n  method: " + method +
+				"\n  method_id: " + method_id +
+				"\n  persistent_name: " + persistent_name +
+				"\n  thread: " + Thread.currentThread() );
+		}
+
 		int call_id = call_id_counter.getAndIncrement();
 
 		final ObjectSlot<InvokeReturnIMessage> return_slot =
