@@ -166,6 +166,19 @@ class RemoteCallHandler implements InboundMessageHandler {
 	public Object invoke( VMID vmid, int object_id, int method_id, String persistent_name,
 		Object[] args, Method method ) throws Throwable {
 
+		if ( vmid.equals( local_vmid ) ) {
+			throw new AssertionError(
+				"Logic error detected: should not be making call to local instance via " +
+				"RemoteCallHandler:" +
+				"\n  local_vmid: " + local_vmid +
+				"\n  [destination] vmid: " + vmid +
+				"\n  object_id: " + object_id +
+				"\n  method: " + method +
+				"\n  method_id: " + method_id +
+				"\n  persistent_name: " + persistent_name +
+				"\n  thread: " + Thread.currentThread() );
+		}
+
 		int call_id = call_id_counter.getAndIncrement();
 
 		final ObjectSlot<InvokeReturnIMessage> return_slot =
@@ -289,12 +302,24 @@ class RemoteCallHandler implements InboundMessageHandler {
 					// Append the local call stack
 					final StackTraceElement[] local_stack = new Throwable().getStackTrace();
 					final StackTraceElement[] remote_stack = t.getStackTrace();
-					StackTraceElement[] new_stack = new StackTraceElement[ local_stack.length + remote_stack.length ];
-					System.arraycopy( remote_stack, 0, new_stack, 0, remote_stack.length );
-					new_stack[ remote_stack.length ] =
-						new StackTraceElement( " <<< Intrepid", "remote call to " + vmid + " >>>", null, -1 );
-					System.arraycopy( local_stack, 1, new_stack, remote_stack.length + 1, local_stack.length - 1 );// drop top
-					t.setStackTrace( new_stack );
+					int new_stack_size = remote_stack.length + local_stack.length;
+					// Sanity check to ensure stack doesn't get too huge if things go
+					// horribly wrong. Typically this isn't a problem due to stack
+					// overflows, but if you end up with something like a loop between
+					// VMs, the call can be in different threads which avoids that
+					// protection. This doesn't solve that problem, but avoid causing
+					// another with a huge stack trace.
+					if ( new_stack_size < 2000 ) {
+						StackTraceElement[] new_stack =
+							new StackTraceElement[ new_stack_size ];
+						System.arraycopy(
+							remote_stack, 0, new_stack, 0, remote_stack.length );
+						new_stack[ remote_stack.length ] = new StackTraceElement(
+							" <<< Intrepid", "remote call to " + vmid + " >>>", null, -1 );
+						System.arraycopy( local_stack, 1, new_stack,
+							remote_stack.length + 1, local_stack.length - 1 );// drop top
+						t.setStackTrace( new_stack );
+					}
 
 					// Look for an indicator that the object wasn't found. If that's the
 					// case and we have a persistent name available (and we haven't tried
