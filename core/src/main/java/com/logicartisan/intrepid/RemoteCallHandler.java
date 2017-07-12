@@ -118,30 +118,30 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 	private final Lock call_wait_map_lock = new ReentrantLock();
 	private final TIntObjectMap<CallInfoAndAckControl> call_wait_map =
-		new TIntObjectHashMap<CallInfoAndAckControl>();
+		new TIntObjectHashMap<>();
 
 	// Map of VMID to active calls
-	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<VMID,TIntSet>();
+	private final Map<VMID,TIntSet> vmid_call_wait_map = new HashMap<>();
 
 
 	private final Lock ping_wait_map_lock = new ReentrantLock();
 	private final TShortObjectHashMap<ObjectSlot<PingResponseIMessage>> ping_wait_map =
-		new TShortObjectHashMap<ObjectSlot<PingResponseIMessage>>();
+		new TShortObjectHashMap<>();
 
 
 	private final Lock channel_map_lock = new ReentrantLock();
 	private final TIntObjectMap<ObjectSlot<ChannelInitResponseIMessage>> channel_init_wait_map =
-		new TIntObjectHashMap<ObjectSlot<ChannelInitResponseIMessage>>();
+		new TIntObjectHashMap<>();
 
 	// Map of active virtual channels
 	private final Map<VMID,TShortObjectMap<VirtualByteChannel>> channel_map =
-		new HashMap<VMID,TShortObjectMap<VirtualByteChannel>>();
+		new HashMap<>();
 
 	private final AtomicInteger channel_id_counter = new AtomicInteger();
 
 
 	private final TIntObjectMap<InvokeRunner> runner_map =
-		new TIntObjectHashMap<InvokeRunner>();
+		new TIntObjectHashMap<>();
 	private final Lock runner_map_lock = new ReentrantLock();
 
 	RemoteCallHandler( IntrepidDriver spi, AuthenticationHandler auth_handler,
@@ -166,10 +166,23 @@ class RemoteCallHandler implements InboundMessageHandler {
 	public Object invoke( VMID vmid, int object_id, int method_id, String persistent_name,
 		Object[] args, Method method ) throws Throwable {
 
+		if ( vmid.equals( local_vmid ) ) {
+			throw new AssertionError(
+				"Logic error detected: should not be making call to local instance via " +
+				"RemoteCallHandler:" +
+				"\n  local_vmid: " + local_vmid +
+				"\n  [destination] vmid: " + vmid +
+				"\n  object_id: " + object_id +
+				"\n  method: " + method +
+				"\n  method_id: " + method_id +
+				"\n  persistent_name: " + persistent_name +
+				"\n  thread: " + Thread.currentThread() );
+		}
+
 		int call_id = call_id_counter.getAndIncrement();
 
 		final ObjectSlot<InvokeReturnIMessage> return_slot =
-			new ObjectSlot<InvokeReturnIMessage>();
+			new ObjectSlot<>();
 
 		// Make sure args are serializable and wrap in proxy if they're not
 		if ( args != null && args.length > 0 ) checkArgsForSerialization( args );
@@ -199,11 +212,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		try {
 			call_wait_map.put( call_id, call_info );
 
-			TIntSet call_id_set = vmid_call_wait_map.get( vmid );
-			if ( call_id_set == null ) {
-				call_id_set = new TIntHashSet();
-				vmid_call_wait_map.put( vmid, call_id_set );
-			}
+			TIntSet call_id_set =
+				vmid_call_wait_map.computeIfAbsent( vmid, v -> new TIntHashSet() );
 			call_id_set.add( call_id );
 		}
 		finally {
@@ -292,12 +302,24 @@ class RemoteCallHandler implements InboundMessageHandler {
 					// Append the local call stack
 					final StackTraceElement[] local_stack = new Throwable().getStackTrace();
 					final StackTraceElement[] remote_stack = t.getStackTrace();
-					StackTraceElement[] new_stack = new StackTraceElement[ local_stack.length + remote_stack.length ];
-					System.arraycopy( remote_stack, 0, new_stack, 0, remote_stack.length );
-					new_stack[ remote_stack.length ] =
-						new StackTraceElement( " <<< Intrepid", "remote call to " + vmid + " >>>", null, -1 );
-					System.arraycopy( local_stack, 1, new_stack, remote_stack.length + 1, local_stack.length - 1 );// drop top
-					t.setStackTrace( new_stack );
+					int new_stack_size = remote_stack.length + local_stack.length;
+					// Sanity check to ensure stack doesn't get too huge if things go
+					// horribly wrong. Typically this isn't a problem due to stack
+					// overflows, but if you end up with something like a loop between
+					// VMs, the call can be in different threads which avoids that
+					// protection. This doesn't solve that problem, but avoid causing
+					// another with a huge stack trace.
+					if ( new_stack_size < 2000 ) {
+						StackTraceElement[] new_stack =
+							new StackTraceElement[ new_stack_size ];
+						System.arraycopy(
+							remote_stack, 0, new_stack, 0, remote_stack.length );
+						new_stack[ remote_stack.length ] = new StackTraceElement(
+							" <<< Intrepid", "remote call to " + vmid + " >>>", null, -1 );
+						System.arraycopy( local_stack, 1, new_stack,
+							remote_stack.length + 1, local_stack.length - 1 );// drop top
+						t.setStackTrace( new_stack );
+					}
 
 					// Look for an indicator that the object wasn't found. If that's the
 					// case and we have a persistent name available (and we haven't tried
@@ -372,7 +394,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		final int call_id = call_id_counter.getAndIncrement();
 
 		ObjectSlot<ChannelInitResponseIMessage> response_slot =
-			new ObjectSlot<ChannelInitResponseIMessage>();
+			new ObjectSlot<>();
 		boolean successful = false;
 		short channel_id = -1;
 		try {
@@ -384,13 +406,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 				// Prepare for the response with the call ID
 				channel_init_wait_map.put( call_id, response_slot );
 
-				
+
 				TShortObjectMap<VirtualByteChannel> channel_id_map =
-					channel_map.get( destination );
-				if ( channel_id_map == null ) {
-					channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
-					channel_map.put( destination, channel_id_map );
-				}
+					channel_map.computeIfAbsent( destination,
+					k -> new TShortObjectHashMap<>() );
 
 				// Determine a free channel ID	
 				while( true ) {
@@ -526,7 +545,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		short id = ( short ) call_id_counter.getAndIncrement();
 
 		ObjectSlot<PingResponseIMessage> response_slot =
-			new ObjectSlot<PingResponseIMessage>();
+			new ObjectSlot<>();
 
 		ping_wait_map_lock.lock();
 		try {
@@ -980,11 +999,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		channel_map_lock.lock();
 		try {
-			TShortObjectMap<VirtualByteChannel> channel_id_map = channel_map.get( vmid );
-			if ( channel_id_map == null ) {
-				channel_id_map = new TShortObjectHashMap<VirtualByteChannel>();
-				channel_map.put( vmid, channel_id_map );
-			}
+			TShortObjectMap<VirtualByteChannel> channel_id_map =
+				channel_map.computeIfAbsent( vmid, k -> new TShortObjectHashMap<>() );
 
 			channel = new VirtualByteChannel( vmid, message.getChannelID(), this );
 
@@ -1197,7 +1213,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 
 	private static class InvokeCloseFlag extends InvokeReturnIMessage {
-		public InvokeCloseFlag() {
+		InvokeCloseFlag() {
 			//noinspection ThrowableResultOfMethodCallIgnored
 			super( -1, buildException(), true, null, null );
 		}
@@ -1221,7 +1237,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	 */
 	private static class InvokeNotAckedFlag extends InvokeReturnIMessage {
 
-		public InvokeNotAckedFlag( boolean received_any_acks ) {
+		InvokeNotAckedFlag( boolean received_any_acks ) {
 			//noinspection ThrowableResultOfMethodCallIgnored
 			super( -1, buildException( received_any_acks ), true, null, null );
 		}
@@ -1316,10 +1332,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		private CallInfoAndAckControl( @Nonnull ScheduledExecutor executor,
 			@Nonnull ObjectSlot<InvokeReturnIMessage> return_slot ) {
 
-			Objects.requireNonNull( return_slot );
-
-			this.executor = executor;
-			this.return_slot = return_slot;
+			this.executor = Objects.requireNonNull( executor );
+			this.return_slot = Objects.requireNonNull( return_slot );
 
 			// Default, should be overridden
 			setSessionAckRateSec( REQUEST_INVOKE_ACK_RATE_SEC );
@@ -1378,7 +1392,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		}
 
 
-		public void dispose() {
+		void dispose() {
 			final ScheduledFuture<?> future = ack_expect_future;
 			if ( future != null ) future.cancel( false );
 		}
