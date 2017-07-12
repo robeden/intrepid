@@ -1,4 +1,7 @@
+.gradle
 .idea
 *.iml
-dist
-build
+
+/build
+/classes
+/dist
