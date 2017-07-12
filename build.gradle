@@ -1,11 +1,11 @@
+plugins {
+   id 'net.nemerosa.versioning' version '2.6.0'
+}
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
 
-plugins {
-   id 'net.nemerosa.versioning' version '2.6.0'
-}
 version = versioning.info.display
 
 
@@ -38,25 +38,6 @@ test {
 
 	ignoreFailures true
 }
-
-distributions {
-	main {
-		baseName = 'intrepid'
-        contents {
-	        from ( 'build/libs' ) {
-		        include '*sources.jar'
-		        include '*javadoc.jar'
-	        }
-	        from( '.' ) {
-		        include 'NOTICE.txt'
-		        include 'LICENSE*.txt'
-		        include 'README.md'
-	        }
-        }
-	}
-}
-
-
 
 
 
