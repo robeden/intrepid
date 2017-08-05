@@ -1,6 +1,5 @@
 package com.starlight.intrepid.tools;
 
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.ChannelAcceptor;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.exception.ChannelRejectedException;
@@ -10,6 +9,7 @@ import java.nio.channels.ByteChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 
 /**
@@ -25,25 +25,24 @@ public class PluggableChannelAcceptor implements ChannelAcceptor {
 	/**
 	 * Adds a new delegate acceptor to the end of the list.
 	 */
+	@SuppressWarnings( "WeakerAccess" )
 	public void addDelegate( ChannelAcceptor delegate ) {
-		ValidationKit.checkNonnull( delegate, "delegate" );
-
-		delegates.add( delegate );
+		delegates.add( Objects.requireNonNull( delegate ) );
 	}
 
 	/**
 	 * Adds a new delegate acceptor to the front of the list.
 	 */
+	@SuppressWarnings( "WeakerAccess" )
 	public void addDelegateToFront( ChannelAcceptor delegate ) {
-		ValidationKit.checkNonnull( delegate, "delegate" );
-
-		delegates.add( 0, delegate );
+		delegates.add( 0, Objects.requireNonNull( delegate ) );
 	}
 
 
 	/**
 	 * Remove a delegate acceptor.
 	 */
+	@SuppressWarnings( { "WeakerAccess", "unused" } )
 	public void removeDelegate( ChannelAcceptor delegate ) {
 		if ( delegate == null ) return;
 
@@ -54,6 +53,7 @@ public class PluggableChannelAcceptor implements ChannelAcceptor {
 	/**
 	 * Remove all delegate acceptors.
 	 */
+	@SuppressWarnings( "WeakerAccess" )
 	public void removeAll() {
 		delegates.clear();
 	}

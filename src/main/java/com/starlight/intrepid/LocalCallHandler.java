@@ -59,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
 
 
 /**
@@ -89,9 +90,9 @@ class LocalCallHandler {
 
 	private final Lock map_lock = new ReentrantLock();
 	private final TObjectIntMap<Object> object_to_id_map =
-		new TObjectIntCustomHashMap<Object>( new IdentityHashingStrategy<Object>() );
+		new TObjectIntCustomHashMap<>( new IdentityHashingStrategy<>() );
 	private final TIntObjectMap<ProxyInfo> id_to_object_map =
-		new TIntObjectHashMap<ProxyInfo>();
+		new TIntObjectHashMap<>();
 
 	// NOTE: ID zero is reserved
 	private final AtomicInteger object_id_counter =
@@ -99,7 +100,7 @@ class LocalCallHandler {
 
 	private final LeasePruner lease_pruner = new LeasePruner();
 
-	private final ReferenceQueue<Proxy> ref_queue = new ReferenceQueue<Proxy>();
+	private final ReferenceQueue<Proxy> ref_queue = new ReferenceQueue<>();
 
 
 	LocalCallHandler( @NotNull VMID vmid,
@@ -131,7 +132,9 @@ class LocalCallHandler {
 	}
 
 
-	Proxy createProxy( Object delegate, String persistent_name ) {
+	Proxy createProxy( Object delegate, String persistent_name,
+		@NotNull Predicate<Class> proxy_class_filter ) {
+
 		// Make sure it's not already a proxy
 		if ( delegate instanceof Proxy ) return ( Proxy ) delegate;
 
@@ -139,9 +142,10 @@ class LocalCallHandler {
 		// the map locked.
 		
 		// Do this before hitting the map so we know it's a proxy-able object
-		Class[] interfaces = findProxyInterfaces( delegate.getClass() );
+		Class[] interfaces =
+			findProxyInterfaces( delegate.getClass(), proxy_class_filter );
 
-		TIntObjectMap<Method> method_map = new TIntObjectHashMap<Method>();
+		TIntObjectMap<Method> method_map = new TIntObjectHashMap<>();
 		for( Class ifc : interfaces ) {
 			TIntObjectMap<Method> map = MethodMap.generateMethodMap( ifc );
 			method_map.putAll( map );
@@ -394,9 +398,11 @@ class LocalCallHandler {
 
 
 	// Package-private for testability
-	static Class[] findProxyInterfaces( Class object_class ) {
-		Set<Class> class_set = new HashSet<Class>();
-		findProxyInterfaces( object_class, class_set );
+	static Class[] findProxyInterfaces( Class object_class,
+		@NotNull Predicate<Class> class_filter ) {
+
+		Set<Class> class_set = new HashSet<>();
+		findProxyInterfaces( object_class, class_set, class_filter );
 
 		if ( class_set.isEmpty() ) {
 			throw new IllegalProxyDelegateException( "No valid interfaces found." );
@@ -438,10 +444,14 @@ class LocalCallHandler {
 	}
 
 
-	private static void findProxyInterfaces( Class clazz, Set<Class> interface_list ) {
+	private static void findProxyInterfaces( Class clazz, Set<Class> interface_list,
+		@NotNull Predicate<Class> class_filter ) {
+
 		Class[] implemented_classes = clazz.getInterfaces();
 
 		for( Class implemented_class : implemented_classes ) {
+			if ( !class_filter.test( implemented_class ) ) continue;
+
 			// Add all interfaces, except for Externalizable
 			if ( Externalizable.class.isAssignableFrom( implemented_class ) ) continue;
 
@@ -454,7 +464,7 @@ class LocalCallHandler {
 		Class super_class = clazz.getSuperclass();
 		if ( super_class == null ) return;
 
-		findProxyInterfaces( super_class, interface_list );
+		findProxyInterfaces( super_class, interface_list, class_filter );
 	}
 
 
@@ -493,8 +503,7 @@ class LocalCallHandler {
 		private final StackTraceElement[] allocation_trace;
 
 		// Map containing leases and the time at which they are next expected to renew
-		private final TObjectLongMap<VMID> vmid_lease_map =
-			new TObjectLongHashMap<VMID>();
+		private final TObjectLongMap<VMID> vmid_lease_map = new TObjectLongHashMap<>();
 		private final Lock vmid_lease_map_lock = new ReentrantLock();
 
 		ProxyInfo( Proxy proxy, ReferenceQueue<Proxy> ref_queue, int object_id,
@@ -647,7 +656,7 @@ class LocalCallHandler {
 		private final Object delegate;
 		private final String delegate_to_string;
 
-		public ProxyWeakReference( Proxy proxy, int object_id,
+		ProxyWeakReference( Proxy proxy, int object_id,
 			ReferenceQueue<Proxy> ref_queue, Object delegate, String delegate_to_string ) {
 
 			super( proxy, ref_queue );

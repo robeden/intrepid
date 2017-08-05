@@ -26,7 +26,6 @@
 package com.starlight.intrepid.spi.mina;
 
 import com.starlight.MiscKit;
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.ConnectionListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -42,6 +41,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
@@ -125,7 +125,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 	public void setVMID( VMID vmid, byte ack_rate_sec ) {
 		// Setting a null VMID is invalid. It will be null by default, but this is okay.
 		// Allowing null to be set would allow sessions to disappear from the session_map.
-		ValidationKit.checkNonnull( vmid, "VMID" );
+		Objects.requireNonNull( vmid );
 
 		session.setAttribute( MINAIntrepidSPI.INVOKE_ACK_RATE,
 			Byte.valueOf( ack_rate_sec ) );

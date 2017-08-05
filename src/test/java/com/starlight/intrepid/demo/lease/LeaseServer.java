@@ -5,7 +5,6 @@ import com.starlight.intrepid.IntrepidContext;
 import com.starlight.intrepid.IntrepidSetup;
 import com.starlight.intrepid.IntrepidTestProxyAccess;
 import com.starlight.listeners.ListenerSupport;
-import com.starlight.listeners.ListenerSupportFactory;
 import com.starlight.thread.SharedThreadPool;
 
 import java.util.Date;
@@ -16,8 +15,8 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class LeaseServer implements ServerIfc {
-	private final ListenerSupport<Runnable,Void> listeners =
-		ListenerSupportFactory.create( Runnable.class, true );
+	private final ListenerSupport<Runnable,?> listeners =
+		ListenerSupport.forType( Runnable.class ).asynchronous().build();
 
 
 	@Override

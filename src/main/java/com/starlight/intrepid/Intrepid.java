@@ -27,7 +27,6 @@ package com.starlight.intrepid;
 
 import com.starlight.NotNull;
 import com.starlight.Nullable;
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.auth.AuthenticationHandler;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.RequestUserCredentialReinit;
@@ -36,7 +35,6 @@ import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.starlight.intrepid.spi.IntrepidSPI;
 import com.starlight.intrepid.spi.mina.MINAIntrepidSPI;
 import com.starlight.listeners.ListenerSupport;
-import com.starlight.listeners.ListenerSupportFactory;
 import com.starlight.thread.ScheduledExecutor;
 import com.starlight.thread.SharedThreadPool;
 
@@ -47,6 +45,7 @@ import java.net.UnknownHostException;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -55,24 +54,25 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 
 /**
  * This class provides static functions for accessing Intrepid's main functionality.
  */
+@SuppressWarnings( "WeakerAccess" )
 public class Intrepid {
 	private static final long CONNECT_TIMEOUT =
 		Long.getLong( "intrepid.connect.timeout", 10000 ).longValue();
 
 	private static final Lock LOCAL_INSTANCE_MAP_LOCK = new ReentrantLock();
-	private static final Map<VMID,Intrepid> LOCAL_INSTANCE_MAP =
-		new HashMap<VMID,Intrepid>();
+	private static final Map<VMID,Intrepid> LOCAL_INSTANCE_MAP = new HashMap<>();
 
 	private static final ThreadLocal<Intrepid> THREAD_INSTANCE =
-		new InheritableThreadLocal<Intrepid>();
+		new InheritableThreadLocal<>();
 
-	private static final ListenerSupport<IntrepidInstanceListener,Void> INSTANCE_LISTENERS =
-		ListenerSupportFactory.create( IntrepidInstanceListener.class, true );
+	private static final ListenerSupport<IntrepidInstanceListener,?> INSTANCE_LISTENERS =
+		ListenerSupport.forType( IntrepidInstanceListener.class ).asynchronous().build();
 
 	/** This is a hook for testing while allows the "inter-instance bridging" provided
 	 *  by {@link #findLocalInstance(VMID,boolean)} to be disabled when trying to shortcut.
@@ -88,13 +88,15 @@ public class Intrepid {
 	private final LocalCallHandler local_handler;
 	private final RemoteCallHandler remote_handler;
 
-	private final ListenerSupport<ConnectionListener,Void> connection_listeners;
-	private final ListenerSupport<PerformanceListener,Void> performance_listeners;
+	private final ListenerSupport<ConnectionListener,?> connection_listeners;
+	private final ListenerSupport<PerformanceListener,?> performance_listeners;
 
 	private final PerformanceControl performance_control;
 
 	private final ListenerRegistrationManager listener_registration_manager =
 		new ListenerRegistrationManager( this );
+
+	private final Predicate<Class> proxy_class_filter;
 
 
 	private volatile boolean closed = false;
@@ -144,14 +146,14 @@ public class Intrepid {
 			}
 		}
 
-		ListenerSupport<ConnectionListener,Void> connection_listeners =
-			ListenerSupportFactory.create( ConnectionListener.class, false );
+		ListenerSupport<ConnectionListener,?> connection_listeners =
+			ListenerSupport.forType( ConnectionListener.class ).build();
 		if ( setup.getConnectionListener() != null ) {
 			connection_listeners.add( setup.getConnectionListener() );
 		}
 
-		ListenerSupport<PerformanceListener,Void> performance_listeners =
-			ListenerSupportFactory.create( PerformanceListener.class, false );
+		ListenerSupport<PerformanceListener,?> performance_listeners =
+			ListenerSupport.forType( PerformanceListener.class ).build();
 		final PerformanceListener perf_listener = setup.getPerformanceListener();
 		if ( perf_listener != null ) {
 			performance_listeners.add( perf_listener );
@@ -173,7 +175,8 @@ public class Intrepid {
 			setup.getUnitTestHook() );
 
 		Intrepid instance = new Intrepid( spi, vmid, local_handler, remote_handler,
-			connection_listeners, performance_listeners );
+			connection_listeners, performance_listeners,
+			setup.getProxyClassFilter() );
 
 		local_handler.initInstance( instance );
 		remote_handler.initInstance( instance );
@@ -329,8 +332,9 @@ public class Intrepid {
 
 	private Intrepid( IntrepidSPI spi, VMID vmid, LocalCallHandler local_handler,
 		RemoteCallHandler remote_handler,
-		ListenerSupport<ConnectionListener,Void> connection_listeners,
-		ListenerSupport<PerformanceListener,Void> performance_listeners ) {
+		ListenerSupport<ConnectionListener,?> connection_listeners,
+		ListenerSupport<PerformanceListener,?> performance_listeners,
+		@NotNull Predicate<Class> proxy_class_filter ) {
 
 		this.spi = spi;
 		this.vmid = vmid;
@@ -338,6 +342,7 @@ public class Intrepid {
 		this.remote_handler = remote_handler;
 		this.connection_listeners = connection_listeners;
 		this.performance_listeners = performance_listeners;
+		this.proxy_class_filter = Objects.requireNonNull( proxy_class_filter );
 
 		this.performance_control = new PerformanceControlWrapper();
 
@@ -381,7 +386,7 @@ public class Intrepid {
 
 		if ( isProxy( delegate ) ) return delegate;
 
-		return local_handler.createProxy( delegate, null );
+		return local_handler.createProxy( delegate, null, proxy_class_filter );
 	}
 
 
@@ -502,11 +507,10 @@ public class Intrepid {
 		Object attachment, long timeout, TimeUnit timeout_units )
 		throws IOException, InterruptedException {
 
-		ValidationKit.checkNonnull( host, "host" );
-
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
-		return spi.connect( host, port, args, attachment, timeout, timeout_units, true );
+		return spi.connect( Objects.requireNonNull( host ), port, args, attachment,
+			timeout, timeout_units, true );
 	}
 
 
@@ -517,9 +521,7 @@ public class Intrepid {
 	public void disconnect( VMID host_vmid ) {
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
-		ValidationKit.checkNonnull( host_vmid, "host_vmid" );
-
-		spi.disconnect( host_vmid );
+		spi.disconnect( Objects.requireNonNull( host_vmid ) );
 	}
 
 
@@ -541,7 +543,7 @@ public class Intrepid {
 	public ByteChannel createChannel( VMID destination, Serializable attachment )
 		throws IOException, ChannelRejectedException {
 
-		ValidationKit.checkNonnull( destination, "destination" );
+		Objects.requireNonNull( destination );
 
 		if ( destination.equals( vmid ) ) {
 			throw new IllegalArgumentException( "Destination cannot be local instance" );

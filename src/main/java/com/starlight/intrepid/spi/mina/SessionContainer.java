@@ -25,10 +25,11 @@
 
 package com.starlight.intrepid.spi.mina;
 
-import com.starlight.ValidationKit;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.thread.ObjectSlot;
 import org.apache.mina.core.session.IoSession;
+
+import java.util.Objects;
 
 
 /**
@@ -38,14 +39,12 @@ class SessionContainer {
 	private final HostAndPort host_and_port;
 	private final ConnectionArgs connection_args;
 
-	private final ObjectSlot<IoSession> session_slot = new ObjectSlot<IoSession>();
+	private final ObjectSlot<IoSession> session_slot = new ObjectSlot<>();
 
 	private volatile boolean canceled = false;
 
 	SessionContainer( HostAndPort host_and_port, ConnectionArgs connection_args ) {
-		ValidationKit.checkNonnull( host_and_port, "host_and_port" );
-
-		this.host_and_port = host_and_port;
+		this.host_and_port = Objects.requireNonNull( host_and_port );
 		this.connection_args = connection_args;
 	}
 
@@ -63,7 +62,7 @@ class SessionContainer {
 	 * @param timeout	The time (in milliseconds) to wait for the session if it isn't
 	 *                 	immediately available.
 	 */
-	public IoSession getSession( long timeout ) {
+	IoSession getSession( long timeout ) {
 		try {
 			return session_slot.waitForValue( timeout );
 		}
@@ -75,7 +74,7 @@ class SessionContainer {
 	/**
 	 * Set a new session and return the old one (if any).
 	 */
-	public IoSession setSession( IoSession session ) {
+	IoSession setSession( IoSession session ) {
 //		System.out.println( "Session set (" + host_and_port + "): " + session );
 		return session_slot.getAndSet( session );
 	}
@@ -86,20 +85,20 @@ class SessionContainer {
 	}
 
 
-	public void setCanceled() {
+	void setCanceled() {
 		canceled = true;
 	}
 
-	public boolean isCanceled() {
+	boolean isCanceled() {
 		return canceled;
 	}
 
 
-	public HostAndPort getHostAndPort() {
+	HostAndPort getHostAndPort() {
 		return host_and_port;
 	}
 
-	public ConnectionArgs getConnectionArgs() {
+	ConnectionArgs getConnectionArgs() {
 		return connection_args;
 	}
 
