@@ -1403,7 +1403,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			ack_handler_lock.lock();
 			try {
-				return_slot.compareAndSet( null, flag );
+				return_slot.compareAndSet( ( InvokeReturnIMessage ) null, flag );
 				aborted_by_ack_fail = true;
 				ack_expect_future = null;
 			}
