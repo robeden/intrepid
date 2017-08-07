@@ -645,10 +645,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 			// Find any remaped VMID's that point to this one
 			// TODO: possibly keep this around?
-			Iterator<VMID> it = vmid_remap.values().iterator();
-			while( it.hasNext() ) {
-				if ( it.next().equals( vmid ) ) it.remove();
-			}
+			vmid_remap.values().removeIf( vmid1 -> vmid1.equals( vmid ) );
 
 			if ( container != null ) {
 				outbound_session_map.remove( container.getHostAndPort() );
@@ -1193,6 +1190,13 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	public void messageSent( IoSession session, Object message ) throws Exception {
 		LOG.trace( "messageSent: {} message: {}", message );
 	}
+
+	// Introduced in some 2.0.x maintenance patch... 'cuz MINA. We hates it...
+//	@Override
+	public void inputClosed( IoSession session ) throws Exception {
+		LOG.trace( "inputClosed: {}", session );
+	}
+
 
 
 	@Override
