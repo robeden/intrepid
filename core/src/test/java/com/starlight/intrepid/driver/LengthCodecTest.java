@@ -39,7 +39,7 @@ import static org.junit.Assert.assertEquals;
  */
 @RunWith( Parameterized.class )
 public class LengthCodecTest {
-	@Parameterized.Parameters
+	@Parameterized.Parameters( name="{0}" )
 	public static TestArgs[] values() {
 		return new TestArgs[] {
 			new TestArgs( 0x7FFE, false ),
@@ -102,6 +102,10 @@ public class LengthCodecTest {
 		TestArgs( int value, boolean expect_full_int ) {
 			this.value = value;
 			this.expect_full_int = expect_full_int;
+		}
+
+		@Override public String toString() {
+			return Integer.toHexString( value );
 		}
 	}
 }
