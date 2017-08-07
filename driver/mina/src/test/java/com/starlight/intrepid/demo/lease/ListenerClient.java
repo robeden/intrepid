@@ -22,7 +22,7 @@ public class ListenerClient implements Runnable {
 
 	public static void main( String[] args ) throws Exception {
 		Intrepid intrepid = Intrepid.create( null );
-		VMID server_vmid = intrepid.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = intrepid.connect( InetAddress.getLoopbackAddress(),
 			Integer.parseInt( args[ 0 ] ), null, null );
 
 		intrepid.addPerformanceListener( new LeaseListener() );

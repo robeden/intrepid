@@ -668,7 +668,7 @@ public class CommTest extends TestCase {
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
 			createSPI( false ) ) );
 		try {
-			client_instance.connect( InetAddress.getLocalHost(), 11751, null, null );
+			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null, null );
 			fail( "Shouldn't have been able to connect" );
 		}
 		catch( IOException ex ) {
@@ -681,7 +681,7 @@ public class CommTest extends TestCase {
 
 		// Try to connect again, should work this time
 		VMID server_vmid =
-			client_instance.connect( InetAddress.getLocalHost(), 11751, null, null );
+			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
 		long time = client_instance.ping( server_vmid, 1, TimeUnit.SECONDS );

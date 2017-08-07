@@ -69,7 +69,7 @@ public class ReconnectTest extends TestCase {
 		assertNotNull( port );
 
 		client_instance = Intrepid.create( null );
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
@@ -140,7 +140,7 @@ public class ReconnectTest extends TestCase {
 		assertNotNull( port );
 
 		client_instance = Intrepid.create( null );
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
@@ -177,7 +177,7 @@ public class ReconnectTest extends TestCase {
 
 		try {
 			client_instance.connect(
-				InetAddress.getLocalHost(), port.intValue(), null, null );
+				InetAddress.getLoopbackAddress(), port.intValue(), null, null );
 			fail( "Shouldn't work" );
 		}
 		catch( ConnectException ex ) {
@@ -259,13 +259,13 @@ public class ReconnectTest extends TestCase {
 				@Nonnull Object connection_type_description ) {}
 		} );
 
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
 		assertTrue( new_connection_flag.getAndSet( false ) );
 
 		// Now connect again and make sure we get the same VMID
-		VMID server_vmid2 = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid2 = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
 		assertFalse( new_connection_flag.get() );
@@ -312,11 +312,11 @@ public class ReconnectTest extends TestCase {
 				@Nonnull Object connection_type_description ) {}
 		} );
 
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
 		// Now connect again and make sure we get the same VMID
-		VMID server_vmid2 = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid2 = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
 		assertEquals( server_vmid, server_vmid2 );
@@ -370,7 +370,7 @@ public class ReconnectTest extends TestCase {
 		assertNotNull( port );
 
 		client_instance = Intrepid.create( null );
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
 

@@ -55,7 +55,7 @@ public class NonSerializableResultTest extends TestCase {
             }
         } );
 
-		VMID server_vmid = client.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 		final MyIfc callable =
 			( MyIfc ) client.getRemoteRegistry( server_vmid ).lookup( "server" );
@@ -109,7 +109,7 @@ public class NonSerializableResultTest extends TestCase {
             }
         } );
 
-		VMID server_vmid = client.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 		final MyIfc callable =
 			( MyIfc ) client.getRemoteRegistry( server_vmid ).lookup( "server" );

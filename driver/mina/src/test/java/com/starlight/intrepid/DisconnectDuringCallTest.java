@@ -39,7 +39,7 @@ public class DisconnectDuringCallTest extends TestCase {
 
 
 		client_instance = Intrepid.create( null );
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			server_instance.getServerPort().intValue(), null, null );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -76,7 +76,7 @@ public class DisconnectDuringCallTest extends TestCase {
 			new FakeReaderAcceptor( read_start_latch, read_exit_latch, reader_slot ) ) );
 
 		client_instance = Intrepid.create( null );
-		VMID server_vmid = client_instance.connect( InetAddress.getLocalHost(),
+		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			server_instance.getServerPort().intValue(), null, null );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );

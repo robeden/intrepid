@@ -51,7 +51,7 @@ public class ChainedCallUserContextTest extends TestCase {
 					return new SimpleUserContextInfo( user_args.getUser() );
 				}
 			} ) );
-		VMID vmid = head_instance.connect( InetAddress.getLocalHost(),
+		VMID vmid = head_instance.connect( InetAddress.getLoopbackAddress(),
 			tail_instance.getServerPort().intValue(), null, null );
 		assertEquals( tail_instance.getLocalVMID(), vmid );
 		HeadInstance head_proxy_instance = new HeadInstance(
@@ -61,7 +61,7 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup client and connect to head
 		client_instance = Intrepid.create( null );
-		vmid = client_instance.connect( InetAddress.getLocalHost(),
+		vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );
 		assertEquals( head_instance.getLocalVMID(), vmid );
@@ -115,7 +115,7 @@ public class ChainedCallUserContextTest extends TestCase {
 					return new SimpleUserContextInfo( user_args.getUser() );
 				}
 			} ) );
-		VMID vmid = head_instance.connect( InetAddress.getLocalHost(),
+		VMID vmid = head_instance.connect( InetAddress.getLoopbackAddress(),
 			tail_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "**NOT**reden", "blah".toCharArray() ),
 			null );
@@ -127,7 +127,7 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup client and connect to head
 		client_instance = Intrepid.create( null );
-		vmid = client_instance.connect( InetAddress.getLocalHost(),
+		vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );
 		assertEquals( head_instance.getLocalVMID(), vmid );

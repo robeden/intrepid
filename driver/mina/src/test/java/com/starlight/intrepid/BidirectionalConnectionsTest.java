@@ -85,7 +85,7 @@ public class BidirectionalConnectionsTest extends TestCase {
 				@Override
 				public void run() {
 					try {
-						VMID b_vmid = a_instance.connect( InetAddress.getLocalHost(),
+						VMID b_vmid = a_instance.connect( InetAddress.getLoopbackAddress(),
 							port, null, null );
 
 						Registry registry = a_instance.getRemoteRegistry( b_vmid );
@@ -114,7 +114,7 @@ public class BidirectionalConnectionsTest extends TestCase {
 		B b_proxy = ( B ) b_instance.createProxy( b_impl );
 		assertEquals( b_proxy, b_instance.getLocalRegistry().lookup( "b" ) );
 
-		VMID a_vmid = b_instance.connect( InetAddress.getLocalHost(),
+		VMID a_vmid = b_instance.connect( InetAddress.getLoopbackAddress(),
 			a_instance.getServerPort().intValue(), null, null );
 
 		A a = ( A ) b_instance.getRemoteRegistry( a_vmid ).lookup( "a" );
