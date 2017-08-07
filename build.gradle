@@ -1,11 +1,15 @@
+plugins {
+   id 'net.nemerosa.versioning' version '2.6.0'
+}
 apply plugin: 'base'
 
 
 group = 'com.logicartisan'
-version = release == 'no' ? "${branch_version}-SNAPSHOT" : branch_version
+archivesBaseName = 'intrepid'
 
-
+version = versioning.info.display
 println "Version: ${version}"
+println "Full version info: ${versioning.info}"
 
 subprojects {
     apply plugin: 'java'
@@ -23,6 +27,17 @@ subprojects {
     repositories {
         mavenCentral()
     }
+
+
+
+	test {
+		systemProperty 'intrepid.lease.duration', '2000'
+		systemProperty 'intrepid.lease.prune_interval', '1000'
+		systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
+		systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
+
+		ignoreFailures true
+	}
 
 
 
@@ -77,7 +92,6 @@ subprojects {
 	                artifactId "intrepid-${sanitizedName}"
 
                     packaging 'jar'
-//                    description 'A replacement for Java RMI (Remote Method Invocation) that allows for simpler and more transparent usage with more flexible control over session and security'
                     url 'https://bitbucket.org/robeden/intrepid'
 
                     scm {
