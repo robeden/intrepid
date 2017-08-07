@@ -21,6 +21,8 @@ test {
     systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
     systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
 
+	systemPropery 'org.slf4j.simpleLogger.defaultLogLevel', 'warn'
+
     ignoreFailures true
 	enableAssertions true
 }
