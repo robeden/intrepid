@@ -117,7 +117,7 @@ public class Intrepid {
 		if ( driver == null ) {
 			try {
 				driver = ( IntrepidDriver ) Class.forName(
-					"com.logicartisan.intrepid.driver.mina.MINAIntrepidDriver" ).newInstance();
+					"com.starlight.intrepid.driver.mina.MINAIntrepidDriver" ).newInstance();
 			}
 			catch( Exception ex ) {
 				throw new UnsupportedOperationException( "Unable to find a default " +
