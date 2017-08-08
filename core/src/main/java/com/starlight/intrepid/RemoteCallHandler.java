@@ -59,6 +59,7 @@ import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -779,9 +780,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 				Resources.ERROR_CLIENT_CONNECTIONS_NOT_ALLOWED_NO_AUTH_HANDLER, true ) );
 		}
 
-		byte proto_version = ProtocolVersions.negotiateProtocolVersion(
+		OptionalInt negotiated_proto_version = ProtocolVersions.negotiateProtocolVersion(
 			message.getMinProtocolVersion(), message.getPrefProtocolVersion() );
-		if ( proto_version < 0 ) {
+		if ( !negotiated_proto_version.isPresent() ) {
 			throw new CloseSessionIndicator( new SessionCloseIMessage(
 				new FormattedTextResourceKey( Resources.INCOMPATIBLE_PROTOCOL_VERSION,
 				Byte.valueOf( ProtocolVersions.MIN_PROTOCOL_VERSION ),
@@ -789,6 +790,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 				Byte.valueOf( message.getMinProtocolVersion() ),
 				Byte.valueOf( message.getPrefProtocolVersion() ) ), false ) );
 		}
+
+		byte proto_version = ( byte ) negotiated_proto_version.getAsInt();
 
 		// "Normal" connection...
 		UserContextInfo user_context;
