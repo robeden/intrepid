@@ -95,45 +95,6 @@ public class TestClient implements ClientInterface {
 
 				System.out.println( "INBOUND call started: " + call_id );
 			}
-
-			@Override
-			public void virtualChannelClosed( VMID instance_vmid, VMID peer_vmid,
-				short channel_id ) {
-				// TODO: implement
-			}
-
-			@Override
-			public void virtualChannelOpened( VMID instance_vmid, VMID peer_vmid,
-				short channel_id ) {
-				// TODO: implement
-			}
-
-			@Override
-			public void virtualChannelDataReceived( VMID instance_vmid, VMID peer_vmid,
-				short channel_id, int bytes ) {
-				// TODO: implement
-			}
-
-			@Override
-			public void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-				short channel_id, int bytes ) {
-				// TODO: implement
-			}
-
-			@Override
-			public void messageReceived( VMID source_vmid, IMessage message ) {}
-
-			@Override
-			public void messageSent( VMID destination_vmid, IMessage message ) {}
-
-			@Override
-			public void leasedObjectRemoved( VMID vmid, int object_id ) {}
-
-			@Override
-			public void leaseInfoUpdated( VMID vmid, int object_id,
-				String delegate_tostring,
-				boolean holding_strong_reference, int leasing_vm_count, boolean renew,
-				boolean release ) {}
 		} );
 		intrepid.addConnectionListener( new ConnectionListener() {
 			@Override
