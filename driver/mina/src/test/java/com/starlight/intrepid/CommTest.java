@@ -28,23 +28,28 @@ package com.starlight.intrepid;
 import com.logicartisan.common.core.IOKit;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
+import com.starlight.intrepid.driver.IntrepidDriver;
 import com.starlight.intrepid.exception.InterruptedCallException;
 import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.exception.ServerException;
-import com.starlight.intrepid.driver.IntrepidDriver;
-import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.io.*;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.*;
+
 
 /**
  *
  */
-public class CommTest extends TestCase {
+public class CommTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
@@ -55,8 +60,8 @@ public class CommTest extends TestCase {
 	}
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@After
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -65,6 +70,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testPortReleaseOnShutdown() throws Exception {
 		for( int i = 0; i < 100; i++ ) {
 			Intrepid instance = Intrepid.create( new IntrepidSetup().serverPort(
@@ -74,6 +80,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testSimpleComm() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -95,7 +102,7 @@ public class CommTest extends TestCase {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -104,21 +111,21 @@ public class CommTest extends TestCase {
 
 		// NOTE: Local delegate isn't available here (because it was serialized in the
 		//       lookup from the registry since we have the inter-instance bridge disabled)
-		assertNull( server_instance.getLocalProxyDelegate( server ) );
+		Assert.assertNull( server_instance.getLocalProxyDelegate( server ) );
 
-		assertTrue( client_instance.isProxy( server ) );
-		assertFalse( client_instance.isProxyLocal( server ) );
-		assertNull( client_instance.getLocalProxyDelegate( server ) );
-		assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
+		assertTrue( Intrepid.isProxy( server ) );
+		Assert.assertFalse( client_instance.isProxyLocal( server ) );
+		Assert.assertNull( client_instance.getLocalProxyDelegate( server ) );
+		Assert.assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
 		assertEquals( server_instance.getLocalVMID(),
 			client_instance.getRemoteProxyVMID( server ) );
 
-		assertTrue( server_instance.isProxy( server ) );
+		assertTrue( Intrepid.isProxy( server ) );
 		assertTrue( server_instance.isProxyLocal( server ) );
 
 		// NOTE: local won't be able to get local delegate because the instance has been
 		//       serialized and the inter-instance bridge is disabled.
-		assertNull( server_instance.getLocalProxyDelegate( server ) );
+		Assert.assertNull( server_instance.getLocalProxyDelegate( server ) );
 
 
 		// Simple call
@@ -170,13 +177,14 @@ public class CommTest extends TestCase {
 		// Callback
 		ClientImpl original_client = new ClientImpl( true );
 		// Should auto-wrap
-		assertNull( original_client.input_message );
+		Assert.assertNull( original_client.input_message );
 		Server server_copy =
 			server.testCallback( original_client, client_instance.getLocalVMID() );
-		assertEquals( "Callback message from server", original_client.input_message );
+		assertEquals( "Callback message from server",
+			original_client.input_message );
 
 		assertTrue( Intrepid.isProxy( server_copy ) );
-		assertFalse( client_instance.isProxyLocal( server_copy ) );
+		Assert.assertFalse( client_instance.isProxyLocal( server_copy ) );
 		assertTrue( server_instance.isProxyLocal( server_copy ) );
 
 
@@ -200,6 +208,7 @@ public class CommTest extends TestCase {
 	// Same as above, but the inter-instance bridge is enabled so calls to the server
 	// will use local handlers. This means the exceptions will not be wrapped in
 	// ServerException's.
+	@Test
 	public void testInterInstanceBridge() throws Exception {
 		// NOTE: leave inter-instance bridge enabled
 
@@ -219,30 +228,32 @@ public class CommTest extends TestCase {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
 		Server server = ( Server ) server_registry.lookup( "server" );
 		assertNotNull( server );
 
-		assertSame( original_instance, server_instance.getLocalProxyDelegate( server ) );
+		Assert.assertSame( original_instance,
+			server_instance.getLocalProxyDelegate( server ) );
 
 		// NOTE: Serialize the proxy. We're doing this to ensure that it doesn't have a
 		//       local delegate (since this is all being done in the same VM.
 		server = ( Server ) IOKit.deserialize( IOKit.serialize( server ) );
-		assertTrue( client_instance.isProxy( server ) );
-		assertFalse( client_instance.isProxyLocal( server ) );
-		assertNull( client_instance.getLocalProxyDelegate( server ) );
-		assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
+		assertTrue( Intrepid.isProxy( server ) );
+		Assert.assertFalse( client_instance.isProxyLocal( server ) );
+		Assert.assertNull( client_instance.getLocalProxyDelegate( server ) );
+		Assert.assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
 		assertEquals( server_instance.getLocalVMID(),
 			client_instance.getRemoteProxyVMID( server ) );
 
-		assertTrue( server_instance.isProxy( server ) );
+		assertTrue( Intrepid.isProxy( server ) );
 		assertTrue( server_instance.isProxyLocal( server ) );
 		// NOTE: should be able to get local delegate here (since the inter-instance
 		//       bridge is enabled).
-		assertSame( original_instance, server_instance.getLocalProxyDelegate( server ) );
+		Assert.assertSame( original_instance,
+			server_instance.getLocalProxyDelegate( server ) );
 
 
 		// Simple call
@@ -294,16 +305,18 @@ public class CommTest extends TestCase {
 		// Callback
 		ClientImpl original_client = new ClientImpl( false );
 		// Should auto-wrap
-		assertNull( original_client.input_message );
+		Assert.assertNull( original_client.input_message );
 		Server server_copy =
 			server.testCallback( original_client, client_instance.getLocalVMID() );
-		assertEquals( "Callback message from server", original_client.input_message );
+		assertEquals( "Callback message from server",
+			original_client.input_message );
 		assertNotNull( server_copy );
 
 		// Won't be a proxy since the bridge is active
-		assertFalse( Intrepid.isProxy( server_copy ) );
+		Assert.assertFalse( Intrepid.isProxy( server_copy ) );
 	}
 
+	@Test
 	public void testSerializationErrors() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -325,7 +338,7 @@ public class CommTest extends TestCase {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -371,7 +384,7 @@ public class CommTest extends TestCase {
 		}
 
 		try {
-			UnserializableClass ret = server.testUnserializableReturn();
+			server.testUnserializableReturn();
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -385,7 +398,7 @@ public class CommTest extends TestCase {
 		}
 
 		try {
-			SerializationErrorClass ret = server.testSerializationReturnError();
+			server.testSerializationReturnError();
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -395,7 +408,7 @@ public class CommTest extends TestCase {
 		}
 
 		try {
-			SerializationErrorClass2 ret = server.testSerializationReturnError2();
+			server.testSerializationReturnError2();
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -409,6 +422,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testConnectFailure() throws Exception {
 		Intrepid client = Intrepid.create( new IntrepidSetup().driver( createSPI( false ) ) );
 		try {
@@ -426,37 +440,36 @@ public class CommTest extends TestCase {
 	}
 
 
-	// TODO: this test is proving to be problematic
-//	public void testConnectInterrupt() throws Exception {
-//		Intrepid client = Intrepid.create( new IntrepidSetup().driver( createSPI( false ) ) );
-//		try {
-//			final Thread test_thread = Thread.currentThread();
-//			new Thread() {
-//				@Override
-//				public void run() {
-//					ThreadKit.sleep( 2000 );
-//
-//					test_thread.interrupt();
-//				}
-//			}.start();
-//
-//			// Should time out
-//			// This is a server known to drop packets on this port
-//			client.connect( InetAddress.getByName( "europa-house.starlight-systems.com" ),
-//				11751, null, null );
-//			fail( "Shouldn't have worked" );
-//		}
-//		catch( InterruptedIOException ex ) {
-//			// This is good
-//			System.out.println( "Exception was: " + ex );
-//		}
-//		catch( IOException ex ) {
-//			ex.printStackTrace();
-//			fail( "Should have been an InterruptedIOException" + ex );
-//		}
-//	}
+	@Ignore( value = "this test is proving to be problematic" )
+	@Test
+	public void testConnectInterrupt() throws Exception {
+		Intrepid client = Intrepid.create( new IntrepidSetup().driver( createSPI( false ) ) );
+		try {
+			final Thread test_thread = Thread.currentThread();
+			new Thread( () -> {
+				ThreadKit.sleep( 2000 );
+
+				test_thread.interrupt();
+			} ).start();
+
+			// Should time out
+			// This is a server known to drop packets on this port
+			client.connect( InetAddress.getByName( "europa-house.starlight-systems.com" ),
+				11751, null, null );
+			fail( "Shouldn't have worked" );
+		}
+		catch( InterruptedIOException ex ) {
+			// This is good
+			System.out.println( "Exception was: " + ex );
+		}
+		catch( IOException ex ) {
+			ex.printStackTrace();
+			fail( "Should have been an InterruptedIOException" + ex );
+		}
+	}
 
 
+	@Test
 	public void testTryConnect() throws Exception {
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
 			createSPI( false ) ) );
@@ -486,18 +499,15 @@ public class CommTest extends TestCase {
 		assertTrue( time + " > 5000", time <= 5000 );
 
 		// Start the server in 3 seconds
-		SharedThreadPool.INSTANCE.schedule( new Runnable() {
-			@Override
-			public void run() {
-				try {
-					server_instance = Intrepid.create( new IntrepidSetup().vmidHint(
-						"server" ).serverPort( 11751 ).openServer().driver(
-						createSPI( true ) ) );
-				}
-				catch( Exception ex ) {
-					ex.printStackTrace();
-					fail( "Unexpected exception: " + ex );
-				}
+		SharedThreadPool.INSTANCE.schedule( () -> {
+			try {
+				server_instance = Intrepid.create( new IntrepidSetup().vmidHint(
+					"server" ).serverPort( 11751 ).openServer().driver(
+					createSPI( true ) ) );
+			}
+			catch( Exception ex ) {
+				ex.printStackTrace();
+				fail( "Unexpected exception: " + ex );
 			}
 		}, 3100, TimeUnit.MILLISECONDS );
 
@@ -524,6 +534,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testNestedInterfaces() throws Exception {
 		ClientImpl2 client_impl = new ClientImpl2();
 
@@ -540,6 +551,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testInterrupt() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -586,6 +598,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testServerCloseInMethod() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -627,6 +640,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testSendNonSerializableClass() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -657,6 +671,7 @@ public class CommTest extends TestCase {
 	}
 
 
+	@Test
 	public void testFirstConnectFail() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -668,7 +683,8 @@ public class CommTest extends TestCase {
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
 			createSPI( false ) ) );
 		try {
-			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null, null );
+			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null,
+				null );
 			fail( "Shouldn't have been able to connect" );
 		}
 		catch( IOException ex ) {
@@ -681,7 +697,8 @@ public class CommTest extends TestCase {
 
 		// Try to connect again, should work this time
 		VMID server_vmid =
-			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null, null );
+			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null,
+				null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
 		long time = client_instance.ping( server_vmid, 1, TimeUnit.SECONDS );
@@ -703,31 +720,31 @@ public class CommTest extends TestCase {
 	}
 
 
-	public static interface Server {
-		public String getMessage();
-		public Class copyClass( Class clazz );
+	public interface Server {
+		String getMessage();
+		Class copyClass( Class clazz );
 
-		public Server testCallback( Client client, VMID client_vmid );
+		Server testCallback( Client client, VMID client_vmid );
 
-		public void testDeclaredException() throws IOException;
-		public void testUndeclaredRuntimeException();
-		public void testUndeclaredError();
+		void testDeclaredException() throws IOException;
+		void testUndeclaredRuntimeException();
+		void testUndeclaredError();
 
-		public void testUnserializable( UnserializableClass obj );
-		public void testSerializationError( SerializationErrorClass obj );
-		public void testSerializationError2( SerializationErrorClass2 obj );
+		void testUnserializable( UnserializableClass obj );
+		void testSerializationError( SerializationErrorClass obj );
+		void testSerializationError2( SerializationErrorClass2 obj );
 
-		public UnserializableClass testUnserializableReturn();
-		public SerializationErrorClass testSerializationReturnError();
-		public SerializationErrorClass2 testSerializationReturnError2();
+		UnserializableClass testUnserializableReturn();
+		SerializationErrorClass testSerializationReturnError();
+		SerializationErrorClass2 testSerializationReturnError2();
 
-		public void waitALongTime();
-		public boolean wasInterrupted();
+		void waitALongTime();
+		boolean wasInterrupted();
 	}
 
 
-	public static interface Client {
-		public String getMessage( String message, VMID server_vmid );
+	public interface Client {
+		String getMessage( String message, VMID server_vmid );
 	}
 
 
@@ -843,7 +860,7 @@ public class CommTest extends TestCase {
 	public static class ClientImpl implements Client {
 		private final boolean expect_remote_call;
 
-		public volatile String input_message = null;
+		volatile String input_message = null;
 
 		ClientImpl( boolean expect_remote_call ) {
 			this.expect_remote_call = expect_remote_call;
@@ -862,7 +879,7 @@ public class CommTest extends TestCase {
 	}
 
 
-	public static class UnserializableClass {}
+	static class UnserializableClass {}
 
 	public static class SerializationErrorClass implements Externalizable {
 		@Override
@@ -887,7 +904,7 @@ public class CommTest extends TestCase {
 	}
 
 
-	public static abstract class AbstractClient implements Client {}
+	static abstract class AbstractClient implements Client {}
 
 
 	public static class ClientImpl2 extends AbstractClient {
