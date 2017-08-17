@@ -433,7 +433,7 @@ public final class MessageDecoder {
 					LOG.trace( "Hex dump after context position: {}", buffer.hex() );
 				}
 
-				user_context = ( UserContextInfo ) readObject( buffer );
+				user_context = readObject( buffer );
 			}
 			catch( Exception ex ) {
 				LOG.info( "Error de-serializing user context", ex );
@@ -550,7 +550,7 @@ public final class MessageDecoder {
 		Serializable reconnect_token;
 		try {
 			if ( buffer.get() > 0 ) {
-				reconnect_token = ( Serializable ) readObject( buffer );
+				reconnect_token = readObject( buffer );
 			}
 			else reconnect_token = null;
 		}
@@ -631,7 +631,7 @@ public final class MessageDecoder {
 		Serializable attachment = null;
 		if ( buffer.get() != 0 ) {
 			try {
-				attachment = ( Serializable ) readObject( buffer );
+				attachment = readObject( buffer );
 			}
 			catch( Exception ex ) {
 				LOG.warn( "Error while decoding channel init attachment", ex );
@@ -900,8 +900,7 @@ public final class MessageDecoder {
 			else {
 				try {
 					//noinspection unchecked
-					ResourceKey<String> reject_reason =
-						( ResourceKey<String> ) readObject( buffer );
+					ResourceKey<String> reject_reason = readObject( buffer );
 					return reject_reason.getValue();
 				}
 				catch ( Exception ex ) {
