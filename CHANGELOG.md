@@ -12,11 +12,18 @@ real history will start at 1.7.0.
 ## Added
 - Flow control has been added to virtual channels ([issue #15](https://bitbucket.org/robeden/intrepid/issues/15/))
   to prevent flooding receivers.
+- Added the following tunables for controlling MINA message encode buffers:
+    * `intrepid.mina.encoder.allocate_cached` - When present, the caching allocator will be used rather than the simple allocator.
+    * `intrepid.mina.encoder.allocate_size` - Initial size (in bytes) to use for message encode buffers. The initial size used to be 256k but has been reduced to 2k.
+    * `intrepid.mina.encoder.allocate_direct` - When present, buffers will allocate as direct buffers.
+
   
 ## Changed
 - Protocol version incremented to 3 ([issue #16](https://bitbucket.org/robeden/intrepid/issues/16)).
   **Protocol versions 0-2 are no longer accepted by default, but support can be 
   enabled via a new System property: `-Dintrepid.min_supported_protocol=<version>`.**
+- Initial allocation size of MINA encode buffers reduced from 256k to 2k (see note in
+  "added" section for tunables).
   
 ## Removed
 - `PerformanceListener.invalidMessageReceived` method was removed as messages can no
