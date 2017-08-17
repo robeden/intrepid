@@ -333,16 +333,13 @@ public final class MessageDecoder {
 		Serializable reconnect_token;
 		if ( version < 2 ) reconnect_token = null;
 		else {
-			if ( buffer.get() == 0 ) reconnect_token = null;
-			else {
-				try {
-					reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
-				}
-				catch( Exception ex ) {
-					LOG.info( "Error while decoding session init response " +
-						"reconnect token", ex );
-					reconnect_token = null;
-				}
+			try {
+				reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
+			}
+			catch( Exception ex ) {
+				LOG.info( "Error while decoding session init response " +
+					"reconnect token", ex );
+				reconnect_token = null;
 			}
 		}
 
