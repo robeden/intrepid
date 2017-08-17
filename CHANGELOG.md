@@ -16,6 +16,8 @@ real history will start at 1.7.0.
     * `intrepid.mina.encoder.allocate_cached` - When present, the caching allocator will be used rather than the simple allocator.
     * `intrepid.mina.encoder.allocate_size` - Initial size (in bytes) to use for message encode buffers. The initial size used to be 256k but has been reduced to 2k.
     * `intrepid.mina.encoder.allocate_direct` - When present, buffers will allocate as direct buffers.
+- Added a `ProxyClassFilter` interface which can be configured per Intrepid instance to
+  filter the interfaces exported by a proxy. See [issue #14](https://bitbucket.org/robeden/intrepid/issues/14/).
 
   
 ## Changed
