@@ -38,7 +38,6 @@ import com.starlight.intrepid.exception.ConnectionFailureException;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.SessionCloseIMessage;
-import com.starlight.locale.FormattedTextResourceKey;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.future.WriteFuture;
@@ -672,8 +671,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			session.getAttribute( ATTACHMENT_KEY ), false,
 			( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 
-		IMessage message =
-			new SessionCloseIMessage( com.starlight.intrepid.driver.mina.Resources.USER_INITIATED_DISCONNECT, false );
+		IMessage message = new SessionCloseIMessage( "User-initiated disconnect", false );
 		session.write( message );
 		performance_listener.messageSent( vmid, message );
 		CloseHandler.close( session, 2000 );
@@ -1101,11 +1099,11 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 							close_indicator.getReasonMessage().isAuthFailure() ) {
 
 							exception = new ConnectionFailureException(
-								close_indicator.getServerReasonMessage().getValue() );
+								close_indicator.getServerReasonMessage().orElse( null ) );
 						}
 						else {
 							exception = new IOException(
-								close_indicator.getServerReasonMessage().getValue() );
+								close_indicator.getServerReasonMessage().orElse( null ) );
 						}
 
 						vmid_future.setException( exception );
@@ -1152,8 +1150,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			}
 			catch( ClassCastException ex ) {
 				throw new CloseSessionIndicator( new SessionCloseIMessage(
-					new FormattedTextResourceKey( com.starlight.intrepid.driver.mina.Resources.INVALID_MESSAGE_TYPE,
-					message.getClass().getName() ), false ) );
+					"Invalid message type: " + message.getClass().getName(),
+					false ) );
 			}
 		}
 		catch ( final CloseSessionIndicator close_indicator ) {
@@ -1188,6 +1186,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	// Introduced in some 2.0.x maintenance patch... 'cuz MINA. We hates it...
 //	@Override
+	@SuppressWarnings( "unused" )
 	public void inputClosed( IoSession session ) throws Exception {
 		LOG.trace( "inputClosed: {}", session );
 	}

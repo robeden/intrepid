@@ -33,7 +33,6 @@ import com.starlight.intrepid.auth.*;
 import com.starlight.intrepid.driver.*;
 import com.starlight.intrepid.exception.*;
 import com.starlight.intrepid.message.*;
-import com.starlight.locale.FormattedTextResourceKey;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.TShortObjectMap;
@@ -516,7 +515,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 				return channel;
 			}
-			else throw new ChannelRejectedException( response.getRejectReason() );
+			else throw new ChannelRejectedException(
+				response.getRejectReason().orElse( null ) );
 		}
 		catch( InterruptedException ex ) {
 			throw new InterruptedIOException();
@@ -837,9 +837,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			default:
 				assert false : "Unknown type: " + message.getType();
-				throw new CloseSessionIndicator( new SessionCloseIMessage(
-					new FormattedTextResourceKey( Resources.UNKNOWN_MESSAGE_TYPE,
-					message.getType().name() ), false ) );
+				throw new CloseSessionIndicator(
+					new SessionCloseIMessage(
+						"Unknown message type: " + message.getType(), false ) );
 		}
 
 		return response;
@@ -905,18 +905,19 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		if ( auth_handler == null ) {
 			throw new CloseSessionIndicator( new SessionCloseIMessage(
-				Resources.ERROR_CLIENT_CONNECTIONS_NOT_ALLOWED_NO_AUTH_HANDLER, true ) );
+				"Client connections are not allowed (no AuthHandler installed)", true ) );
 		}
 
 		OptionalInt negotiated_proto_version = ProtocolVersions.negotiateProtocolVersion(
 			message.getMinProtocolVersion(), message.getPrefProtocolVersion() );
 		if ( !negotiated_proto_version.isPresent() ) {
 			throw new CloseSessionIndicator( new SessionCloseIMessage(
-				new FormattedTextResourceKey( Resources.INCOMPATIBLE_PROTOCOL_VERSION,
-				Byte.valueOf( ProtocolVersions.MIN_PROTOCOL_VERSION ),
-				Byte.valueOf( ProtocolVersions.PROTOCOL_VERSION ),
-				Byte.valueOf( message.getMinProtocolVersion() ),
-				Byte.valueOf( message.getPrefProtocolVersion() ) ), false ) );
+				"Incompatible protocol version. Acceptable range: " +
+					ProtocolVersions.MIN_PROTOCOL_VERSION + "-" +
+					ProtocolVersions.PROTOCOL_VERSION + "Requested range: " +
+					message.getMinProtocolVersion() + "-" +
+					message.getPrefProtocolVersion(),
+				false ) );
 		}
 
 		byte proto_version = ( byte ) negotiated_proto_version.getAsInt();
@@ -947,7 +948,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		}
 		catch( ConnectionAuthFailureException ex ) {
 			throw new CloseSessionIndicator(
-				new SessionCloseIMessage( ex.getMessageResourceKey(), true ) );
+				new SessionCloseIMessage( ex.getMessage(), true ) );
 		}
 
 		session_info.setProtocolVersion( Byte.valueOf( proto_version ) );
@@ -998,7 +999,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 //		System.out.println( "Notified of close for session with " + info.getVMID() +
 //			": " + message.getReason() );
-		throw new CloseSessionIndicator( message.getReason() );
+		throw new CloseSessionIndicator( message.getReason().orElse( null ) );
 	}
 
 	private void handleInvoke( InvokeIMessage message,
@@ -1178,7 +1179,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			// NOTE: no need to close VirtualByteChannel
 			return new ChannelInitResponseIMessage( message.getRequestID(),
-				ex.getMessageResourceKey().getValue() );
+				ex.getMessage() );
 		}
 
 		if ( performance_listeners.hasListeners() ) {

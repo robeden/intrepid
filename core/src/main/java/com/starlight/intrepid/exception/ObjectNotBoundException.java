@@ -26,19 +26,16 @@
 package com.starlight.intrepid.exception;
 
 import com.starlight.intrepid.Registry;
-import com.starlight.locale.ResourceKey;
-import com.starlight.locale.exception.LocalizedRuntimeException;
 
 
 /**
  * Thrown when a lookup fails from {@link Registry}.
  */
-public class ObjectNotBoundException extends LocalizedRuntimeException {
-	private static final long serialVersionUID = 2980156307277222327L;
+public class ObjectNotBoundException extends RuntimeException {
+	private static final long serialVersionUID = -4774630481325185964L;
 
 
-
-	public ObjectNotBoundException( ResourceKey<String> message ) {
+	public ObjectNotBoundException( String message ) {
 		super( message );
 	}
 }

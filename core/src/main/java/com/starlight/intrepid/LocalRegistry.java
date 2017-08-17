@@ -26,7 +26,6 @@
 package com.starlight.intrepid;
 
 import com.starlight.intrepid.exception.ObjectNotBoundException;
-import com.starlight.locale.FormattedTextResourceKey;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
@@ -64,8 +63,7 @@ public class LocalRegistry implements Registry {
 		try {
 			Object obj = proxy_map.get( name );
 			if ( obj == null ) {
-				throw new ObjectNotBoundException( new FormattedTextResourceKey(
-					Resources.OBJECT_NOT_BOUND, name ) );
+				throw new ObjectNotBoundException( "Object not bound: " + name );
 			}
 			else return obj;
 		}
@@ -144,6 +142,7 @@ public class LocalRegistry implements Registry {
 	/**
 	 * Remove an object from the registry.
 	 */
+	@SuppressWarnings( "WeakerAccess" )
 	public void unbind( String name ) {
 		Proxy proxy;
 

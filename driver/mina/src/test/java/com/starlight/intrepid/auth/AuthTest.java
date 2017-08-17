@@ -26,7 +26,6 @@
 package com.starlight.intrepid.auth;
 
 import com.starlight.intrepid.*;
-import com.starlight.locale.UnlocalizableTextResourceKey;
 import junit.framework.TestCase;
 
 import java.io.IOException;
@@ -119,21 +118,18 @@ public class AuthTest extends TestCase {
 
 			if ( !( connection_args instanceof UserCredentialsConnectionArgs ) ) {
 				throw new ConnectionAuthFailureException(
-					new UnlocalizableTextResourceKey( "Bad args type: " +
-					connection_args ) );
+					"Bad args type: " + connection_args );
 			}
 
 			UserCredentialsConnectionArgs credentials =
 				( UserCredentialsConnectionArgs ) connection_args;
 
 			if ( !"reden".equals( credentials.getUser() ) ) {
-				throw new ConnectionAuthFailureException(
-					new UnlocalizableTextResourceKey( "Bad user" ) );
+				throw new ConnectionAuthFailureException( "Bad user" );
 			}
 
 			if ( !"12345".equals( new String( credentials.getPassword() ) ) ) {
-				throw new ConnectionAuthFailureException(
-					new UnlocalizableTextResourceKey( "Bad password" ) );
+				throw new ConnectionAuthFailureException( "Bad password" );
 			}
 
 			return new SimpleUserContextInfo( credentials.getUser() );

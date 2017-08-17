@@ -25,24 +25,20 @@
 
 package com.starlight.intrepid.auth;
 
-import com.starlight.locale.ResourceKey;
-import com.starlight.locale.exception.LocalizedException;
-
-
 /**
  * Thrown to indicate that a connection attempt is denied due to
  * authentication/authorization failure.
  */
-public class ConnectionAuthFailureException extends LocalizedException {
-	private static final long serialVersionUID = 7293621224222505486L;
+@SuppressWarnings( "WeakerAccess" )
+public class ConnectionAuthFailureException extends Exception {
+	private static final long serialVersionUID = 6007338235259058062L;
 
 
-
-	public ConnectionAuthFailureException( ResourceKey<String> reason ) {
+	public ConnectionAuthFailureException( String reason ) {
 		super( reason );
 	}
 
-	public ConnectionAuthFailureException( ResourceKey<String> reason, Throwable cause ) {
+	public ConnectionAuthFailureException( String reason, Throwable cause ) {
 		super( reason, cause );
 	}
 }

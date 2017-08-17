@@ -18,6 +18,7 @@ import java.util.Objects;
  * multiple implementations to be dynamically registered and unregistered at runtime.
  * This class will delegate calls to the other implementations 
  */
+@SuppressWarnings( "WeakerAccess" )
 public class PluggableChannelAcceptor implements ChannelAcceptor {
 	private final List<ChannelAcceptor> delegates =
 		Collections.synchronizedList( new ArrayList<ChannelAcceptor> () );
@@ -75,6 +76,6 @@ public class PluggableChannelAcceptor implements ChannelAcceptor {
 			}
 		}
 
-		throw new ChannelRejectedException( Resources.ERROR_NO_SUITABLE_ACCEPTOR_FOUND );
+		throw new ChannelRejectedException( "No suitable ChannelAcceptor found." );
 	}
 }

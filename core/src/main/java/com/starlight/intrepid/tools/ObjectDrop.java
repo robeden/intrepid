@@ -7,7 +7,6 @@ import com.starlight.intrepid.Intrepid;
 import com.starlight.intrepid.IntrepidContext;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import com.starlight.locale.FormattedTextResourceKey;
 import gnu.trove.map.TShortObjectMap;
 import gnu.trove.map.hash.TShortObjectHashMap;
 
@@ -15,7 +14,6 @@ import java.io.*;
 import java.lang.ref.WeakReference;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
-import java.text.MessageFormat;
 import java.util.Map;
 import java.util.Random;
 import java.util.WeakHashMap;
@@ -30,7 +28,7 @@ import java.util.zip.GZIPOutputStream;
 /**
  *
  */
-public class ObjectDrop implements ChannelAcceptor {
+@SuppressWarnings( "WeakerAccess" ) public class ObjectDrop implements ChannelAcceptor {
 	// NOTE: only a short is used
 	private static final AtomicInteger DROP_INSTANCE_COUNTER =
 		new AtomicInteger( new Random().nextInt() );
@@ -95,8 +93,7 @@ public class ObjectDrop implements ChannelAcceptor {
 		}
 
 		if ( slot == null ) {
-			throw new IllegalStateException( MessageFormat.format(
-				Resources.ERROR_UNKNOWN_ID.getValue(), id ) );
+			throw new IllegalStateException( "Unknown ObjectDrop.ID: " + id );
 		}
 
 		Object result = slot.waitForValue( timeout_unit.toMillis( timeout ) );
@@ -125,8 +122,9 @@ public class ObjectDrop implements ChannelAcceptor {
 		Intrepid instance = IntrepidContext.getActiveInstance();
 
 		if ( vmid != null && instance == null ) {
-			throw new IllegalStateException(
-				Resources.ERROR_DROP_WITH_VMID_BUT_NO_INSTANCE.getValue() );
+			throw new IllegalStateException( "Destination VMID was non-null, but " +
+				"Intrepid instance was null. Please provide an instance with a " +
+				"connection to the specified VMID." );
 		}
 
 		drop( vmid, id, instance, object, compress );
@@ -143,18 +141,21 @@ public class ObjectDrop implements ChannelAcceptor {
 				WeakReference<ObjectDrop> ref =
 					DROP_INSTANCE_MAP.get( id.getDropInstanceID() );
 				if ( ref == null ) {
-					throw new IllegalStateException( MessageFormat.format(
-						Resources.ERROR_DROP_INSTANCE_NOT_FOUND.getValue(),
-						Short.valueOf( id.getDropInstanceID() ) ) );
+					throw new IllegalStateException(
+						"Unable to find ObjectDrop instance with ID " +
+						id.getDropInstanceID() + " and no " +
+						"destination VMID was provided. Either the ID is out of date " +
+						"or a destination should have been provided." );
 				}
 
 				drop_instance = ref.get();
 				if ( drop_instance == null ) {
 					DROP_INSTANCE_MAP.remove( id.getDropInstanceID() );
 
-					throw new IllegalStateException( MessageFormat.format(
-						Resources.ERROR_DROP_INSTANCE_GCED.getValue(),
-						Short.valueOf( id.getDropInstanceID() ) ) );
+					throw new IllegalStateException(
+						"ObjectDrop instance with ID " + id.getDropInstanceID() +
+						" has been garbage  collected. A strong reference should be " +
+						"held while drops can still be done." );
 				}
 			}
 			finally {
@@ -174,8 +175,7 @@ public class ObjectDrop implements ChannelAcceptor {
 			}
 
 			if ( slot == null ) {
-				throw new IllegalStateException( new FormattedTextResourceKey(
-					Resources.ERROR_UNKNOWN_ID, id ).getValue() );
+				throw new IllegalStateException( "Unknown ObjectDrop.ID: " + id );
 			}
 			else slot.set( object );
 
@@ -222,7 +222,7 @@ public class ObjectDrop implements ChannelAcceptor {
 
 		// Verify the expected type
 		if ( !( attachment instanceof ID ) ) {
-			throw new ChannelRejectedException( Resources.ERROR_ATTACHMENT_NOT_ID );
+			throw new ChannelRejectedException( "Attachment should be an ObjectDrop.ID" );
 		}
 
 		ObjectSlot<Object> slot;
@@ -237,13 +237,12 @@ public class ObjectDrop implements ChannelAcceptor {
 
 		// Make sure we're expecting the object
 		if ( slot == null ) {
-			throw new ChannelRejectedException(
-				new FormattedTextResourceKey( Resources.ERROR_UNKNOWN_ID, attachment ) );
+			throw new ChannelRejectedException( "Unknown ObjectDrop.ID: " + attachment );
 		}
 		// Make sure the object hasn't already been read
 		else if ( slot.get() != null ) {
 			throw new ChannelRejectedException(
-				new FormattedTextResourceKey( Resources.ERROR_SLOT_FULL, attachment ) );
+				"Slot already full for ObjectDrop.ID: " + attachment );
 		}
 
 		new ChannelReader( channel, slot ).start();

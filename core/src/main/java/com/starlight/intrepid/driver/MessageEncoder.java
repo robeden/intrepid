@@ -26,6 +26,7 @@
 package com.starlight.intrepid.driver;
 
 import com.starlight.intrepid.message.*;
+import com.starlight.locale.UnlocalizableTextResourceKey;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -38,8 +39,12 @@ import java.nio.charset.CharsetEncoder;
  *
  */
 public final class MessageEncoder  {
-	private static final CharsetEncoder STRING_ENCODER =
+	@SuppressWarnings( "DeprecatedIsStillUsed" )
+	@Deprecated
+	private static final CharsetEncoder UTF16_ENCODER =     // pre-proto 3
 		Charset.forName( "UTF-16" ).newEncoder();
+	private static final CharsetEncoder UTF8_ENCODER =      // proto 3+
+		Charset.forName( "UTF-8" ).newEncoder();
 
 	private static final int MAX_SINGLE_SHORT_LENGTH = 0x7FFF;
 	private static final int DUAL_SHORT_FLAG = 0x8000;
@@ -310,7 +315,10 @@ public final class MessageEncoder  {
 
 		// PERSISTENT NAME
 		if ( message.getPersistentName() != null ) {
-			buffer.putString( message.getPersistentName(), STRING_ENCODER, c -> {} );
+			//noinspection deprecation
+			buffer.putString( message.getPersistentName(),
+				proto_version >= 3 ? UTF8_ENCODER : UTF16_ENCODER,
+				c -> {} );
 		}
 
 		// USER CONTEXT
@@ -419,9 +427,17 @@ public final class MessageEncoder  {
 		}
 
 		// REASON
-		if ( message.getReason() == null ) buffer.put( ( byte ) 0 );
+		String reason = message.getReason().orElse( null );
+		if ( reason == null ) buffer.put( ( byte ) 0 );
 		else {
 			buffer.put( ( byte ) 1 );
+
+			if ( proto_version >= 3 ) {
+				buffer.putString( reason, UTF8_ENCODER, c -> {} );
+			}
+			else {
+				putObject( new UnlocalizableTextResourceKey( reason ), buffer );
+			}
 			putObject( message.getReason(), buffer );
 		}
 
@@ -505,10 +521,17 @@ public final class MessageEncoder  {
 			buffer.put( ( byte ) 1 );
 
 			// REJECT REASON
-			if ( message.getRejectReason() == null ) buffer.put( ( byte ) 0 );
+			String reject_reason = message.getRejectReason().orElse( null );
+			if ( reject_reason == null ) buffer.put( ( byte ) 0 );
 			else {
 				buffer.put( ( byte ) 1 );
-				putObject( message.getRejectReason(), buffer );
+
+				if ( proto_version >= 3 ) {
+					buffer.putString( reject_reason, UTF8_ENCODER, c -> {} );
+				}
+				else {
+					putObject( new UnlocalizableTextResourceKey( reject_reason ), buffer );
+				}
 			}
 		}
 		else {

@@ -26,28 +26,27 @@
 package com.starlight.intrepid.exception;
 
 import com.starlight.intrepid.ChannelAcceptor;
-import com.starlight.locale.ResourceKey;
-import com.starlight.locale.exception.LocalizedException;
+
+import javax.annotation.Nullable;
 
 
 /**
  * Thrown by {@link ChannelAcceptor} if a channel is rejected
  * by the server.
  */
-public class ChannelRejectedException extends LocalizedException {
-	private static final long serialVersionUID = 3804408035234994660L;
-
+public class ChannelRejectedException extends Exception {
+	private static final long serialVersionUID = -2489548224125918578L;
 
 
 	public ChannelRejectedException() {
 		super();
 	}
 
-	public ChannelRejectedException( ResourceKey<String> message ) {
+	public ChannelRejectedException( @Nullable String message ) {
 		super( message );
 	}
 
-	public ChannelRejectedException( ResourceKey<String> message, Throwable cause ) {
+	public ChannelRejectedException( @Nullable String message, Throwable cause ) {
 		super( message, cause );
 	}
 }

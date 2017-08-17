@@ -26,22 +26,30 @@
 package com.starlight.intrepid.driver;
 
 import com.starlight.intrepid.message.SessionCloseIMessage;
-import com.starlight.locale.ResourceKey;
+
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.util.Optional;
 
 
 /**
  * Throwable to indicate that the SPI should close the session.
+ * <p>
+ * This class will be serializable due to class hierarchy, but does not support
+ * serialization. If an attempt is made to serialize it, an exception will be thrown.
  */
+@SuppressWarnings( "serial" )
 public final class CloseSessionIndicator extends Throwable {
-	private static final long serialVersionUID = 3600263434401280315L;
+	// There is no serialVersionUID because this class does not support serialization
 
 
 
 	private final SessionCloseIMessage reason_message;
-	private final ResourceKey<String> server_reason_message;
+	private final String server_reason_message;
 
 
-	public CloseSessionIndicator( ResourceKey<String> server_reason_message ) {
+	public CloseSessionIndicator( @Nullable String server_reason_message ) {
 		this.server_reason_message = server_reason_message;
 		this.reason_message = null;
 	}
@@ -60,7 +68,14 @@ public final class CloseSessionIndicator extends Throwable {
 		return reason_message;
 	}
 
-	public ResourceKey<String> getServerReasonMessage() {
-		return server_reason_message;
+	public Optional<String> getServerReasonMessage() {
+		return Optional.ofNullable( server_reason_message );
+	}
+
+
+	// Prevent serialization (since the message isn't serializable and this is meant for
+	// internal SPI stuff anyway.
+	private void writeObject( ObjectOutputStream oos ) throws IOException {
+		throw new IOException( "CloseSessionIndicators should never be serialized" );
 	}
 }

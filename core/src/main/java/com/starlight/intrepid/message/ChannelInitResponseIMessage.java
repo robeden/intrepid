@@ -25,9 +25,6 @@
 
 package com.starlight.intrepid.message;
 
-import com.starlight.locale.ResourceKey;
-import com.starlight.locale.UnlocalizableTextResourceKey;
-
 import javax.annotation.Nonnegative;
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -91,17 +88,10 @@ public class ChannelInitResponseIMessage implements IMessage {
 
 
 	/**
-	 * Returns the reason the channel could not be created, which might be null
+	 * Returns the reason the channel could not be created, which might be empty
 	 * if no reason was provided by the server.
-	 *
-	 * @deprecated Use {@link #getRejectReasonString()}
 	 */
-	public ResourceKey<String> getRejectReason() {
-		return reject_reason == null ? null :
-			new UnlocalizableTextResourceKey( reject_reason );
-	}
-
-	public Optional<String> getRejectReasonString() {
+	public Optional<String> getRejectReason() {
 		return Optional.ofNullable( reject_reason );
 	}
 

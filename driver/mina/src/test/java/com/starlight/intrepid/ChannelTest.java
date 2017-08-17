@@ -30,8 +30,6 @@ import com.logicartisan.common.core.Triple;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import com.starlight.locale.ResourceKey;
-import com.starlight.locale.UnlocalizableTextResourceKey;
 import junit.framework.TestCase;
 
 import java.io.IOException;
@@ -55,6 +53,8 @@ public class ChannelTest extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
+		super.tearDown();
+
 		if ( server != null ) server.close();
 		if ( client != null ) client.close();
 	}
@@ -77,8 +77,7 @@ public class ChannelTest extends TestCase {
 
 
 	public void testChannelReject() throws IOException {
-		ChannelAcceptor acceptor = new TestAcceptor(
-			new UnlocalizableTextResourceKey( "Test reject" ) );
+		ChannelAcceptor acceptor = new TestAcceptor( "Test reject" );
 
 		server = Intrepid.create(
 			new IntrepidSetup().openServer().channelAcceptor( acceptor ) );
@@ -93,8 +92,8 @@ public class ChannelTest extends TestCase {
 		}
 		catch( ChannelRejectedException ex ) {
 			// This is good
-			assertNotNull( ex.getMessageResourceKey() );
-			assertEquals( "Test reject", ex.getMessageResourceKey().getValue() );
+			assertNotNull( ex.getMessage() );
+			assertEquals( "Test reject", ex.getMessage() );
 		}
 	}
 
@@ -294,13 +293,13 @@ public class ChannelTest extends TestCase {
 	
 
 	private class TestAcceptor implements ChannelAcceptor {
-		private final ResourceKey<String> reject_reason;
+		private final String reject_reason;
 
 		private BlockingQueue<Triple<ByteChannel,VMID,Serializable>> queue =
-			new LinkedBlockingQueue<Triple<ByteChannel, VMID, Serializable>>();
+			new LinkedBlockingQueue<>();
 
 
-		TestAcceptor( ResourceKey<String> reject_reason ) {
+		TestAcceptor( String reject_reason ) {
 			this.reject_reason = reject_reason;
 		}
 
@@ -329,21 +328,18 @@ public class ChannelTest extends TestCase {
 		public void newChannel( final ByteChannel channel, VMID source_vmid,
 			Serializable attachment ) throws ChannelRejectedException {
 
-			SharedThreadPool.INSTANCE.execute( new Runnable() {
-				@Override
-				public void run() {
-					try {
-						
-						while( to_write.hasRemaining() ) {
-							channel.write( to_write );
-						}
+			SharedThreadPool.INSTANCE.execute( () -> {
+				try {
+
+					while( to_write.hasRemaining() ) {
+						channel.write( to_write );
 					}
-					catch( Exception ex ) {
-						ex.printStackTrace();
-					}
-					finally {
-						IOKit.close( channel );
-					}
+				}
+				catch( Exception ex ) {
+					ex.printStackTrace();
+				}
+				finally {
+					IOKit.close( channel );
 				}
 			} );
 		}

@@ -25,14 +25,15 @@
 
 package com.starlight.intrepid.message;
 
-import com.starlight.locale.ResourceKey;
+import javax.annotation.Nullable;
+import java.util.Optional;
 
 
 /**
  * Generic message send when a channel is disconnecting.
  */
 public class SessionCloseIMessage implements IMessage {
-	private final ResourceKey<String> reason;
+	private final String reason;
 	private final boolean is_auth_failure;
 
 
@@ -41,7 +42,7 @@ public class SessionCloseIMessage implements IMessage {
 		this.is_auth_failure = false;
 	}
 
-	public SessionCloseIMessage( ResourceKey<String> reason, boolean is_auth_failure ) {
+	public SessionCloseIMessage( @Nullable String reason, boolean is_auth_failure ) {
 		this.reason = reason;
 		this.is_auth_failure = is_auth_failure;
 	}
@@ -51,8 +52,8 @@ public class SessionCloseIMessage implements IMessage {
 		return IMessageType.SESSION_CLOSE;
 	}
 
-	public ResourceKey<String> getReason() {
-		return reason;
+	public Optional<String> getReason() {
+		return Optional.ofNullable( reason );
 	}
 
 	public boolean isAuthFailure() {

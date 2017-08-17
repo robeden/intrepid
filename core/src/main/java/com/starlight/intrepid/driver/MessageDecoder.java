@@ -31,7 +31,6 @@ import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.exception.ServerException;
 import com.starlight.intrepid.message.*;
-import com.starlight.locale.FormattedTextResourceKey;
 import com.starlight.locale.ResourceKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +53,12 @@ import java.nio.charset.CharsetDecoder;
 public final class MessageDecoder {
 	private static final Logger LOG = LoggerFactory.getLogger( MessageDecoder.class );
 
-	private static final CharsetDecoder STRING_DECODER =
+	@SuppressWarnings( "DeprecatedIsStillUsed" )
+	@Deprecated
+	private static final CharsetDecoder UTF16_DECODER =     // proto 0-2
 		Charset.forName( "UTF-16" ).newDecoder();
+	private static final CharsetDecoder UTF8_DECODER =      // proto 3+
+		Charset.forName( "UTF-8" ).newDecoder();
 
 
 
@@ -112,9 +115,9 @@ public final class MessageDecoder {
 				default:
 					LOG.warn( "Message type {} was received when the protocol version " +
 						"is unknown (session init incomplete?)", message_type );
-					response_handler.sendMessage( new SessionCloseIMessage(
-							new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
-								message_type ), false ),
+					response_handler.sendMessage(
+						new SessionCloseIMessage(
+							"Invalid message type: " + message_type, false ),
 						SessionCloseOption.ATTEMPT_FLUSH );
 					return null;
 			}
@@ -202,9 +205,9 @@ public final class MessageDecoder {
 
 				default:
 					LOG.warn( "Unknown message type: {}", message_type );
-					response_handler.sendMessage( new SessionCloseIMessage(
-							new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
-								message_type ), false ),
+					response_handler.sendMessage(
+						new SessionCloseIMessage(
+							"Invalid message type: " + message_type, false ),
 						SessionCloseOption.ATTEMPT_FLUSH );
 					return null;
 			}
@@ -254,9 +257,8 @@ public final class MessageDecoder {
 
 			// Write an error, close the session and return nothing
 			response_handler.sendMessage(
-				new SessionCloseIMessage( new FormattedTextResourceKey(
-					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
-					false ),
+				new SessionCloseIMessage(
+					"Unable to de-serialize session init info: " + ex.toString(), false ),
 				SessionCloseOption.ATTEMPT_FLUSH );
 			return null;
 		}
@@ -315,9 +317,8 @@ public final class MessageDecoder {
 
 			// Write an error, close the session and return nothing
 			response_handler.sendMessage(
-				new SessionCloseIMessage( new FormattedTextResourceKey(
-					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
-					false ),
+				new SessionCloseIMessage(
+					"Unable to de-serialize session init info: " + ex, false ),
 				SessionCloseOption.ATTEMPT_FLUSH );
 			return null;
 		}
@@ -408,7 +409,10 @@ public final class MessageDecoder {
 		String persistent_name = null;
 		if ( has_persistent_name ) {
 			try {
-				persistent_name = buffer.getString( STRING_DECODER, c -> {} );
+				//noinspection deprecation
+				persistent_name = buffer.getString(
+					proto_version >= 3 ? UTF8_DECODER : UTF16_DECODER,
+					c -> {} );
 
 				LOG.trace( "  decoded persistent name: {}", persistent_name );
 			}
@@ -570,19 +574,7 @@ public final class MessageDecoder {
 		}
 
 		// REASON
-		ResourceKey<String> reason;
-		try {
-			if ( buffer.get() > 0 ) {
-				//noinspection unchecked
-				reason = ( ResourceKey<String> ) readObject( buffer );
-			}
-			else reason = null;
-		}
-		catch( Exception ex ) {
-			// If we can't de-serialize the session close message, there's no point
-			// notifying the other side (since they're closing the connection).
-			return null;
-		}
+		String reason = readStringFromLegacyResourceKey( proto_version, buffer );
 
 		// AUTH FAILURE
 		boolean is_auth_failure = buffer.get() != 0;
@@ -680,20 +672,9 @@ public final class MessageDecoder {
 
 		if ( rejected ) {
 			// REJECT REASON
-			ResourceKey<String> reject_reason;
-			if ( buffer.get() == 0 ) reject_reason = null;
-			else {
-				try {
-					//noinspection unchecked
-					reject_reason = ( ResourceKey<String> ) readObject( buffer );
-				}
-				catch( Exception ex ) {
-					reject_reason = null;
-				}
-			}
+			String reason = readStringFromLegacyResourceKey( proto_version, buffer );
 
-			return new ChannelInitResponseIMessage( request_id,
-				reject_reason == null ? null : reject_reason.getValue() );
+			return new ChannelInitResponseIMessage( request_id, reason );
 		}
 		else {
 			// RX WINDOW - added in proto 3
@@ -902,5 +883,35 @@ public final class MessageDecoder {
 		finally {
 			IOKit.DESERIALIZATION_HINT.remove();
 		}
+	}
+
+
+	private static @Nullable String readStringFromLegacyResourceKey(
+		byte proto_version, @Nonnull DataSource buffer ) {
+
+		if ( buffer.get() != 0 ) {
+			if ( proto_version >= 3 ) {
+				try {
+					return buffer.getString( UTF8_DECODER, c -> {} );
+				}
+				catch ( CharacterCodingException ex ) {
+					LOG.warn( "Unable to decode channel rejection reason", ex );
+				}
+			}
+			else {
+				try {
+					//noinspection unchecked
+					ResourceKey<String> reject_reason =
+						( ResourceKey<String> ) readObject( buffer );
+					return reject_reason.getValue();
+				}
+				catch ( Exception ex ) {
+					LOG.warn( "Unable to decode channel rejection reason (old " +
+						"proto version={})", proto_version, ex );
+				}
+			}
+		}
+
+		return null;
 	}
 }

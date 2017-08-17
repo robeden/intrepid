@@ -21,9 +21,13 @@ real history will start at 1.7.0.
 ## Changed
 - Protocol version incremented to 3 ([issue #16](https://bitbucket.org/robeden/intrepid/issues/16)).
   **Protocol versions 0-2 are no longer accepted by default, but support can be 
-  enabled via a new System property: `-Dintrepid.min_supported_protocol=<version>`.**
+  enabled via a new System property: `-Dintrepid.min_supported_protocol=<version>`. If
+  older protocol support is enabled, a dependency on `com.logicartisan:common-locale:1.0.0`
+  must be added (since it is no longer listed as a required dependency).**
+  Support for protocols <3 will be dropped in a future release (1.9?).
 - Initial allocation size of MINA encode buffers reduced from 256k to 2k (see note in
   "added" section for tunables).
+- `ChannelRejectedException` now extends Exception rather than LocalizableException.
   
 ## Removed
 - `PerformanceListener.invalidMessageReceived` method was removed as messages can no
