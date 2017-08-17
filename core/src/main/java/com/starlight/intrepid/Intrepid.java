@@ -167,7 +167,8 @@ public class Intrepid {
 
 		// Create handlers
 		LocalCallHandler local_handler = new LocalCallHandler( vmid,
-			performance_listeners.dispatch(), setup.getPreInvocationValidator() );
+			performance_listeners.dispatch(), setup.getPreInvocationValidator(),
+			setup.getProxyClassFilter() );
 		RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
 			local_handler, vmid, thread_pool, performance_listeners,
 			setup.getChannelAcceptor(), setup.getChannelRxWindowSizeFunction() );

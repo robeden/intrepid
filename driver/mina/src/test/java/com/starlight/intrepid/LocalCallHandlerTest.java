@@ -25,8 +25,8 @@
 
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.exception.IllegalProxyDelegateException;
 import com.logicartisan.common.core.IOKit;
+import com.starlight.intrepid.exception.IllegalProxyDelegateException;
 import junit.framework.TestCase;
 
 import java.io.Serializable;
@@ -54,8 +54,10 @@ public class LocalCallHandlerTest extends TestCase {
 
 
 	public void testFindProxyInterfaces() {
+		ProxyClassFilter filter = ( o, i ) -> true;
+
 		try {
-			Class[] c = LocalCallHandler.findProxyInterfaces( Object.class );
+			Class[] c = LocalCallHandler.findProxyInterfaces( new Object(), filter );
 			fail( "Shouldn't have found interfaces: " + Arrays.toString( c ) );
 		}
 		catch( IllegalProxyDelegateException ex ) {
@@ -63,7 +65,7 @@ public class LocalCallHandlerTest extends TestCase {
 		}
 
 		try {
-			Class[] c = LocalCallHandler.findProxyInterfaces( String.class );
+			Class[] c = LocalCallHandler.findProxyInterfaces( "A test string", filter );
 			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
 
 			assertTrue( class_set.contains( Serializable.class ) );
@@ -75,12 +77,49 @@ public class LocalCallHandlerTest extends TestCase {
 		}
 
 		try {
-			Class[] c = LocalCallHandler.findProxyInterfaces( ConcurrentHashMap.class );
+			Class[] c = LocalCallHandler.findProxyInterfaces(
+				new ConcurrentHashMap<>(), filter );
 			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
 
 			assertTrue( class_set.contains( Serializable.class ) );
 			assertTrue( class_set.contains( Map.class ) );
 			assertTrue( class_set.contains( ConcurrentMap.class ) );
+		}
+		catch( IllegalProxyDelegateException ex ) {
+			fail( "Should be a valid proxy: " + ex );
+		}
+	}
+
+	public void testFindProxyInterfacesWithFilter() {
+		ProxyClassFilter filter = ( o, i ) -> {
+			// Disallow Map, ConcurrentMap and Comparable
+			return !i.equals( Map.class ) &&
+				!i.equals( ConcurrentMap.class ) &&
+				!i.equals( Comparable.class );
+		};
+
+		try {
+			Class[] c = LocalCallHandler.findProxyInterfaces( "A test string", filter );
+			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+
+			assertTrue( class_set.contains( Serializable.class ) );
+			assertTrue( class_set.contains( CharSequence.class ) );
+
+			assertFalse( class_set.contains( Comparable.class ) );
+		}
+		catch( IllegalProxyDelegateException ex ) {
+			fail( "Should be a valid proxy: " + ex );
+		}
+
+		try {
+			Class[] c = LocalCallHandler.findProxyInterfaces(
+				new ConcurrentHashMap<>(), filter );
+			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+
+			assertTrue( class_set.contains( Serializable.class ) );
+
+			assertFalse( class_set.contains( Map.class ) );
+			assertFalse( class_set.contains( ConcurrentMap.class ) );
 		}
 		catch( IllegalProxyDelegateException ex ) {
 			fail( "Should be a valid proxy: " + ex );

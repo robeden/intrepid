@@ -81,6 +81,7 @@ class LocalCallHandler {
 
 	private final PerformanceListener performance_listeners;
 	private final PreInvocationValidator pre_call_validator;
+	private final ProxyClassFilter proxy_class_filter;
 
 	private final Lock map_lock = new ReentrantLock();
 	private final TObjectIntMap<Object> object_to_id_map =
@@ -99,11 +100,13 @@ class LocalCallHandler {
 
 	LocalCallHandler( @Nonnull VMID vmid,
 		@Nonnull PerformanceListener performance_listeners,
-		@Nullable PreInvocationValidator pre_call_validator ) {
+		@Nullable PreInvocationValidator pre_call_validator,
+		@Nonnull ProxyClassFilter proxy_class_filter ) {
 
 		this.vmid = Objects.requireNonNull( vmid );
 		this.performance_listeners = Objects.requireNonNull( performance_listeners );
 		this.pre_call_validator = pre_call_validator;
+		this.proxy_class_filter = proxy_class_filter;
 
 		LeaseManager.registerLocalHandler( vmid, this );
 
@@ -134,7 +137,7 @@ class LocalCallHandler {
 		// the map locked.
 		
 		// Do this before hitting the map so we know it's a proxy-able object
-		Class[] interfaces = findProxyInterfaces( delegate.getClass() );
+		Class[] interfaces = findProxyInterfaces( delegate, proxy_class_filter );
 
 		TIntObjectMap<Method> method_map = new TIntObjectHashMap<Method>();
 		for( Class ifc : interfaces ) {
@@ -385,9 +388,11 @@ class LocalCallHandler {
 
 
 	// Package-private for testability
-	static Class[] findProxyInterfaces( Class object_class ) {
+	static Class[] findProxyInterfaces( @Nonnull Object object,
+		@Nonnull ProxyClassFilter proxy_class_filter ) {
+
 		Set<Class> class_set = new HashSet<Class>();
-		findProxyInterfaces( object_class, class_set );
+		findProxyInterfaces( object, class_set, proxy_class_filter );
 
 		if ( class_set.isEmpty() ) {
 			throw new IllegalProxyDelegateException( "No valid interfaces found." );
@@ -429,23 +434,31 @@ class LocalCallHandler {
 	}
 
 
-	private static void findProxyInterfaces( Class clazz, Set<Class> interface_list ) {
-		Class[] implemented_classes = clazz.getInterfaces();
+	private static void findProxyInterfaces( Object object, Set<Class> interface_list,
+		ProxyClassFilter proxy_class_filter ) {
 
-		for( Class implemented_class : implemented_classes ) {
-			// Add all interfaces, except for Externalizable
-			if ( Externalizable.class.isAssignableFrom( implemented_class ) ) continue;
+		Class class_to_analyze = object.getClass();
+		while( class_to_analyze != null ) {
 
-			// Skip non-public interfaces
-			if ( !Modifier.isPublic( implemented_class.getModifiers() ) ) continue;
+			Class[] implemented_classes = class_to_analyze.getInterfaces();
 
-			interface_list.add( implemented_class );
+			for( Class implemented_class : implemented_classes ) {
+				// Add all interfaces, except for Externalizable
+				if ( Externalizable.class.isAssignableFrom( implemented_class ) ) continue;
+
+				// Skip non-public interfaces
+				if ( !Modifier.isPublic( implemented_class.getModifiers() ) ) continue;
+
+				if ( !proxy_class_filter.checkInterfaceAllowed(
+					object, implemented_class ) ) {
+					continue;
+				}
+
+				interface_list.add( implemented_class );
+			}
+
+			class_to_analyze = class_to_analyze.getSuperclass();
 		}
-
-		Class super_class = clazz.getSuperclass();
-		if ( super_class == null ) return;
-
-		findProxyInterfaces( super_class, interface_list );
 	}
 
 

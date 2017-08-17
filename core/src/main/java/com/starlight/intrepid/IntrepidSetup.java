@@ -65,6 +65,7 @@ public class IntrepidSetup {
 	private PreInvocationValidator validator;
 	private ToIntFunction<Optional<Object>> channel_rx_window_size_function =
 		attachment -> CHANNEL_RX_WINDOW_DEFAULT_SIZE;
+	private ProxyClassFilter proxy_class_filter = ( o, i ) -> true;
 
 	private UnitTestHook unit_test_hook;
 
@@ -168,6 +169,18 @@ public class IntrepidSetup {
 	}
 
 
+	/**
+	 * Provide a filter that will verify the interfaces implemented by proxies. The
+	 * default implementation approves all interfaces.
+	 *
+	 * @see ProxyClassFilter
+	 */
+	public IntrepidSetup proxyClassFilter( @Nonnull ProxyClassFilter filter ) {
+		proxy_class_filter = requireNonNull( filter );
+		return this;
+	}
+
+
 	AuthenticationHandler getAuthHandler() {
 		return auth_handler;
 	}
@@ -210,6 +223,10 @@ public class IntrepidSetup {
 
 	ToIntFunction<Optional<Object>> getChannelRxWindowSizeFunction() {
 		return channel_rx_window_size_function;
+	}
+
+	ProxyClassFilter getProxyClassFilter() {
+		return proxy_class_filter;
 	}
 
 
