@@ -177,7 +177,7 @@ public class Intrepid {
 		driver.init( server_address, server_port, vmid_hint, remote_handler,
 			connection_listeners.dispatch(), thread_pool, vmid,
 			ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch(),
-			setup.getUnitTestHook() );
+			setup.getUnitTestHook(), VMID::new );
 
 		Intrepid instance = new Intrepid( driver, vmid, local_handler, remote_handler,
 			connection_listeners, performance_listeners );

@@ -210,7 +210,9 @@ public final class MessageEncoder  {
 		DataSink buffer ) throws IOException {
 
 		// VERSION
-		buffer.put( ( byte ) 3 );
+		buffer.put( ( byte ) 3 );       // NOTE: Version 4 should change VMID,
+										//       CONNECTION ARGS and RECONNECT TOKEN.
+										//       See MessageDecoder.
 
 		// MIN PROTOCOL VERSION
 		buffer.put( message.getMinProtocolVersion() );
@@ -252,7 +254,8 @@ public final class MessageEncoder  {
 		DataSink buffer ) throws IOException {
 
 		// VERSION
-		buffer.put( ( byte ) 3 );
+		buffer.put( ( byte ) 3 );       // NOTE: Version 4 should change VMID
+										//       and RECONNECT TOKEN. See MessageDecoder.
 
 		// PROTOCOL VERSION
 		buffer.put( message.getProtocolVersion() );

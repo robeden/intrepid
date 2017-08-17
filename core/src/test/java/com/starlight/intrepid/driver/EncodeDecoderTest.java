@@ -112,7 +112,12 @@ public class EncodeDecoderTest {
 		data_buffer.readAll( complete );
 
 		IMessage new_message = MessageDecoder.decode( new OkioBufferData( complete ),
-			ProtocolVersions.PROTOCOL_VERSION, ( response, close ) -> {} );
+			ProtocolVersions.PROTOCOL_VERSION, ( response, close ) -> {},
+			// NOTE: Not currently testing any SessionInit/Response message so shouldn't
+			//       be needed...
+			( uuid, s ) -> {
+				throw new AssertionError( "Shouldn't be called" );
+			} );
 
 		assertEquals( message, new_message );
 	}

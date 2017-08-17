@@ -82,7 +82,14 @@ class DefaultTrackingDataSource implements DataSource.Tracking {
 		} );
 	}
 
+	@Override
+	public @Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+		throws CharacterCodingException, EOFException {
 
+		String value = delegate.getString( decoder, length );
+		read += length;
+		return value;
+	}
 
 	@Override
 	public @Nonnull InputStream inputStream() {

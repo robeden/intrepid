@@ -44,9 +44,12 @@ import java.io.InputStream;
 import java.nio.BufferUnderflowException;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
+import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.function.IntConsumer;
 
 import static com.starlight.intrepid.driver.mina.MINAIntrepidDriver.SESSION_INFO_KEY;
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -59,10 +62,15 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 
 	private final VMID vmid;
 	private final ThreadLocal<VMID> deserialization_context_vmid;
+	private final BiFunction<UUID,String,VMID> vmid_creator;
 
-	MINAIMessageDecoder( VMID vmid, ThreadLocal<VMID> deserialization_context_vmid ) {
-		this.vmid = vmid;
-		this.deserialization_context_vmid = deserialization_context_vmid;
+	MINAIMessageDecoder( @Nonnull VMID vmid,
+		@Nonnull ThreadLocal<VMID> deserialization_context_vmid,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+
+		this.vmid = requireNonNull( vmid );
+		this.deserialization_context_vmid = requireNonNull( deserialization_context_vmid );
+		this.vmid_creator = requireNonNull( vmid_creator );
 	}
 
 
@@ -92,7 +100,7 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 						}
 						CloseHandler.close( session, flush_time );
 					}
-				} );
+				}, vmid_creator );
 			if ( message == null ) {
 				in.position( position_before );
 				return false;
@@ -167,6 +175,13 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 			String value = delegate.getString( decoder );
 			byte_count_consumer.accept( delegate.position() - position_before );
 			return value;
+		}
+
+		@Override
+		public @Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+			throws CharacterCodingException, EOFException {
+
+			return delegate.getString( length, decoder );
 		}
 
 		@Override

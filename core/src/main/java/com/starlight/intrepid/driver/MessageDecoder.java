@@ -37,14 +37,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.util.UUID;
+import java.util.function.BiFunction;
 
 
 /**
@@ -74,7 +73,8 @@ public final class MessageDecoder {
 	 */
 	public static @Nullable IMessage decode( @Nonnull DataSource source,
 		@Nullable Byte proto_version,
-		@Nonnull ResponseHandler response_handler ) {
+		@Nonnull ResponseHandler response_handler,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
 
 		if ( LOG.isTraceEnabled() ) {
 			LOG.trace( "Decoder called: {}", source.hex() );
@@ -104,12 +104,13 @@ public final class MessageDecoder {
 		if ( proto_version == null ) {
 			switch ( message_type ) {
 				case SESSION_INIT:
-					message = decodeSessionInit( tracking_source, response_handler );
+					message = decodeSessionInit(
+						tracking_source, response_handler, vmid_creator );
 					break;
 
 				case SESSION_INIT_RESPONSE:
-					message =
-						decodeSessionInitResponse( tracking_source, response_handler );
+					message = decodeSessionInitResponse(
+						tracking_source, response_handler, vmid_creator );
 					break;
 
 				default:
@@ -127,14 +128,15 @@ public final class MessageDecoder {
 				// NOTE: Allowing session init messages even if proto version is known.
 				//       Old intrepid versions allow re-init
 				case SESSION_INIT:
-					message = decodeSessionInit( tracking_source, response_handler );
+					message = decodeSessionInit(
+						tracking_source, response_handler, vmid_creator );
 					break;
 
 				// NOTE: Allowing session init messages even if proto version is known.
 				//       Old intrepid versions allow re-init
 				case SESSION_INIT_RESPONSE:
-					message =
-						decodeSessionInitResponse( tracking_source, response_handler );
+					message = decodeSessionInitResponse(
+						tracking_source, response_handler, vmid_creator );
 					break;
 
 				case SESSION_TOKEN_CHANGE:
@@ -229,7 +231,8 @@ public final class MessageDecoder {
 
 	// NOTE: protocol version is unknown
 	private static SessionInitIMessage decodeSessionInit( @Nonnull DataSource buffer,
-		@Nonnull ResponseHandler response_handler ) {
+		@Nonnull ResponseHandler response_handler,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
 
 		// VERSION
 		byte version = buffer.get();
@@ -244,13 +247,10 @@ public final class MessageDecoder {
 		ConnectionArgs connection_args;
 		try {
 			// VMID
-			vmid = ( VMID ) readObject( buffer );
+			vmid = readVMID( version < 4, buffer, vmid_creator );
 
 			// CONNECTION ARGS
-			if ( buffer.get() > 0 ) {
-				connection_args = ( ConnectionArgs ) readObject( buffer );
-			}
-			else connection_args = null;
+			connection_args = readPossiblyModernObject( version < 4, true, buffer );
 		}
 		catch( Exception ex ) {
 			LOG.info( "Error while decoding session init vmid/args", ex );
@@ -275,15 +275,12 @@ public final class MessageDecoder {
 		Serializable reconnect_token;
 		if ( version < 2 ) reconnect_token = null;
 		else {
-			if ( buffer.get() == 0 ) reconnect_token = null;
-			else {
-				try {
-					reconnect_token = ( Serializable ) readObject( buffer );
-				}
-				catch( Exception ex ) {
-					LOG.info( "Error while decoding session init reconnect token", ex );
-					reconnect_token = null;
-				}
+			try {
+				reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
+			}
+			catch( Exception ex ) {
+				LOG.info( "Error while decoding session init reconnect token", ex );
+				reconnect_token = null;
 			}
 		}
 
@@ -299,7 +296,8 @@ public final class MessageDecoder {
 	// NOTE: protocol version is unknown
 	private static SessionInitResponseIMessage decodeSessionInitResponse(
 		@Nonnull DataSource buffer,
-		@Nonnull ResponseHandler response_handler ) {
+		@Nonnull ResponseHandler response_handler,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
 
 		// VERSION
 		byte version = buffer.get();
@@ -310,7 +308,7 @@ public final class MessageDecoder {
 		VMID vmid;
 		try {
 			// VMID
-			vmid = ( VMID ) readObject( buffer );
+			vmid = readVMID( version < 4, buffer, vmid_creator );
 		}
 		catch( Exception ex ) {
 			LOG.info( "Error while decoding session init response vmid", ex );
@@ -338,11 +336,11 @@ public final class MessageDecoder {
 			if ( buffer.get() == 0 ) reconnect_token = null;
 			else {
 				try {
-					reconnect_token = ( Serializable ) readObject( buffer );
+					reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
 				}
 				catch( Exception ex ) {
-					LOG.warn(
-						"Error while decoding session init response reconnect token", ex );
+					LOG.info( "Error while decoding session init response " +
+						"reconnect token", ex );
 					reconnect_token = null;
 				}
 			}
@@ -574,7 +572,7 @@ public final class MessageDecoder {
 		}
 
 		// REASON
-		String reason = readStringFromLegacyResourceKey( proto_version, buffer );
+		String reason = readStringOrLegacyResourceKey( proto_version, buffer );
 
 		// AUTH FAILURE
 		boolean is_auth_failure = buffer.get() != 0;
@@ -672,7 +670,7 @@ public final class MessageDecoder {
 
 		if ( rejected ) {
 			// REJECT REASON
-			String reason = readStringFromLegacyResourceKey( proto_version, buffer );
+			String reason = readStringOrLegacyResourceKey( proto_version, buffer );
 
 			return new ChannelInitResponseIMessage( request_id, reason );
 		}
@@ -872,13 +870,14 @@ public final class MessageDecoder {
 
 
 
-	private static Object readObject( DataSource source )
+	private static <T> T readObject( DataSource source )
 		throws IOException, ClassNotFoundException {
 
 		// Hint to StarLight Common's IOKit that we're doing a bunch of deserialization
 		IOKit.DESERIALIZATION_HINT.set( Boolean.TRUE );
 		try ( ObjectInputStream in = new ObjectInputStream( source.inputStream() ) ) {
-			return in.readObject();
+			//noinspection unchecked
+			return ( T ) in.readObject();
 		}
 		finally {
 			IOKit.DESERIALIZATION_HINT.remove();
@@ -886,7 +885,7 @@ public final class MessageDecoder {
 	}
 
 
-	private static @Nullable String readStringFromLegacyResourceKey(
+	private static @Nullable String readStringOrLegacyResourceKey(
 		byte proto_version, @Nonnull DataSource buffer ) {
 
 		if ( buffer.get() != 0 ) {
@@ -913,5 +912,51 @@ public final class MessageDecoder {
 		}
 
 		return null;
+	}
+
+
+	private static @Nonnull VMID readVMID( boolean is_legacy,
+		@Nonnull DataSource buffer, BiFunction<UUID,String,VMID> vmid_creator )
+		throws IOException, ClassNotFoundException {
+
+		if ( !is_legacy ) {
+			long lsb = buffer.getLong();
+			long hsb = buffer.getLong();
+			String hint_text = null;
+			int length = buffer.getShort() & 0xFFFF;
+			if ( length != 0 ) {
+				hint_text = buffer.getString( UTF8_DECODER, length );
+			}
+			return vmid_creator.apply( new UUID( hsb, lsb ), hint_text );
+		}
+		else {
+			return ( VMID ) readObject( buffer );
+		}
+	}
+
+	private static @Nullable <T> T readPossiblyModernObject( boolean is_legacy,
+		boolean modern_length_is_short, @Nonnull DataSource buffer )
+		throws IOException, ClassNotFoundException {
+
+		if ( is_legacy ) {
+			if ( buffer.get() == 0 ) return null;
+
+			return readObject( buffer );
+		}
+		else {
+			int length = modern_length_is_short ?
+				buffer.getShort() & 0xFFFF : buffer.getInt();
+			if ( length == 0 ) return null;
+
+			// TODO #11: Object decoder should go here
+			byte[] data = new byte[ length ];
+			buffer.getFully( data );
+			try ( ObjectInputStream in =
+				new ObjectInputStream( new ByteArrayInputStream( data ) ) ) {
+
+				//noinspection unchecked
+				return ( T ) in.readObject();
+			}
+		}
 	}
 }

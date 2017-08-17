@@ -39,6 +39,12 @@ public interface DataSource {
 	@Nonnull String getString( @Nonnull CharsetDecoder decoder,
 		@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException;
 
+	/**
+	 * Read a string of a specified length. In this case the string is not null-terminated.
+	 */
+	@Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+		throws CharacterCodingException, EOFException;
+
 	@Nonnull InputStream inputStream();
 
 	/**

@@ -72,6 +72,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -199,7 +200,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener, UnitTestHook unit_test_hook )
+		PerformanceListener performance_listener, UnitTestHook unit_test_hook,
+		BiFunction<UUID,String,VMID> vmid_creator )
 		throws IOException {
 
 		Objects.requireNonNull( message_handler );
@@ -221,7 +223,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		}
 
 		IntrepidCodecFactory codec =
-			new IntrepidCodecFactory( vmid, deserialization_context_vmid );
+			new IntrepidCodecFactory( vmid, deserialization_context_vmid, vmid_creator );
 
 		SSLContext context;
 		try {

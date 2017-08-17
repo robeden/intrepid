@@ -31,6 +31,10 @@ import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolEncoder;
 
+import javax.annotation.Nonnull;
+import java.util.UUID;
+import java.util.function.BiFunction;
+
 
 /**
  *
@@ -40,8 +44,12 @@ class IntrepidCodecFactory implements ProtocolCodecFactory {
 	private final ProtocolEncoder ENCODER = new MINAIMessageEncoder();
 
 
-	IntrepidCodecFactory( VMID vmid,ThreadLocal<VMID> deserialization_context_vmid ) {
-		DECODER = new MINAIMessageDecoder( vmid, deserialization_context_vmid );
+	IntrepidCodecFactory( @Nonnull VMID vmid,
+		@Nonnull ThreadLocal<VMID> deserialization_context_vmid,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+
+		DECODER =
+			new MINAIMessageDecoder( vmid, deserialization_context_vmid, vmid_creator );
 	}
 
 

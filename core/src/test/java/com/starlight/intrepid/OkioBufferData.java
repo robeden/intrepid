@@ -164,6 +164,13 @@ public class OkioBufferData implements DataSink, DataSource {
 		}
 	}
 
+	@Override
+	public @Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+		throws CharacterCodingException, EOFException {
+
+		return buffer.readString( length, decoder.charset() );
+	}
+
 	@Nonnull @Override public InputStream inputStream() {
 		return buffer.inputStream();
 	}

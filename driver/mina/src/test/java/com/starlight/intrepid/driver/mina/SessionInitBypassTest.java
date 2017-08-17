@@ -169,7 +169,10 @@ public class SessionInitBypassTest {
 	private IoSession connectAndSend( IMessage message ) throws InterruptedException {
 		VMID vmid = VMID.createForTesting();
 		IntrepidCodecFactory codec =
-			new IntrepidCodecFactory( vmid, new ThreadLocal<>() );
+			new IntrepidCodecFactory( vmid, new ThreadLocal<>(),
+				( uuid, s ) -> {
+					throw new AssertionError( "Shouldn't be called" );
+				} );
 		NioSocketConnector connector = new NioSocketConnector();
 		connector.getFilterChain().addLast( "intrepid", new ProtocolCodecFilter( codec ) );
 

@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.IntConsumer;
 
 
@@ -70,7 +71,8 @@ public class StubIntrepidDriver implements IntrepidDriver {
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener, UnitTestHook unit_test_hook )
+		PerformanceListener performance_listener, UnitTestHook unit_test_hook,
+		BiFunction<UUID,String,VMID> vmid_creator )
 		throws IOException {}
 
 	@Override
