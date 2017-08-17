@@ -59,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -70,10 +71,10 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 
 /**
@@ -565,9 +566,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		long nano_time = System.nanoTime();
 		// NOTE: slot initializer ensures expected attributes are present
-        if ( LOG.isTraceEnabled() ) {
-            LOG.trace( "MINA.inner_connection: {}:{}", address, Integer.valueOf( port ) );
-        }
+        LOG.trace( "MINA.inner_connection: {}:{}", address, Integer.valueOf( port ) );
+
 		ConnectFuture future = connector.connect(
 			new InetSocketAddress( address, port ),
 			new VMIDSlotInitializer<>( args, reconnect_token, container,
@@ -637,7 +637,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	public void disconnect( VMID vmid ) {
 		SessionContainer container;
 
-        LOG.debug( "MINA.disconnect: {}", vmid );
+        LOG.trace( "MINA.disconnect: {}", vmid );
 
 		map_lock.lock();
 		try {
@@ -699,10 +699,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	@Override
 	public SessionInfo sendMessage( VMID destination, IMessage message,
-		AtomicInteger protocol_version_slot ) throws IOException {
+		@Nullable IntConsumer protocol_version_consumer ) throws IOException {
 
 		Integer message_id = Integer.valueOf( System.identityHashCode( message ) );
-		LOG.debug( "Send message (ID:{}): ", message_id, message );
+		LOG.trace( "Send message (ID:{}): ", message_id, message );
 
 		VMID new_vmid;
 
@@ -741,6 +741,13 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		SessionInfo session_info = ( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );
 
 
+		if ( protocol_version_consumer != null ) {
+			final Byte protocol_version = session_info.getProtocolVersion();
+			protocol_version_consumer.accept(
+				protocol_version == null ? -1 : protocol_version & 0xFF );
+		}
+
+
 		// See if there's a test hook that would like to drop the message
 		if ( unit_test_hook != null &&
 			unit_test_hook.dropMessageSend( destination, message ) ) {
@@ -748,17 +755,6 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			LOG.info( "Dropping message send per UnitTestHook instructions: {} to {}",
 				message, destination );
 			return session_info;
-		}
-
-
-		if ( protocol_version_slot != null ) {
-			Byte protocol_version = session_info.getProtocolVersion();
-			if ( protocol_version != null ) {
-				protocol_version_slot.set( protocol_version.byteValue() & 0xFF );
-			}
-			else {
-				protocol_version_slot.set( -1 );
-			}
 		}
 
 //		System.err.println( "Sending message to " + destination + ": " + message );
@@ -807,7 +803,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	@Override
 	public void exceptionCaught( IoSession session, Throwable cause ) throws Exception {
-        LOG.info( "MINA.exceptionCaught: {}", session, cause );
+        LOG.trace( "MINA.exceptionCaught: {}", session, cause );
 
 		// Make sure unexpected errors are printed
 		if ( cause instanceof RuntimeException || cause instanceof Error ) {
@@ -818,7 +814,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	@Override
 	public void sessionOpened( IoSession session ) throws Exception {
-        LOG.debug( "MINA.sessionOpened: {}", session );
+        LOG.trace( "MINA.sessionOpened: {}", session );
 
 		// Make sure the session has a container attached
 		SessionContainer container =
@@ -1059,10 +1055,9 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	public void messageReceived( final IoSession session, Object message )
 		throws Exception {
 
-		if ( message == null ) return;
+		LOG.trace( "messageReceived: {} - {}", message, session );
 
-		LOG.debug( "messageReceived - message class: {}", message.getClass().getName() );
-		LOG.trace( "messageReceived: {}", message );
+		if ( message == null ) return;
 
 		final SessionInfo session_info =
 			( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );

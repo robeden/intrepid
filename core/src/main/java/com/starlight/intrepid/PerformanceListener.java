@@ -57,7 +57,9 @@ public interface PerformanceListener {
 	default void virtualChannelDataReceived( VMID instance_vmid, VMID peer_vmid,
 		short channel_id, int bytes ) {}
 	default void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-		short channel_id, int bytes ) {}
+		short channel_id, short message_id, int bytes ) {}
+	default void virtualChannelDataAckSent( VMID instance_vmid, VMID peer_vmid,
+		short channel_id, short message_id, int new_window ) {}
 
 
 	default void messageSent( VMID destination_vmid, IMessage message ) {}

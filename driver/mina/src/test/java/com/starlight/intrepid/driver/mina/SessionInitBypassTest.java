@@ -1,6 +1,8 @@
 package com.starlight.intrepid.driver.mina;
 
 import com.starlight.intrepid.*;
+import com.starlight.intrepid.driver.ProtocolVersions;
+import com.starlight.intrepid.driver.SessionInfo;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
 import com.starlight.intrepid.message.PingIMessage;
@@ -12,11 +14,11 @@ import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.junit.*;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,7 +31,6 @@ public class SessionInitBypassTest {
 	private Intrepid server;
 
 	private AtomicReference<IMessage> received_message; // from perf listener
-	private AtomicReference<IMessage> invalid_received_message; // from perf listener
 
 	private AtomicBoolean method_invoked;
 	private int object_id;
@@ -44,19 +45,11 @@ public class SessionInitBypassTest {
 	@Before
 	public void setUp() throws Exception {
 		received_message = new AtomicReference<>();
-		invalid_received_message = new AtomicReference<>();
 
 		PerformanceListener perf_listener = new PerformanceListener() {
 			@Override
 			public void messageReceived( VMID source_vmid, IMessage message ) {
 				received_message.set( message );
-			}
-
-			@Override
-			public void invalidMessageReceived( SocketAddress peer,
-				IMessage message ) {
-
-				invalid_received_message.set( message );
 			}
 		};
 
@@ -96,7 +89,6 @@ public class SessionInitBypassTest {
 	@After
 	public void tearDown() {
 		received_message = null;
-		invalid_received_message = null;
 		method_invoked = null;
 
 		server.close();
@@ -121,8 +113,6 @@ public class SessionInitBypassTest {
 
 		Assert.assertNull( "Received message", received_message.get() );
 		Assert.assertFalse( "Still connected", session.isConnected() );
-
-		Assert.assertEquals( message, invalid_received_message.get() );
 	}
 
 	// Test to see if a message is received at all
@@ -136,8 +126,6 @@ public class SessionInitBypassTest {
 
 		Assert.assertNull( "Received message", received_message.get() );
 		Assert.assertFalse( "Still connected", session.isConnected() );
-
-		Assert.assertEquals( message, invalid_received_message.get() );
 	}
 
 
@@ -152,8 +140,6 @@ public class SessionInitBypassTest {
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
 		Assert.assertFalse( "Method invoked", method_invoked.get() );
-
-		Assert.assertEquals( invoke_message, invalid_received_message.get() );
 	}
 
 
@@ -176,8 +162,6 @@ public class SessionInitBypassTest {
 			method_invoked.get() );
 		Assert.assertTrue( "During call, IntrepidContext indicated we weren't in a call",
 			indicated_in_call.get() );
-
-		Assert.assertEquals( invoke_message, invalid_received_message.get() );
 	}
 
 
@@ -209,7 +193,17 @@ public class SessionInitBypassTest {
 			InetAddress.getLoopbackAddress(), server.getServerPort() ) );
 		connect_future.await();
 
+		SessionInfo mock_info = Mockito.mock( SessionInfo.class );
+		Mockito.when( mock_info.getProtocolVersion() )
+			.thenReturn( ProtocolVersions.PROTOCOL_VERSION );
+
+
 		IoSession session = connect_future.getSession();
+
+		// Need to manually set the SessionInfo, otherwise we can't send this message
+		// due to version checks.
+		session.setAttribute( MINAIntrepidDriver.SESSION_INFO_KEY, mock_info );
+
 		Assert.assertNotNull( session );
 		Assert.assertTrue( session.isConnected() );
 

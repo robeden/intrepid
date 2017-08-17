@@ -1,9 +1,9 @@
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.exception.ChannelRejectedException;
-import com.starlight.intrepid.exception.InterruptedCallException;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
+import com.starlight.intrepid.exception.ChannelRejectedException;
+import com.starlight.intrepid.exception.InterruptedCallException;
 import junit.framework.TestCase;
 
 import java.io.*;
@@ -169,9 +169,9 @@ public class DisconnectDuringCallTest extends TestCase {
 
 		@Override
 		public void run() {
-			try {
+			try (
 				OutputStream out = Channels.newOutputStream( channel );
-				DataOutputStream dout = new DataOutputStream( out );
+				DataOutputStream dout = new DataOutputStream( out ) ) {
 
 				//noinspection InfiniteLoopStatement
 				while( true ) {
@@ -185,6 +185,13 @@ public class DisconnectDuringCallTest extends TestCase {
 			}
 			finally {
 				exit_latch.countDown();
+
+				try {
+					channel.close();
+				}
+				catch ( IOException e ) {
+					// ignore
+				}
 			}
 		}
 	}
@@ -207,9 +214,9 @@ public class DisconnectDuringCallTest extends TestCase {
 
 		@Override
 		public void run() {
-			try {
+			try (
 				InputStream in = Channels.newInputStream( channel );
-				DataInputStream din = new DataInputStream( in );
+				DataInputStream din = new DataInputStream( in ) ) {
 
 				//noinspection InfiniteLoopStatement
 				while( true ) {
@@ -221,6 +228,13 @@ public class DisconnectDuringCallTest extends TestCase {
 			}
 			finally {
 				exit_latch.countDown();
+
+				try {
+					channel.close();
+				}
+				catch ( IOException e ) {
+					// ignore
+				}
 			}
 		}
 	}

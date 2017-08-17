@@ -196,8 +196,14 @@ public class ObjectDrop implements ChannelAcceptor {
 			// COMPRESS
 			out.write( compress ? 1 : 0 );
 
-			if ( compress ) oout = new ObjectOutputStream( new GZIPOutputStream( out ) );
-			else oout = new ObjectOutputStream( out );
+			if ( compress ) {
+				//noinspection IOResourceOpenedButNotSafelyClosed
+				oout = new ObjectOutputStream( new GZIPOutputStream( out ) );
+			}
+			else {
+				//noinspection IOResourceOpenedButNotSafelyClosed
+				oout = new ObjectOutputStream( out );
+			}
 
 			oout.writeUnshared( object );
 			oout.flush();
@@ -267,8 +273,14 @@ public class ObjectDrop implements ChannelAcceptor {
 				// COMPRESSED
 				boolean compressed = in.read() > 0;
 
-				if ( compressed ) oin = new ObjectInputStream( new GZIPInputStream( in ) );
-				else oin = new ObjectInputStream( in );
+				if ( compressed ) {
+					//noinspection IOResourceOpenedButNotSafelyClosed
+					oin = new ObjectInputStream( new GZIPInputStream( in ) );
+				}
+				else {
+					//noinspection IOResourceOpenedButNotSafelyClosed
+					oin = new ObjectInputStream( in );
+				}
 
 				slot.set( oin.readObject() );
 			}
@@ -278,6 +290,7 @@ public class ObjectDrop implements ChannelAcceptor {
 			finally {
 				IOKit.close( ( Closeable ) oin );
 				IOKit.close( in );
+				IOKit.close( channel );
 			}
 		}
 	}

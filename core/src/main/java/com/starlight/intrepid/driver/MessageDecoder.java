@@ -69,110 +69,145 @@ public final class MessageDecoder {
 	 *              to its original position (before the decode attempt) and further data
 	 *              should be awaited.
 	 */
-	public static @Nullable IMessage decode( @Nonnull DataSource buffer,
+	public static @Nullable IMessage decode( @Nonnull DataSource source,
+		@Nullable Byte proto_version,
 		@Nonnull ResponseHandler response_handler ) {
 
 		if ( LOG.isTraceEnabled() ) {
-			LOG.trace( "Decoder called: {}", buffer.hex() );
+			LOG.trace( "Decoder called: {}", source.hex() );
 		}
 
 		// Need at least 4 bytes
-		if ( !buffer.request( 4 ) ) return null;
+		if ( !source.request( 4 ) ) return null;
 
 		// LENGTH
-		int length = getDualShortLength( buffer );
-		if ( !buffer.request( length ) ) {
-			LOG.trace( "Decoder not enough data. Length: {} Buffer: {}", length, buffer );
+		int length = getDualShortLength( source );
+		if ( !source.request( length ) ) {
+			LOG.trace( "Decoder not enough data. Length: {} Buffer: {}", length, source );
 			return null;
 		}
 
-		final DataSource.Tracking tracking_source = buffer.trackRead();
+		final DataSource.Tracking tracking_source = source.trackRead();
 
 		// TYPE
 		byte type = tracking_source.get();
+
 		IMessageType message_type = IMessageType.findByID( type );
 		assert message_type != null : "Unknown type: " + type;
 
-		LOG.trace( "Message type: {}", message_type );
+		LOG.trace( "Message type: {} (proto version={})", message_type, proto_version );
 
 		final IMessage message;
-		switch ( message_type ) {
-			case SESSION_INIT:
-				message = decodeSessionInit( tracking_source, response_handler );
-				break;
+		if ( proto_version == null ) {
+			switch ( message_type ) {
+				case SESSION_INIT:
+					message = decodeSessionInit( tracking_source, response_handler );
+					break;
 
-			case SESSION_INIT_RESPONSE:
-				message = decodeSessionInitResponse( tracking_source, response_handler );
-				break;
+				case SESSION_INIT_RESPONSE:
+					message =
+						decodeSessionInitResponse( tracking_source, response_handler );
+					break;
 
-			case SESSION_TOKEN_CHANGE:
-				message = decodeSessionTokenChange( tracking_source );
-				break;
+				default:
+					LOG.warn( "Message type {} was received when the protocol version " +
+						"is unknown (session init incomplete?)", message_type );
+					response_handler.sendMessage( new SessionCloseIMessage(
+							new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
+								message_type ), false ),
+						SessionCloseOption.ATTEMPT_FLUSH );
+					return null;
+			}
+		}
+		else {
+			switch ( message_type ) {
+				// NOTE: Allowing session init messages even if proto version is known.
+				//       Old intrepid versions allow re-init
+				case SESSION_INIT:
+					message = decodeSessionInit( tracking_source, response_handler );
+					break;
 
-			case SESSION_CLOSE:
-				message = decodeSessionClose( tracking_source );
-				break;
+				// NOTE: Allowing session init messages even if proto version is known.
+				//       Old intrepid versions allow re-init
+				case SESSION_INIT_RESPONSE:
+					message =
+						decodeSessionInitResponse( tracking_source, response_handler );
+					break;
 
-			case INVOKE:
-				message = decodeInvoke( tracking_source, response_handler );
-				break;
+				case SESSION_TOKEN_CHANGE:
+					message = decodeSessionTokenChange( proto_version, tracking_source );
+					break;
 
-			case INVOKE_RETURN:
-				message = decodeInvokeReturn( tracking_source );
-				break;
+				case SESSION_CLOSE:
+					message = decodeSessionClose( proto_version, tracking_source );
+					break;
 
-			case INVOKE_INTERRUPT:
-				message = decodeInvokeInterrupt( tracking_source );
-				break;
+				case INVOKE:
+					message = decodeInvoke( proto_version, tracking_source,
+						response_handler );
+					break;
 
-			case INVOKE_ACK:
-				message = decodeInvokeAck( tracking_source );
-				break;
+				case INVOKE_RETURN:
+					message = decodeInvokeReturn( proto_version, tracking_source );
+					break;
 
-			case LEASE:
-				message = decodeLease( tracking_source );
-				break;
+				case INVOKE_INTERRUPT:
+					message = decodeInvokeInterrupt( proto_version, tracking_source );
+					break;
 
-			case LEASE_RELEASE:
-				message = decodeLeaseRelease( tracking_source );
-				break;
+				case INVOKE_ACK:
+					message = decodeInvokeAck( proto_version, tracking_source );
+					break;
 
-			case CHANNEL_INIT:
-				message = decodeChannelInit( tracking_source, response_handler );
-				break;
+				case LEASE:
+					message = decodeLease( proto_version, tracking_source );
+					break;
 
-			case CHANNEL_INIT_RESPONSE:
-				message = decodeChannelInitResponse( tracking_source );
-				break;
+				case LEASE_RELEASE:
+					message = decodeLeaseRelease( proto_version, tracking_source );
+					break;
 
-			case CHANNEL_DATA:
-				try {
-					message = decodeChannelData( tracking_source );
-				}
-				catch ( EOFException e ) {
-					return null;           // Didn't have enough data
-				}
-				break;
+				case CHANNEL_INIT:
+					message = decodeChannelInit( proto_version, tracking_source,
+						response_handler );
+					break;
 
-			case CHANNEL_CLOSE:
-				message = decodeChannelClose( tracking_source );
-				break;
+				case CHANNEL_INIT_RESPONSE:
+					message = decodeChannelInitResponse( proto_version, tracking_source );
+					break;
 
-			case PING:
-				message = decodePing( tracking_source );
-				break;
+				case CHANNEL_DATA:
+					try {
+						message = decodeChannelData( proto_version, tracking_source );
+					} catch ( EOFException e ) {
+						return null;           // Didn't have enough data
+					}
+					break;
 
-			case PING_RESPONSE:
-				message = decodePingResponse( tracking_source );
-				break;
+				case CHANNEL_DATA_ACK:
+					message = decodeChannelDataAck( proto_version, tracking_source );
+					break;
 
-			default:
-				assert false : "Unhandled type: " + message_type;
-				response_handler.sendMessage( new SessionCloseIMessage(
-					new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
-						message_type ), false ),
-					SessionCloseOption.ATTEMPT_FLUSH );
-				return null;
+				case CHANNEL_CLOSE:
+					message = decodeChannelClose( proto_version, tracking_source );
+					break;
+
+				case PING:
+					message = decodePing( proto_version, tracking_source );
+					break;
+
+				case PING_RESPONSE:
+					message = decodePingResponse( proto_version, tracking_source );
+					break;
+
+				default:
+					LOG.warn( "Unknown message type: {}", message_type );
+					response_handler.sendMessage( new SessionCloseIMessage(
+							new FormattedTextResourceKey( Resources.INVALID_MESSAGE_TYPE,
+								message_type ), false ),
+						SessionCloseOption.ATTEMPT_FLUSH );
+					return null;
+			}
 		}
 
 		if ( tracking_source.bytesRead() < length ) {
@@ -189,11 +224,146 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeIMessage decodeInvoke( @Nonnull DataSource buffer,
+	// NOTE: protocol version is unknown
+	private static SessionInitIMessage decodeSessionInit( @Nonnull DataSource buffer,
 		@Nonnull ResponseHandler response_handler ) {
 
 		// VERSION
-		buffer.get();
+		byte version = buffer.get();
+
+		// MIN PROTOCOL VERSION
+		byte min_protocol_version = buffer.get();
+
+		// PREF PROTOCOL VERSION
+		byte pref_protocol_version = buffer.get();
+
+		VMID vmid;
+		ConnectionArgs connection_args;
+		try {
+			// VMID
+			vmid = ( VMID ) readObject( buffer );
+
+			// CONNECTION ARGS
+			if ( buffer.get() > 0 ) {
+				connection_args = ( ConnectionArgs ) readObject( buffer );
+			}
+			else connection_args = null;
+		}
+		catch( Exception ex ) {
+			LOG.info( "Error while decoding session init vmid/args", ex );
+
+			// Write an error, close the session and return nothing
+			response_handler.sendMessage(
+				new SessionCloseIMessage( new FormattedTextResourceKey(
+					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
+					false ),
+				SessionCloseOption.ATTEMPT_FLUSH );
+			return null;
+		}
+
+		// SERVER PORT
+		Integer server_port;
+		if ( version == 0 ) server_port = null;
+		else {
+			if ( buffer.get() == 0 ) server_port = null;
+			else server_port = Integer.valueOf( buffer.getInt() );
+		}
+
+		// RECONNECT TOKEN
+		Serializable reconnect_token;
+		if ( version < 2 ) reconnect_token = null;
+		else {
+			if ( buffer.get() == 0 ) reconnect_token = null;
+			else {
+				try {
+					reconnect_token = ( Serializable ) readObject( buffer );
+				}
+				catch( Exception ex ) {
+					LOG.info( "Error while decoding session init reconnect token", ex );
+					reconnect_token = null;
+				}
+			}
+		}
+
+		// REQUESTED ACK RATE
+		byte ack_rate = -1;
+		if ( version >= 3 ) ack_rate = buffer.get();
+
+		return new SessionInitIMessage( vmid, server_port, connection_args,
+			min_protocol_version, pref_protocol_version, reconnect_token, ack_rate );
+	}
+
+
+	// NOTE: protocol version is unknown
+	private static SessionInitResponseIMessage decodeSessionInitResponse(
+		@Nonnull DataSource buffer,
+		@Nonnull ResponseHandler response_handler ) {
+
+		// VERSION
+		byte version = buffer.get();
+
+		// PROTOCOL VERSION
+		byte protocol_version = buffer.get();
+
+		VMID vmid;
+		try {
+			// VMID
+			vmid = ( VMID ) readObject( buffer );
+		}
+		catch( Exception ex ) {
+			LOG.info( "Error while decoding session init response vmid", ex );
+
+			// Write an error, close the session and return nothing
+			response_handler.sendMessage(
+				new SessionCloseIMessage( new FormattedTextResourceKey(
+					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
+					false ),
+				SessionCloseOption.ATTEMPT_FLUSH );
+			return null;
+		}
+
+		// SERVER PORT
+		Integer server_port;
+		if ( version == 0 ) server_port = null;
+		else {
+			if ( buffer.get() == 0 ) server_port = null;
+			else server_port = Integer.valueOf( buffer.getInt() );
+		}
+
+		// RECONNECT TOKEN
+		Serializable reconnect_token;
+		if ( version < 2 ) reconnect_token = null;
+		else {
+			if ( buffer.get() == 0 ) reconnect_token = null;
+			else {
+				try {
+					reconnect_token = ( Serializable ) readObject( buffer );
+				}
+				catch( Exception ex ) {
+					LOG.warn(
+						"Error while decoding session init response reconnect token", ex );
+					reconnect_token = null;
+				}
+			}
+		}
+
+		// ACK RATE
+		byte ack_rate;
+		if ( version >= 3 ) ack_rate = buffer.get();
+		else ack_rate = 0;      // not supported
+
+		return new SessionInitResponseIMessage( vmid, server_port, protocol_version,
+			reconnect_token, ack_rate );
+	}
+
+
+	private static InvokeIMessage decodeInvoke( byte proto_version,
+		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// CALL ID
 		int call_id = buffer.getInt();
@@ -279,9 +449,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeReturnIMessage decodeInvokeReturn( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static InvokeReturnIMessage decodeInvokeReturn( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// CALL ID
 		int call_id = buffer.getInt();
@@ -332,10 +506,12 @@ public final class MessageDecoder {
 
 
 	private static InvokeInterruptIMessage decodeInvokeInterrupt(
-		@Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) {
 
-		// VERSION
-		buffer.get();
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// CALL ID
 		int call_id = buffer.getInt();
@@ -344,9 +520,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeAckIMessage decodeInvokeAck( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static InvokeAckIMessage decodeInvokeAck( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// CALL ID
 		int call_id = buffer.getInt();
@@ -355,142 +535,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static SessionInitIMessage decodeSessionInit( @Nonnull DataSource buffer,
-		@Nonnull ResponseHandler response_handler ) {
-		
-		// VERSION
-		byte version = buffer.get();
-
-		// MIN PROTOCOL VERSION
-		byte min_protocol_version = buffer.get();
-
-		// PREF PROTOCOL VERSION
-		byte pref_protocol_version = buffer.get();
-
-		VMID vmid;
-		ConnectionArgs connection_args;
-		try {
-			// VMID
-			vmid = ( VMID ) readObject( buffer );
-
-			// CONNECTION ARGS
-			if ( buffer.get() > 0 ) {
-				connection_args = ( ConnectionArgs ) readObject( buffer );
-			}
-			else connection_args = null;
-		}
-		catch( Exception ex ) {
-			LOG.info( "Error while decoding session init vmid/args", ex );
-
-			// Write an error, close the session and return nothing
-			response_handler.sendMessage(
-				new SessionCloseIMessage( new FormattedTextResourceKey(
-					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
-					false ),
-				SessionCloseOption.ATTEMPT_FLUSH );
-			return null;
-		}
-
-		// SERVER PORT
-		Integer server_port;
-		if ( version == 0 ) server_port = null;
-		else {
-			if ( buffer.get() == 0 ) server_port = null;
-			else server_port = Integer.valueOf( buffer.getInt() );
-		}
-
-		// RECONNECT TOKEN
-		Serializable reconnect_token;
-		if ( version < 2 ) reconnect_token = null;
-		else {
-			if ( buffer.get() == 0 ) reconnect_token = null;
-			else {
-				try {
-					reconnect_token = ( Serializable ) readObject( buffer );
-				}
-				catch( Exception ex ) {
-					LOG.info( "Error while decoding session init reconnect token", ex );
-					reconnect_token = null;
-				}
-			}
-		}
-
-		// REQUESTED ACK RATE
-		byte ack_rate = -1;
-		if ( version >= 3 ) ack_rate = buffer.get();
-
-		return new SessionInitIMessage( vmid, server_port, connection_args,
-			min_protocol_version, pref_protocol_version, reconnect_token, ack_rate );
-	}
-
-
-	private static SessionInitResponseIMessage decodeSessionInitResponse(
-		@Nonnull DataSource buffer,
-		@Nonnull ResponseHandler response_handler ) {
-
-		// VERSION
-		byte version = buffer.get();
-
-		// PROTOCOL VERSION
-		byte protocol_version = buffer.get();
-
-		VMID vmid;
-		try {
-			// VMID
-			vmid = ( VMID ) readObject( buffer );
-		}
-		catch( Exception ex ) {
-			LOG.info( "Error while decoding session init response vmid", ex );
-
-			// Write an error, close the session and return nothing
-			response_handler.sendMessage(
-				new SessionCloseIMessage( new FormattedTextResourceKey(
-					Resources.ERROR_DESERIALIZING_SESSION_INIT_INFO, ex.toString() ),
-					false ),
-				SessionCloseOption.ATTEMPT_FLUSH );
-			return null;
-		}
-
-		// SERVER PORT
-		Integer server_port;
-		if ( version == 0 ) server_port = null;
-		else {
-			if ( buffer.get() == 0 ) server_port = null;
-			else server_port = Integer.valueOf( buffer.getInt() );
-		}
-
-		// RECONNECT TOKEN
-		Serializable reconnect_token;
-		if ( version < 2 ) reconnect_token = null;
-		else {
-			if ( buffer.get() == 0 ) reconnect_token = null;
-			else {
-				try {
-					reconnect_token = ( Serializable ) readObject( buffer );
-				}
-				catch( Exception ex ) {
-					LOG.warn(
-						"Error while decoding session init response reconnect token", ex );
-					reconnect_token = null;
-				}
-			}
-		}
-
-		// ACK RATE
-		byte ack_rate;
-		if ( version >= 3 ) ack_rate = buffer.get();
-		else ack_rate = 0;      // not supported
-
-		return new SessionInitResponseIMessage( vmid, server_port, protocol_version,
-			reconnect_token, ack_rate );
-	}
-
-
 	private static SessionTokenChangeIMessage decodeSessionTokenChange(
-		@Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) {
 
-		// VERSION
-		buffer.get();
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 
 		// NEW RECONNECT TOKEN
@@ -510,9 +561,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static SessionCloseIMessage decodeSessionClose( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// REASON
 		ResourceKey<String> reason;
@@ -536,9 +591,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static LeaseIMessage decodeLease( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static LeaseIMessage decodeLease( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// OID's
 		int[] oids = new int[ buffer.get() & 0xff ];
@@ -549,9 +608,13 @@ public final class MessageDecoder {
 		return new LeaseIMessage( oids );
 	}
 
-	private static LeaseReleaseIMessage decodeLeaseRelease( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static LeaseReleaseIMessage decodeLeaseRelease( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// OID's
 		int[] oids = new int[ buffer.get() & 0xff ];
@@ -563,11 +626,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static ChannelInitIMessage decodeChannelInit( @Nonnull DataSource buffer,
-		@Nonnull ResponseHandler response_handler ) {
+	private static ChannelInitIMessage decodeChannelInit( byte proto_version,
+		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler ) {
 
-		// VERSION
-		buffer.get();
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// REQUEST ID
 		int request_id = buffer.getInt();
@@ -579,13 +644,12 @@ public final class MessageDecoder {
 				attachment = ( Serializable ) readObject( buffer );
 			}
 			catch( Exception ex ) {
-				LOG.info( "Error while decoding channel init attachment", ex );
+				LOG.warn( "Error while decoding channel init attachment", ex );
 
 				// Write an error, close the session and return nothing
 				response_handler.sendMessage(
 					new ChannelInitResponseIMessage( request_id,
-						new FormattedTextResourceKey(
-						Resources.ERROR_DESERIALIZING_CHANNEL_ATTACHMENT, ex.toString() ) ),
+						"Unable to de-serialize channel attachment" ),
 					SessionCloseOption.ATTEMPT_FLUSH );
 				return null;
 			}
@@ -594,14 +658,19 @@ public final class MessageDecoder {
 		// CHANNEL ID
 		short channel_id = buffer.getShort();
 
-		return new ChannelInitIMessage( request_id, attachment, channel_id );
+		// RX WINDOW - added in proto 3
+		int rx_window = ( proto_version >= 3 ) ? buffer.getInt() : 0;
+
+		return new ChannelInitIMessage( request_id, attachment, channel_id, rx_window );
 	}
 
 	private static ChannelInitResponseIMessage decodeChannelInitResponse(
-		@Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) {
 
-		// VERSION
-		buffer.get();
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// REQUEST ID
 		int request_id = buffer.getInt();
@@ -623,16 +692,24 @@ public final class MessageDecoder {
 				}
 			}
 
-			return new ChannelInitResponseIMessage( request_id, reject_reason );
+			return new ChannelInitResponseIMessage( request_id,
+				reject_reason == null ? null : reject_reason.getValue() );
 		}
-		else return new ChannelInitResponseIMessage( request_id );
+		else {
+			// RX WINDOW - added in proto 3
+			int rx_window = ( proto_version >= 3 ) ? buffer.getInt() : 0;
+
+			return new ChannelInitResponseIMessage( request_id, rx_window );
+		}
 	}
 
-	private static ChannelDataIMessage decodeChannelData( @Nonnull DataSource buffer )
-		throws EOFException {
+	private static ChannelDataIMessage decodeChannelData( byte proto_version,
+		@Nonnull DataSource buffer ) throws EOFException {
 
-		// VERSION
-		buffer.get();
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// CHANNEL ID
 		short channel_id = buffer.getShort();
@@ -645,12 +722,50 @@ public final class MessageDecoder {
 		buffer.getFully( data );
 		ByteBuffer data_buffer = ByteBuffer.wrap( data );
 
-		return new ChannelDataIMessage( channel_id, data_buffer );
+		// MESSAGE ID - added in proto 3
+		short message_id = ( proto_version >= 3 ) ? buffer.getShort() : 0;
+
+		return ChannelDataIMessage.create( channel_id, message_id, data_buffer );
 	}
 
-	private static ChannelCloseIMessage decodeChannelClose( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static ChannelDataAckIMessage decodeChannelDataAck(
+		byte proto_version, @Nonnull DataSource buffer ) {
+
+		assert proto_version >= 3 :
+			"Invalid proto version for channel data ack: " + proto_version;
+
+		// CHANNEL ID
+		short channel_id = buffer.getShort();
+
+		// MESSAGE ID
+		short message_id = buffer.getShort();
+
+		// NEW WINDOW SIZE
+		int new_window_size;
+		byte bite_one = buffer.get();
+		if ( ( bite_one & 0x80 ) != 0 ) {
+			new_window_size = -1;
+		}
+		else {
+			byte two = buffer.get();
+			byte three = buffer.get();
+			byte four = buffer.get();
+
+
+			new_window_size = ( ( bite_one & 0xFF ) << 24 ) |  ( ( two & 0xFF ) << 16 ) |
+				( ( three & 0xFF ) << 8 ) | ( ( four & 0xFF ) );
+		}
+
+		return new ChannelDataAckIMessage( channel_id, message_id, new_window_size );
+	}
+
+	private static ChannelCloseIMessage decodeChannelClose( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// CHANNEL ID
 		short channel_id = buffer.getShort();
@@ -658,9 +773,13 @@ public final class MessageDecoder {
 		return new ChannelCloseIMessage( channel_id );
 	}
 
-	private static PingIMessage decodePing( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static PingIMessage decodePing( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// SEQUENCE NUMBER
 		short seq_number = buffer.getShort();
@@ -668,9 +787,13 @@ public final class MessageDecoder {
 		return new PingIMessage( seq_number );
 	}
 
-	private static PingResponseIMessage decodePingResponse( @Nonnull DataSource buffer ) {
-		// VERSION
-		buffer.get();
+	private static PingResponseIMessage decodePingResponse( byte proto_version,
+		@Nonnull DataSource buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.get();
+		}
 
 		// SEQUENCE NUMBER
 		short seq_number = buffer.getShort();

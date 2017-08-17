@@ -45,6 +45,34 @@ public final class MessageEncoder  {
 	private static final int DUAL_SHORT_FLAG = 0x8000;
 
 
+	/**
+	 * {@link SessionInitIMessage}-specific encoding, since the protocol version
+	 * is unavailable at this point.
+	 *
+	 * @see #encode(IMessage, byte, DataSink, DataSink)
+	 */
+	public static void encodeSessionInit( SessionInitIMessage message,
+		DataSink length_sink, DataSink data_sink ) throws Exception {
+
+		encode_internal( message.getType().getID(),
+			sink -> encodeSessionInit( message, sink ),
+			length_sink, data_sink );
+	}
+
+	/**
+	 * {@link SessionInitResponseIMessage}-specific encoding, since the protocol version
+	 * is unavailable at this point.
+	 *
+	 * @see #encode(IMessage, byte, DataSink, DataSink)
+	 */
+	public static void encodeSessionInitResponse( SessionInitResponseIMessage message,
+		DataSink length_sink, DataSink data_sink ) throws Exception {
+
+		encode_internal( message.getType().getID(),
+			sink -> encodeSessionInitResponse( message, sink ),
+			length_sink, data_sink );
+	}
+
 
 	/**
 	 * Encode the data necessary to write the message. The first piece of the encoding
@@ -59,96 +87,200 @@ public final class MessageEncoder  {
 	 * @param data_sink       Buffer to which the majority of the message data will be
 	 *                        written (could be large).
 	 */
-	public static void encode( IMessage message, DataSink length_sink,
-		DataSink data_sink ) throws Exception {
+	public static void encode( IMessage message, byte proto_version,
+		DataSink length_sink, DataSink data_sink ) throws Exception {
 
-		final DataSink.Tracking tracking_sink = data_sink.trackWritten();
-			
-		// TYPE
-		tracking_sink.put( message.getType().getID() );
+		IMessageType type = message.getType();
+		if ( type == IMessageType.SESSION_INIT ||
+			type == IMessageType.SESSION_INIT_RESPONSE ) {
 
+			throw new IllegalArgumentException( "Logic error: the general encode " +
+				"method may not be used for SessionInit and SessionInitResponse" );
+		}
+
+		Encoder encoder_function;
 		switch ( message.getType() ) {
-			case SESSION_INIT:
-				encodeSessionInit( ( SessionInitIMessage ) message, tracking_sink );
-				break;
-
-			case SESSION_INIT_RESPONSE:
-				encodeSessionInitResponse( ( SessionInitResponseIMessage ) message,
-					tracking_sink );
-				break;
-
 			case SESSION_TOKEN_CHANGE:
-				encodeSesssionTokenChange( ( SessionTokenChangeIMessage ) message,
-					tracking_sink );
+				encoder_function = sink -> encodeSesssionTokenChange(
+					( SessionTokenChangeIMessage ) message, proto_version, sink );
 				break;
 
 			case SESSION_CLOSE:
-				encodeSessionClose( ( SessionCloseIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeSessionClose(
+					( SessionCloseIMessage ) message, proto_version, sink );
 				break;
 
 			case INVOKE:
-				encodeInvoke( ( InvokeIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeInvoke(
+					( InvokeIMessage ) message, proto_version, sink );
 				break;
 
 			case INVOKE_RETURN:
-				encodeInvokeReturn( ( InvokeReturnIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeInvokeReturn(
+					( InvokeReturnIMessage ) message, proto_version, sink );
 				break;
 
 			case INVOKE_INTERRUPT:
-				encodeInvokeInterrupt( ( InvokeInterruptIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeInvokeInterrupt(
+					( InvokeInterruptIMessage ) message, proto_version, sink );
 				break;
 
 			case INVOKE_ACK:
-				encodeInvokeAck( ( InvokeAckIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeInvokeAck(
+					( InvokeAckIMessage ) message, proto_version, sink );
 				break;
 
 			case LEASE:
-				encodeLease( ( LeaseIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeLease(
+					( LeaseIMessage ) message, proto_version, sink );
 				break;
 
 			case LEASE_RELEASE:
-				encodeLeaseRelease( ( LeaseReleaseIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeLeaseRelease(
+					( LeaseReleaseIMessage ) message, proto_version, sink );
 				break;
 
 			case CHANNEL_INIT:
-				encodeChannelInit( ( ChannelInitIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeChannelInit(
+					( ChannelInitIMessage ) message, proto_version, sink );
 				break;
 
 			case CHANNEL_INIT_RESPONSE:
-				encodeChannelInitResponse(
-					( ChannelInitResponseIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeChannelInitResponse(
+					( ChannelInitResponseIMessage ) message, proto_version, sink );
 				break;
 
 			case CHANNEL_DATA:
-				encodeChannelData( ( ChannelDataIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeChannelData(
+					( ChannelDataIMessage ) message, proto_version, sink );
+				break;
+
+			case CHANNEL_DATA_ACK:
+				encoder_function = sink -> encodeChannelDataAck(
+					( ChannelDataAckIMessage ) message, proto_version, sink );
 				break;
 
 			case CHANNEL_CLOSE:
-				encodeChannelClose( ( ChannelCloseIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodeChannelClose(
+					( ChannelCloseIMessage ) message, proto_version, sink );
 				break;
 
 			case PING:
-				encodePing( ( PingIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodePing(
+					( PingIMessage ) message, proto_version, sink );
 				break;
 
 			case PING_RESPONSE:
-				encodePingResponse( ( PingResponseIMessage ) message, tracking_sink );
+				encoder_function = sink -> encodePingResponse(
+					( PingResponseIMessage ) message, proto_version, sink );
 				break;
 
 			default:
 				throw new UnsupportedOperationException( "Unknown message type: " +
 					message );
 		}
-
-		putDualShortLength( length_sink, tracking_sink.bytesWritten() );
+		
+		encode_internal( type.getID(), encoder_function, length_sink, data_sink );
 	}
 
 
-	private static void encodeInvoke( InvokeIMessage message, DataSink buffer )
-		throws Exception {
+	private static void encode_internal( byte type_id, Encoder encoder_function,
+		DataSink length_sink, DataSink data_sink ) throws Exception {
+
+
+		final DataSink.Tracking tracking_sink = data_sink.trackWritten();
+			
+		// TYPE
+		tracking_sink.put( type_id );
+
+		encoder_function.encode( tracking_sink );
+
+		int bytes = tracking_sink.bytesWritten();
+		putDualShortLength( length_sink, bytes );
+	}
+
+
+	// NOTE: protocol version is unknown!
+	private static void encodeSessionInit( SessionInitIMessage message,
+		DataSink buffer ) throws IOException {
 
 		// VERSION
-		buffer.put( ( byte ) 0 );
+		buffer.put( ( byte ) 3 );
+
+		// MIN PROTOCOL VERSION
+		buffer.put( message.getMinProtocolVersion() );
+
+		// PREF PROTOCOL VERSION
+		buffer.put( message.getPrefProtocolVersion() );
+
+		// VMID
+		putObject( message.getInitiatorVMID(), buffer );
+
+		// CONNECTION ARGS
+		if ( message.getConnectionArgs() == null ) buffer.put( ( byte ) 0 );
+		else {
+			buffer.put( ( byte ) 1 );
+			putObject( message.getConnectionArgs(), buffer );
+		}
+
+		// SERVER PORT
+		if ( message.getInitiatorServerPort() == null ) buffer.put( ( byte ) 0 );
+		else {
+			buffer.put( ( byte ) 1 );
+			buffer.putInt( message.getInitiatorServerPort().intValue() );
+		}
+
+		// RECONNECT TOKEN
+		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
+		else {
+			buffer.put( ( byte ) 1 );
+			putObject( message.getReconnectToken(), buffer );
+		}
+
+		// REQUESTED ACK RATE
+		buffer.put( message.getRequestedAckRateSec() );
+	}
+
+
+	// NOTE: protocol version is unknown!
+	private static void encodeSessionInitResponse( SessionInitResponseIMessage message,
+		DataSink buffer ) throws IOException {
+
+		// VERSION
+		buffer.put( ( byte ) 3 );
+
+		// PROTOCOL VERSION
+		buffer.put( message.getProtocolVersion() );
+
+		// VMID
+		putObject( message.getResponderVMID(), buffer );
+
+		// SERVER PORT
+		if ( message.getResponderServerPort() == null ) buffer.put( ( byte ) 0 );
+		else {
+			buffer.put( ( byte ) 1 );
+			buffer.putInt( message.getResponderServerPort().intValue() );
+		}
+
+		// RECONNECT TOKEN
+		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
+		else {
+			buffer.put( ( byte ) 1 );
+			putObject( message.getReconnectToken(), buffer );
+		}
+
+		// ACK RATE
+		buffer.put( message.getAckRateSec() );
+	}
+
+
+	private static void encodeInvoke( InvokeIMessage message, byte proto_version,
+		DataSink buffer ) throws Exception {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// CALL ID
 		buffer.putInt( message.getCallID() );
@@ -189,10 +321,12 @@ public final class MessageEncoder  {
 
 
 	private static void encodeInvokeReturn( InvokeReturnIMessage message,
-		DataSink buffer ) throws Exception {
+		byte proto_version, DataSink buffer ) throws Exception {
 
-		// VERSION
-		buffer.put( ( byte ) 0 );
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// CALL ID
 		buffer.putInt( message.getCallID() );
@@ -234,102 +368,38 @@ public final class MessageEncoder  {
 
 
 	private static void encodeInvokeInterrupt( InvokeInterruptIMessage message,
+		byte proto_version, DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
+
+		// CALL ID
+		buffer.putInt( message.getCallID() );
+	}
+
+
+	private static void encodeInvokeAck( InvokeAckIMessage message, byte proto_version,
 		DataSink buffer ) {
 
-		// VERSION
-		buffer.put( ( byte ) 0 );
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// CALL ID
 		buffer.putInt( message.getCallID() );
-	}
-
-
-	private static void encodeInvokeAck( InvokeAckIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
-
-		// CALL ID
-		buffer.putInt( message.getCallID() );
-	}
-
-
-	private static void encodeSessionInit( SessionInitIMessage message, DataSink buffer )
-		throws IOException {
-
-		// VERSION
-		buffer.put( ( byte ) 3 );
-
-		// MIN PROTOCOL VERSION
-		buffer.put( message.getMinProtocolVersion() );
-
-		// PREF PROTOCOL VERSION
-		buffer.put( message.getPrefProtocolVersion() );
-
-		// VMID
-		putObject( message.getInitiatorVMID(), buffer );
-
-		// CONNECTION ARGS
-		if ( message.getConnectionArgs() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			putObject( message.getConnectionArgs(), buffer );
-		}
-
-		// SERVER PORT
-		if ( message.getInitiatorServerPort() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			buffer.putInt( message.getInitiatorServerPort().intValue() );
-		}
-
-		// RECONNECT TOKEN
-		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			putObject( message.getReconnectToken(), buffer );
-		}
-
-		// REQUESTED ACK RATE
-		buffer.put( message.getRequestedAckRateSec() );
-	}
-
-
-	private static void encodeSessionInitResponse( SessionInitResponseIMessage message,
-		DataSink buffer ) throws IOException {
-
-		// VERSION
-		buffer.put( ( byte ) 3 );
-
-		// PROTOCOL VERSION
-		buffer.put( message.getProtocolVersion() );
-
-		// VMID
-		putObject( message.getResponderVMID(), buffer );
-
-		// SERVER PORT
-		if ( message.getResponderServerPort() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			buffer.putInt( message.getResponderServerPort().intValue() );
-		}
-
-		// RECONNECT TOKEN
-		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			putObject( message.getReconnectToken(), buffer );
-		}
-
-		// ACK RATE
-		buffer.put( message.getAckRateSec() );
 	}
 
 
 	private static void encodeSesssionTokenChange( SessionTokenChangeIMessage message,
-		DataSink buffer ) throws IOException {
+		byte proto_version, DataSink buffer ) throws IOException {
 
-		// VERSION
-		buffer.put( ( byte ) 0 );
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// NEW RECONNECT TOKEN
 		if ( message.getNewReconnectToken() == null ) buffer.put( ( byte ) 0 );
@@ -340,10 +410,13 @@ public final class MessageEncoder  {
 	}
 
 
-	private static void encodeSessionClose( SessionCloseIMessage message, DataSink buffer )
-		throws IOException {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodeSessionClose( SessionCloseIMessage message,
+		byte proto_version, DataSink buffer ) throws IOException {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// REASON
 		if ( message.getReason() == null ) buffer.put( ( byte ) 0 );
@@ -357,9 +430,13 @@ public final class MessageEncoder  {
 	}
 
 
-	private static void encodeLease( LeaseIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodeLease( LeaseIMessage message, byte proto_version,
+		DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// OID's
 		int[] oids = message.getOIDs();
@@ -370,9 +447,13 @@ public final class MessageEncoder  {
 	}
 
 
-	private static void encodeLeaseRelease( LeaseReleaseIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodeLeaseRelease( LeaseReleaseIMessage message,
+		byte proto_version, DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// OID's
 		int[] oids = message.getOIDs();
@@ -383,11 +464,13 @@ public final class MessageEncoder  {
 	}
 
 
-	static void encodeChannelInit( ChannelInitIMessage message, DataSink buffer )
-		throws IOException {
-		
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodeChannelInit( ChannelInitIMessage message,
+		byte proto_version, DataSink buffer ) throws IOException {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 1 );
+		}
 
 		// REQUEST ID
 		buffer.putInt( message.getRequestID() );
@@ -401,13 +484,18 @@ public final class MessageEncoder  {
 		
 		// CHANNEL ID
 		buffer.putShort( message.getChannelID() );
+
+		// RX WINDOW
+		buffer.putInt( message.getRxWindow() );
 	}
 
-	static void encodeChannelInitResponse( ChannelInitResponseIMessage message,
-		DataSink buffer ) throws IOException {
+	private static void encodeChannelInitResponse( ChannelInitResponseIMessage message,
+		byte proto_version, DataSink buffer ) throws IOException {
 
-		// VERSION
-		buffer.put( ( byte ) 0 );
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 1 );
+		}
 
 		// REQUEST ID
 		buffer.putInt( message.getRequestID() );
@@ -425,12 +513,19 @@ public final class MessageEncoder  {
 		}
 		else {
 			buffer.put( ( byte ) 0 );
+
+			// RX WINDOW
+			buffer.putInt( message.getRxWindow() );
 		}
 	}
 
-	private static void encodeChannelData( ChannelDataIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodeChannelData( ChannelDataIMessage message,
+		byte proto_version, DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION  - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// CHANNEL ID
 		buffer.putShort( message.getChannelID() );
@@ -455,27 +550,66 @@ public final class MessageEncoder  {
 				buffer.put( copy_buffer, 0, to_read );
 			}
 		}
+
+		if ( proto_version >= 3 ) {
+			// MESSAGE ID
+			buffer.putShort( message.getMessageID() );
+		}
 	}
 
-	private static void encodeChannelClose( ChannelCloseIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodeChannelDataAck( ChannelDataAckIMessage message,
+		byte proto_version, DataSink buffer ) {
+
+		assert proto_version >= 3 :
+			"Invalid proto version for sending acks: " + proto_version;
+
+		// CHANNEL ID
+		buffer.putShort( message.getChannelID() );
+
+		// MESSAGE ID
+		buffer.putShort( message.getMessageID() );
+
+		// RX WINDOW SIZE
+		int new_window_size = message.getNewRxWindow();
+		if ( new_window_size < 0 ) {
+			buffer.put( 0x80 );
+		}
+		else {
+			buffer.putInt( new_window_size );
+		}
+	}
+
+	private static void encodeChannelClose( ChannelCloseIMessage message,
+		byte proto_version, DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// CHANNEL ID
 		buffer.putShort( message.getChannelID() );
 	}
 
-	private static void encodePing( PingIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodePing( PingIMessage message, byte proto_version,
+		DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// SEQUENCE NUMBER
 		buffer.putShort( message.getSequenceNumber() );
 	}
 
-	private static void encodePingResponse( PingResponseIMessage message, DataSink buffer ) {
-		// VERSION
-		buffer.put( ( byte ) 0 );
+	private static void encodePingResponse( PingResponseIMessage message,
+		byte proto_version, DataSink buffer ) {
+
+		if ( proto_version < 3 ) {
+			// VERSION      - removed in proto 3
+			buffer.put( ( byte ) 0 );
+		}
 
 		// SEQUENCE NUMBER
 		buffer.putShort( message.getSequenceNumber() );
@@ -589,5 +723,12 @@ public final class MessageEncoder  {
 		try ( ObjectOutputStream out = new ObjectOutputStream( buffer.outputStream() ) ) {
 			out.writeUnshared( object );
 		}
+	}
+
+
+
+	@FunctionalInterface
+	private interface Encoder {
+		void encode( DataSink data_sink ) throws Exception;
 	}
 }

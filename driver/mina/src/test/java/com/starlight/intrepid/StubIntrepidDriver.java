@@ -27,18 +27,19 @@ package com.starlight.intrepid;
 
 import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.starlight.intrepid.auth.ConnectionArgs;
-import com.starlight.intrepid.exception.NotConnectedException;
-import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.driver.InboundMessageHandler;
 import com.starlight.intrepid.driver.IntrepidDriver;
 import com.starlight.intrepid.driver.SessionInfo;
 import com.starlight.intrepid.driver.UnitTestHook;
+import com.starlight.intrepid.exception.NotConnectedException;
+import com.starlight.intrepid.message.IMessage;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntConsumer;
 
 
 /**
@@ -76,11 +77,10 @@ public class StubIntrepidDriver implements IntrepidDriver {
 	public void shutdown() {}
 
 
-
 	@Override
 	public SessionInfo sendMessage( VMID destination, IMessage message,
-		AtomicInteger protocol_version_slot ) throws IOException, NotConnectedException {
-
+		@Nullable IntConsumer protocol_version_consumer )
+		throws IOException, NotConnectedException {
 		return null;
 	}
 

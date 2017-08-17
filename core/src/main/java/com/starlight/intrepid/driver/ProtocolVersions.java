@@ -90,7 +90,7 @@ public class ProtocolVersions {
 	 * Indicates whether or not channel data RX windows are supported
 	 * (ChannelDataAckIMessage, etc.).
 	 */
-	public static boolean supportChannelDataRxWindow( byte version ) {
+	public static boolean supportsChannelDataRxWindow( byte version ) {
 		return version >= 3;
 	}
 }

@@ -25,63 +25,66 @@
 
 package com.starlight.intrepid.message;
 
-import javax.annotation.Nonnegative;
-import java.io.Serializable;
-
-
 /**
+ * Sent periodically in response to {@link ChannelDataIMessage} messages to acknowledge
+ * receipt in order to manage the flow window for a channel. The message contains
+ * a {@link #getMessageID() message ID} which indicates which message and all messages
+ * preceding it are processed by the receiver.
  *
+ * @see <a href="https://bitbucket.org/robeden/intrepid/issues/15">Issue #15 (originating feature)</a>
+ *
+ * @since Protocol v. 3
  */
-public class ChannelInitIMessage implements IMessage {
-	private final int request_id;
-	private final Serializable attachment;
+public class ChannelDataAckIMessage implements IMessage {
 	private final short channel_id;
-	private final int rx_window;
+	private final short message_id;
 
-	public ChannelInitIMessage( int request_id, Serializable attachment,
-		short channel_id, int rx_window ) {
-		
-		this.request_id = request_id;
-		this.attachment = attachment;
+	private final int new_rx_window;
+
+
+	public ChannelDataAckIMessage( short channel_id, short message_id,
+		int new_rx_window ) {
+
 		this.channel_id = channel_id;
-		this.rx_window = rx_window;
-
-		if ( rx_window < 0 ) {
-			throw new IllegalArgumentException(
-				"Illegal negative value for rx_window: " + rx_window );
-		}
+		this.message_id = message_id;
+		this.new_rx_window = new_rx_window;
 	}
 
 
 	@Override
 	public IMessageType getType() {
-		return IMessageType.CHANNEL_INIT;
+		return IMessageType.CHANNEL_DATA_ACK;
 	}
 
 
-	public int getRequestID() {
-		return request_id;
-	}
-
-	public Serializable getAttachment() {
-		return attachment;
-	}
-	
 	public short getChannelID() {
 		return channel_id;
 	}
 
+	public short getMessageID() {
+		return message_id;
+	}
+
 	/**
-	 * The receive window provided during channel initialization is the window size
-	 * allowed by the client-side (the sender of this message) for inbound data sent by
-	 * the server-side (the receiver of this message).
+	 * The new receive window size (might be the same as the old receive window size).
+	 * A value less than zero indicates the last specified value should be used.
 	 *
-	 * A value of '0' indicates no window exists (for pre-1.7 compatibility). Negative
-	 * values are not allowed.
+	 * @see ChannelInitIMessage#getRxWindow()
+	 * @see ChannelInitResponseIMessage#getRxWindow()
 	 */
-	@Nonnegative
-	public int getRxWindow() {
-		return rx_window;
+	public int getNewRxWindow() {
+		return new_rx_window;
+	}
+
+
+
+	@Override
+	public String toString() {
+		return "ChannelDataAckIMessage{" +
+			"channel_id=" + channel_id +
+			", message_id=" + message_id +
+			", new_rx_window=" + new_rx_window +
+			'}';
 	}
 
 
@@ -91,33 +94,18 @@ public class ChannelInitIMessage implements IMessage {
 		if ( this == o ) return true;
 		if ( o == null || getClass() != o.getClass() ) return false;
 
-		ChannelInitIMessage that = ( ChannelInitIMessage ) o;
+		ChannelDataAckIMessage that = ( ChannelDataAckIMessage ) o;
 
 		if ( channel_id != that.channel_id ) return false;
-		if ( request_id != that.request_id ) return false;
-		if ( rx_window != that.rx_window ) return false;
-		if ( attachment != null ? !attachment.equals( that.attachment ) :
-			that.attachment != null ) return false;
-
-		return true;
+		if ( message_id != that.message_id ) return false;
+		return new_rx_window == that.new_rx_window;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = request_id;
-		result = 31 * result + ( attachment != null ? attachment.hashCode() : 0 );
-		result = 31 * result + ( int ) channel_id;
-		result = 31 * result + rx_window;
+		int result = ( int ) channel_id;
+		result = 31 * result + ( int ) message_id;
+		result = 31 * result + new_rx_window;
 		return result;
-	}
-
-	@Override
-	public String toString() {
-		return "ChannelInitIMessage" +
-			"{attachment=" + attachment +
-			", request_id=" + request_id +
-			", channel_id=" + channel_id +
-			", rx_window=" + rx_window +
-			'}';
 	}
 }

@@ -34,10 +34,11 @@ import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntConsumer;
 
 
 /**
@@ -88,20 +89,26 @@ public interface IntrepidDriver {
 
 
 	/**
-	 * Send a message to a remote VM.
+	 * Send a message to a remote VM. This call must block until the message is sent.
 	 *
 	 * @param destination		Destination for the message.
 	 * @param message			Message to send.
-	 * @param protocol_version_slot  If non-null, the negotiated protocol version for the
-	 *                          session with the peer will be set into this slot. If the
+	 * @param protocol_version_consumer  If non-null, the negotiated protocol version for
+	 *                          the session with the peer will be given. If the
 	 *                          version is not available for some reason but the host is
 	 *                          connected (an error condition), -1 will be set.
+	 *                          The version will be set before the message is sent making
+	 *                          this a way to handle last-second setup based on the
+	 *                          protocol version. The consumer will either be called with
+	 *                          a value (possibly -1) or an exception will be thrown, so
+	 *                          having it called may be expected.
 	 *
 	 * @return		If this VMID of the <tt>destination</tt> VM has changed, it will be
 	 * 				returned.
 	 */
 	SessionInfo sendMessage( VMID destination, IMessage message,
-		AtomicInteger protocol_version_slot ) throws IOException, NotConnectedException;
+		@Nullable IntConsumer protocol_version_consumer )
+		throws IOException, NotConnectedException;
 
 
 	/**

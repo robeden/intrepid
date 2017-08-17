@@ -44,32 +44,31 @@ public class MethodMapTestApp {
 
 		File jar_file = new File( args[ 0 ] );
 
-		JarInputStream in = new JarInputStream( new FileInputStream( jar_file ) );
-
-
-		TLongObjectMap<Method> map = new TLongObjectHashMap<Method>();
-
 		int count = 0;
-		JarEntry entry;
-		while( ( entry = in.getNextJarEntry() ) != null ) {
-			if ( !entry.getName().endsWith( ".class" ) ) continue;
-			if ( entry.getName().startsWith( "sun" ) ) continue;
+		try ( JarInputStream in = new JarInputStream( new FileInputStream( jar_file ) ) ) {
+			TLongObjectMap<Method> map = new TLongObjectHashMap<Method>();
 
-			String class_name = entry.getName().substring(
-				0, entry.getName().length() - ".class".length() ).replace( '/', '.' );
+			JarEntry entry;
+			while ( ( entry = in.getNextJarEntry() ) != null ) {
+				if ( !entry.getName().endsWith( ".class" ) ) continue;
+				if ( entry.getName().startsWith( "sun" ) ) continue;
 
-			try {
-				Class clazz = Class.forName( class_name );
-				MethodMap.generateMethodMap( clazz );
-				count++;
-			}
-			catch( Throwable t ) {
-				System.out.println( "Skipping: " + class_name + "  --  " + t.toString() );
+				String class_name = entry.getName().substring(
+					0, entry.getName().length() - ".class".length() ).replace( '/', '.' );
+
+				try {
+					Class clazz = Class.forName( class_name );
+					MethodMap.generateMethodMap( clazz );
+					count++;
+				}
+				catch ( Throwable t ) {
+					System.out
+						.println( "Skipping: " + class_name + "  --  " + t.toString() );
+				}
 			}
 		}
 
 		System.out.println( "Checked " + count + " classes." );
 
-		in.close();
 	}
 }

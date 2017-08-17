@@ -1,16 +1,14 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.thread.ThreadKit;
-import com.starlight.intrepid.auth.UserContextInfo;
+import com.starlight.intrepid.driver.UnitTestHook;
 import com.starlight.intrepid.exception.MethodInvocationFailedException;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.InvokeAckIMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
-import com.starlight.intrepid.driver.UnitTestHook;
 import junit.framework.TestCase;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -234,52 +232,6 @@ public class MethodAckTest extends TestCase {
 					sent_ack.set( true );
 				}
 			}
-
-			@Override
-			public void remoteCallStarted( VMID instance_vmid, long time, int call_id,
-				VMID destination_vmid, int object_id, int method_id, Method method,
-				Object[] args, UserContextInfo user_context, String persistent_name ) {}
-
-			@Override
-			public void remoteCallCompleted( VMID instance_vmid, long time, int call_id,
-				Object result, boolean result_was_thrown, Long server_time ) {}
-
-			@Override
-			public void inboundRemoteCallStarted( VMID instance_vmid, long time,
-				int call_id, VMID source_vmid, int object_id, int method_id,
-				Method method, Object[] args, UserContextInfo user_context,
-				String persistent_name ) {}
-
-			@Override
-			public void inboundRemoteCallCompleted( VMID instance_vmid, long time,
-				int call_id, Object result, boolean result_was_thrown ) {}
-
-			@Override
-			public void virtualChannelOpened( VMID instance_vmid, VMID peer_vmid,
-				short channel_id ) {}
-
-			@Override
-			public void virtualChannelClosed( VMID instance_vmid, VMID peer_vmid,
-				short channel_id ) {}
-
-			@Override
-			public void virtualChannelDataReceived( VMID instance_vmid, VMID peer_vmid,
-				short channel_id, int bytes ) {}
-
-			@Override
-			public void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-				short channel_id, int bytes ) {}
-
-			@Override
-			public void messageReceived( VMID source_vmid, IMessage message ) {}
-
-			@Override
-			public void leaseInfoUpdated( VMID vmid, int object_id,
-				String delegate_tostring, boolean holding_strong_reference,
-				int leasing_vm_count, boolean renew, boolean release ) {}
-
-			@Override
-			public void leasedObjectRemoved( VMID vmid, int object_id ) {}
 		};
 
 
@@ -287,12 +239,8 @@ public class MethodAckTest extends TestCase {
 			new IntrepidSetup().vmidHint( "server" ).openServer().performanceListener(
 			perf_listener ) );
 
-		Runnable server_impl = new Runnable() {
-			@Override
-			public void run() {
-				// Return immediately
-			}
-		};
+		Runnable server_impl = () -> {};        // Return immediately
+
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );

@@ -49,6 +49,7 @@ public enum IMessageType {
 	CHANNEL_INIT_RESPONSE(  31 ),
 	CHANNEL_DATA(           32 ),
 	CHANNEL_CLOSE(          33 ),
+	CHANNEL_DATA_ACK(       34 ),
 
 	PING(                   40 ),
 	PING_RESPONSE(          41 );
@@ -57,7 +58,7 @@ public enum IMessageType {
 
 	private final byte id;
 
-	private IMessageType( int id ) {
+	IMessageType( int id ) {
 		if ( id < 1 || id > Byte.MAX_VALUE ) {
 			throw new IllegalArgumentException( "Invalid ID: " + id );
 		}

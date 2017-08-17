@@ -615,14 +615,16 @@ public class PerformanceListenerTest extends TestCase {
 				Short.valueOf( channel_id ), Integer.valueOf( bytes ) ) ) );
 		}
 
+
+
 		@Override
 		public void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-			short channel_id, int bytes ) {
+			short channel_id, short message_id, int bytes ) {
 
 			if ( want_messages ) return;
 
 			queue.add( Pair.create( CallType.VIRTUAL_CHANNEL_DATA_SENT,
-				Arrays.asList( ( Object ) instance_vmid, peer_vmid,
+				Arrays.asList( instance_vmid, peer_vmid,
 				Short.valueOf( channel_id ), Integer.valueOf( bytes ) ) ) );
 		}
 

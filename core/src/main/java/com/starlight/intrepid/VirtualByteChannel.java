@@ -26,20 +26,23 @@
 package com.starlight.intrepid;
 
 
+import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.starlight.intrepid.exception.NotConnectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
+import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -52,109 +55,150 @@ class VirtualByteChannel implements ByteChannel {
 
 
 	// Put in the buffer to signal a "normal" close
-	private static final ByteBuffer CLOSED_FLAG = ByteBuffer.allocate( 1 );
+	private static final BufferToMessageWrapper CLOSED_FLAG = 
+		new BufferToMessageWrapper( ByteBuffer.allocate( 1 ) );
 	// Put in the buffer to signal a forceful close
-	private static final ByteBuffer FORCE_CLOSED_FLAG = ByteBuffer.allocate( 1 );
+	private static final BufferToMessageWrapper FORCE_CLOSED_FLAG = 
+		new BufferToMessageWrapper( ByteBuffer.allocate( 1 ) );
 
 	private final VMID remote_vmid;
 	private final short id;
 	private final RemoteCallHandler handler;
 
-	private final Lock lock = new ReentrantLock();
-	private final Condition data_available = lock.newCondition();
+	private final VBCRxWindowReceiveControl receive_window_control;
+	private final VBCRxWindowSendControl send_window_control;
+	private final AtomicInteger message_id_source = new AtomicInteger(
+		// Setting a random range so we hit rollover frequently
+		new Random().nextInt( Short.MAX_VALUE ) );
 
-	private final Queue<ByteBuffer> buffer_queue = new LinkedList<ByteBuffer>();
-	private volatile ByteBuffer active_buffer = null;
+	private final ReentrantLock read_operation_lock = new ReentrantLock();
+	private final BlockingQueue<BufferToMessageWrapper> read_buffer_queue =
+		new LinkedBlockingQueue<>();
+	private volatile BufferToMessageWrapper read_active_wrapper = null;
 
 	private volatile boolean closed = false;
 
-	VirtualByteChannel( VMID remote_vmid, short id, RemoteCallHandler handler ) {
-		this.remote_vmid = remote_vmid;
+
+
+	VirtualByteChannel( VMID remote_vmid, short id,
+		VBCRxWindowReceiveControl receive_window_control,
+		VBCRxWindowSendControl send_window_control, RemoteCallHandler handler ) {
+
+		this.remote_vmid = requireNonNull( remote_vmid );
 		this.id = id;
-		this.handler = handler;
+		this.receive_window_control = requireNonNull( receive_window_control );
+		this.send_window_control = requireNonNull( send_window_control );
+		this.handler = requireNonNull( handler );
 	}
 
+
+	// CONCURRENCY NOTES:
+	// There are two important synchronization points while reading:
+	//  1) Per ReadableByteChannel docs...
+	//       "Only one read operation upon a readable channel may be in progress at
+	//        any given time. If one thread initiates a read operation upon a channel
+	//        then any other thread that attempts to initiate another read operation
+	//        will block until the first operation is complete. Whether or not other
+	//        kinds of I/O operations may proceed concurrently with a read operation
+	//        depends upon the type of the channel."
+	//     ... the entire read(...) method is synchronized.
+	//
+	//  2) Within the read operation, the call must be able to block while waiting for
+	//     data (while -of course- allowing the data queue to be filled).
+	//
+	// Writing is easier as send blocking (for the RX window) is managed externally.
 
 	@Override
 	public int read( ByteBuffer buffer ) throws IOException {
-		if ( !isOpen() ) throw new ClosedChannelException();
+		if ( closed ) throw new ClosedChannelException();
 
-		assert buffer.hasRemaining() : buffer;
+		if ( !buffer.hasRemaining() ) return 0;
 
-		return lockWrapper( true, buffer );
-	}
-
-	@Override
-	public int write( ByteBuffer buffer ) throws IOException {
-		if ( !isOpen() ) throw new ClosedChannelException();
-
-		assert buffer.hasRemaining() : buffer;
-
-		return lockWrapper( false, buffer );
-	}
-
-	@Override
-	public boolean isOpen() {
-		return !closed;
-	}
-
-	@Override
-	public void close() throws IOException {
-		handler.channelClose( remote_vmid, id, true );
-		lock.lock();
+		AtomicInteger ack_message = new AtomicInteger( Integer.MIN_VALUE );
+		int read;
+		read_operation_lock.lock();
 		try {
-			handleClose();
+			read = readIntoBuffer( buffer, ack_message );
+		}
+		catch( InterruptedException ex ) {
+			throw new InterruptedIOException();
 		}
 		finally {
-			lock.unlock();
+			read_operation_lock.unlock();
 		}
+
+		// RX Window reservation released
+		int new_window_size =
+			receive_window_control.releaseFromBufferAndGetWindowSize( read );
+
+		int message_id = ack_message.get();
+		if ( message_id != Integer.MIN_VALUE ) {
+			handler.channelSendDataAck( remote_vmid, id, ( short ) message_id,
+				new_window_size );
+		}
+
+		return read;
 	}
 
 
-	void putData( ByteBuffer buffer ) {
-		lock.lock();
-		try {
-			if ( LOG.isDebugEnabled() ) {
-				LOG.debug( "Put data buffer (size={}) for virtual channel {}",
-					Integer.valueOf( buffer.remaining() ), Short.valueOf( id ) );
-			}
-			buffer_queue.add( buffer );
-			data_available.signalAll();
+
+	/**
+	 * Returns the current size of the Rx window to be advertised to peers.
+	 */
+	int getCurrentRxWindow() {
+		return receive_window_control.currentWindowSize();
+	}
+
+
+
+	/**
+	 * Queues a buffer to be read by the channel.
+	 *
+	 * @param message_id        The message ID associated with the buffer. If no message
+	 *                          ID is desired, {@code Integer.MIN_VALUE} should be
+	 *                          specified. Otherwise, the value should be a short.
+	 */
+	void putData( ByteBuffer buffer, int message_id ) {
+		if ( closed ) return;
+
+		// RX Window starts reservation here
+		receive_window_control.reserveInBuffer( buffer.remaining() );
+
+		if ( LOG.isTraceEnabled() ) {
+			LOG.trace( "Put data buffer (size={}) for virtual channel {}",
+				Integer.valueOf( buffer.remaining() ), Short.valueOf( id ) );
 		}
-		finally {
-			lock.unlock();
-		}
+		read_buffer_queue.add(
+			new BufferToMessageWrapper( buffer, message_id & 0xFFFF ) );
 	}
 
 	void closedByPeer( boolean forceful ) {
-		putData( forceful ? FORCE_CLOSED_FLAG : CLOSED_FLAG );
+		read_buffer_queue.add( forceful ? FORCE_CLOSED_FLAG : CLOSED_FLAG );
 	}
 
 
-	private int lockWrapper( boolean read, ByteBuffer buffer ) throws IOException {
-		try {
-			lock.lockInterruptibly();
-			try {
-				if ( read ) return readNoLock( buffer );
-				else return writeNoLock( buffer );
-			}
-			finally {
-				lock.unlock();
-			}
-		}
-		catch( InterruptedException ex ) {
-			close();
-			throw new ClosedByInterruptException();
+	void processDataAck( short ack_through_message_id, int new_window_size ) {
+		// If the ack could not be processed, shut the channel down
+		if ( !send_window_control.releaseAndResize(
+			ack_through_message_id, new_window_size ) ) {
+
+			LOG.warn( "Channel {} will be closed because a data ack from the peer " +
+				"referenced message {}, which is unknown.", id, ack_through_message_id );
+			handleClose();
+
+			// Do this outside the processor thread
+			SharedThreadPool.INSTANCE.execute(
+				() -> handler.channelClose( remote_vmid, id, true ) );
 		}
 	}
 
 
-	private int readNoLock( ByteBuffer dest_buffer )
+	private int readIntoBuffer( ByteBuffer dest_buffer, AtomicInteger ack_message )
 		throws IOException, InterruptedException {
 
 		int total_read = 0;
 		while( dest_buffer.hasRemaining() ) {
-			int read = readPiece( dest_buffer, total_read == 0 );
+			int read = readPiece( dest_buffer, total_read == 0, ack_message );
 			if ( read == -1 ) {
 				if ( total_read > 0 ) break;
 				else return -1;
@@ -168,54 +212,82 @@ class VirtualByteChannel implements ByteChannel {
 		return total_read;
 	}
 
-	private int readPiece( ByteBuffer dest_buffer, boolean need_data )
-		throws IOException, InterruptedException {
+
+
+	/**
+	 * Read some data... doesn't have to be the full buffer.
+	 *
+	 * @param need_data     If false, it's okay to come up empty. In that case, a lack of
+	 *                      data will immediately cause a return of '0'. If true, calling
+	 *                      will block until some data is available, in which case '0'
+	 *                      may still be returned, but subsequent calls will return data.
+	 *
+	 * @return      The amount of data read, -1 for a soft close.
+	 */
+	private int readPiece( ByteBuffer dest_buffer, boolean need_data,
+		AtomicInteger ack_message ) throws IOException, InterruptedException {
+		
+		assert read_operation_lock.isHeldByCurrentThread();
 		
 		// See if there's a buffer active already
-		if ( active_buffer != null ) {
-			if ( active_buffer == CLOSED_FLAG ) return -1;
-			if ( active_buffer == FORCE_CLOSED_FLAG ) throw new ClosedChannelException();
+		BufferToMessageWrapper active_wrapper = read_active_wrapper;
+		if ( active_wrapper != null ) {
+			if ( active_wrapper == CLOSED_FLAG ) return -1;
+			if ( active_wrapper == FORCE_CLOSED_FLAG ) throw new ClosedChannelException();
 
-			int pos_before_read = active_buffer.position();
+			int pos_before_read = active_wrapper.buffer.position();
 
 			int original_limit = 0;
-			if ( dest_buffer.remaining() < active_buffer.remaining() ) {
-				original_limit = active_buffer.limit();
-				active_buffer.limit( active_buffer.position() + dest_buffer.remaining() );
+			if ( dest_buffer.remaining() < active_wrapper.buffer.remaining() ) {
+				original_limit = active_wrapper.buffer.limit();
+				active_wrapper.buffer.limit( active_wrapper.buffer.position() + dest_buffer.remaining() );
 			}
-			dest_buffer.put( active_buffer );
-			int read = active_buffer.position() - pos_before_read;
+			dest_buffer.put( active_wrapper.buffer );
+			int read = active_wrapper.buffer.position() - pos_before_read;
 			if ( original_limit != 0 ) {
-				active_buffer.limit( original_limit );
+				active_wrapper.buffer.limit( original_limit );
 				return read;
 			}
 
-			if ( !active_buffer.hasRemaining() ) active_buffer = null;
+			if ( !active_wrapper.buffer.hasRemaining() ) {
+				// Indicate the message that should be ack'ed. As more pieces are read,
+				// this may be overwritten by newer messages (which is a good thing).
+				if ( active_wrapper.message_id != Integer.MIN_VALUE ) {
+					ack_message.set( active_wrapper.message_id );
+				}
+
+				read_active_wrapper = null;
+			}
 
 			return read;
 		}
 
 		// If not, try to pull one from the queue
-		ByteBuffer buffer;
-		while( ( buffer = buffer_queue.poll() ) == null ) {
-			if ( !need_data ) return 0;
+		BufferToMessageWrapper wrapper;
+		while( ( wrapper =
+			// If we need data, wait for it. Otherwise, don't.
+			( need_data ? read_buffer_queue.take() : read_buffer_queue.poll() ) ) == null ) {
 
-			data_available.await();
+			if ( !need_data ) return 0;
 			if ( closed ) throw new ClosedChannelException();
 		}
-		active_buffer = buffer;
-		if ( active_buffer == CLOSED_FLAG ) return -1;
-		if ( active_buffer == FORCE_CLOSED_FLAG ) throw new ClosedChannelException();
+		read_active_wrapper = wrapper;
+		if ( wrapper == CLOSED_FLAG ) return -1;
+		if ( wrapper == FORCE_CLOSED_FLAG ) throw new ClosedChannelException();
 
 		return 0;   // keep trying
 	}
 
-	private int writeNoLock( ByteBuffer buffer ) throws IOException {
+
+
+	@Override
+	public int write( ByteBuffer buffer ) throws IOException {
 		if ( closed ) throw new ClosedChannelException();
 
 		int remaining = buffer.remaining();
 		try {
-			handler.channelSendData( remote_vmid, id, buffer );
+			handler.channelSendData( remote_vmid, id, buffer, send_window_control,
+				() -> ( short ) message_id_source.get() );
 		}
 		catch( NotConnectedException ex ) {
 			handleClose();
@@ -230,9 +302,41 @@ class VirtualByteChannel implements ByteChannel {
 		return remaining;
 	}
 
+	@Override
+	public boolean isOpen() {
+		return !closed;
+	}
+
+	@Override
+	public void close() {
+		handleClose();
+		handler.channelClose( remote_vmid, id, true );
+	}
+
 	private void handleClose() {
 		closed = true;
-		active_buffer = null;
-		buffer_queue.clear();
+		read_active_wrapper = null;
+		read_buffer_queue.clear();              // clear memory
+		read_buffer_queue.add( CLOSED_FLAG );   // ensure nothing is blocked on read
+	}
+
+
+
+	/**
+	 * Tracks the message ID associated with a buffer so we know which one(s) to ack when
+	 * a buffer is fully consumed.
+	 */
+	private static class BufferToMessageWrapper {
+		private final ByteBuffer buffer;
+		private final int message_id;       // min for none
+
+		BufferToMessageWrapper( ByteBuffer buffer ) {
+			this( buffer, Integer.MIN_VALUE );
+		}
+		
+		BufferToMessageWrapper( ByteBuffer buffer, int message_id ) {
+			this.buffer = buffer;
+			this.message_id = message_id;
+		}
 	}
 }

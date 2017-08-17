@@ -2,11 +2,7 @@ package com.starlight.intrepid.driver;
 
 import org.junit.Assume;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.OptionalInt;
 
 import static org.junit.Assert.*;
@@ -53,21 +49,21 @@ public class ProtocolVersionsTest {
 
 	@Test
 	public void supportsMethodAck() throws Exception {
-		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 2 ) );
-		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 3 ) );
+		assertTrue( ProtocolVersions.supportsMethodAck( (byte) 2 ) );
+		assertTrue( ProtocolVersions.supportsMethodAck( (byte) 3 ) );
 
-		assertFalse( ProtocolVersions.supportsReconnectTokens( (byte) 0 ) );
-		assertFalse( ProtocolVersions.supportsReconnectTokens( (byte) 1 ) );
+		assertFalse( ProtocolVersions.supportsMethodAck( (byte) 0 ) );
+		assertFalse( ProtocolVersions.supportsMethodAck( (byte) 1 ) );
 	}
 
 
 	@Test
 	public void supportChannelDataRxWindow() throws Exception {
-		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 3 ) );
-		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 4 ) );
+		assertTrue( ProtocolVersions.supportsChannelDataRxWindow( (byte) 3 ) );
+		assertTrue( ProtocolVersions.supportsChannelDataRxWindow( (byte) 4 ) );
 
-		assertFalse( ProtocolVersions.supportsReconnectTokens( (byte) 0 ) );
-		assertFalse( ProtocolVersions.supportsReconnectTokens( (byte) 1 ) );
-		assertFalse( ProtocolVersions.supportsReconnectTokens( (byte) 2 ) );
+		assertFalse( ProtocolVersions.supportsChannelDataRxWindow( (byte) 0 ) );
+		assertFalse( ProtocolVersions.supportsChannelDataRxWindow( (byte) 1 ) );
+		assertFalse( ProtocolVersions.supportsChannelDataRxWindow( (byte) 2 ) );
 	}
 }

@@ -10,6 +10,7 @@ import java.nio.channels.ByteChannel;
  * This interface implements the server-side of channel (stream) capabilities. The
  * acceptor is called on the server when a client initiates a connection.
  */
+@FunctionalInterface
 public interface ChannelAcceptor {
 	/**
 	 * Called when a new inbound channel is received. This should return quickly and

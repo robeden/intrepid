@@ -25,10 +25,10 @@
 
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.message.LeaseIMessage;
 import com.starlight.intrepid.driver.IntrepidDriver;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
+import com.starlight.intrepid.message.LeaseIMessage;
 import com.starlight.intrepid.message.LeaseReleaseIMessage;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -37,12 +37,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 
 /**
@@ -71,27 +74,21 @@ class LeaseManager {
 	static final boolean DGC_DISABLED =
 		System.getProperty( "intrepid.lease.disable_dgc" ) != null;
 
-	static final boolean LEASE_DEBUGGING =
-		System.getProperty( "intrepid.lease.debug" ) != null;
-	static final boolean SUPER_LEASE_DEBUGGING =
-		"super".equalsIgnoreCase( System.getProperty( "intrepid.lease.debug" ) );
 
-	
-	private static final Map<VMID,LocalCallHandler> local_handler_map =
-		new HashMap<VMID, LocalCallHandler>();
+	private static final Map<VMID,LocalCallHandler> local_handler_map = new HashMap<>();
 	private static final Lock local_handler_map_lock = new ReentrantLock();
 
 	private static final Map<VMID,TIntObjectMap<ProxyLeaseInfo>> proxy_lease_map =
-		new HashMap<VMID, TIntObjectMap<ProxyLeaseInfo>>();
+		new HashMap<>();
 	private static final Lock proxy_lease_map_lock = new ReentrantLock();
 
 	// Reference queue to ProxyInvocationHandler so we know when we're done with them.
 	// This will only include handlers pointing to remote VM's.
 	private static final ReferenceQueue<ProxyInvocationHandler> ref_queue =
-		new ReferenceQueue<ProxyInvocationHandler>();
+		new ReferenceQueue<>();
 
 	private static final BlockingQueue<ProxyLeaseInfo> renew_queue =
-		new DelayQueue<ProxyLeaseInfo>();
+		new DelayQueue<>();
 	static {
 		// Put a prune flag on the queue
 		renew_queue.add( new LeasePruneFlag() );
@@ -136,10 +133,7 @@ class LeaseManager {
 	 * Register a new proxy to be managed for DGC leases.
 	 */
 	static void registerProxy( ProxyInvocationHandler handler, VMID vmid, int object_id ) {
-		if ( LEASE_DEBUGGING ) {
-			System.out.println( "New PIH registered: " + handler + "  VMID: " + vmid +
-				"  OID: " + object_id );
-		}
+		LOG.debug( "New PIH registered: {}  VMID: {}  OID: {}", handler, vmid, object_id );
 
 		ProxyLeaseInfo lease_info;
 		boolean created = false;
@@ -147,7 +141,7 @@ class LeaseManager {
 		try {
 			TIntObjectMap<ProxyLeaseInfo> vm_map = proxy_lease_map.get( vmid );
 			if ( vm_map == null ) {
-				vm_map = new TIntObjectHashMap<ProxyLeaseInfo>();
+				vm_map = new TIntObjectHashMap<>();
 				proxy_lease_map.put( vmid, vm_map );
 			}
 
@@ -175,10 +169,11 @@ class LeaseManager {
 	static void handleLease( LeaseIMessage message, LocalCallHandler local_handler,
 		VMID source_vm ) {
 
-		if ( LEASE_DEBUGGING ) {
-			System.out.println( "Received lease from " + source_vm + " for: " +
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug( "Received lease from {} for: {}", source_vm,
 				Arrays.toString( message.getOIDs() ) );
 		}
+
 		for ( int oid : message.getOIDs() ) {
 			local_handler.renewLease( oid, source_vm );
 		}
@@ -188,10 +183,11 @@ class LeaseManager {
 	static void handleLeaseRelease( LeaseReleaseIMessage message,
 		LocalCallHandler local_handler, VMID source_vm ) {
 
-		if ( LEASE_DEBUGGING ) {
-			System.out.println( "Received lease RELEASE from " + source_vm + " for: " +
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug( "Received lease RELEASE from {} for: {}", source_vm,
 				Arrays.toString( message.getOIDs() ) );
 		}
+
 		for ( int oid : message.getOIDs() ) {
 			local_handler.giveUpLease( oid, source_vm );
 		}
@@ -257,25 +253,21 @@ class LeaseManager {
 					assert info == null || !renew_queue.contains( info ) :
 						"Info: " + info + "\n\nQueue: " + renew_queue;
 					long post_poll_time = System.nanoTime();
-					if ( LEASE_DEBUGGING ) {
-						System.out.println( "--- pulled lease info from queue: " + info +
-							"  Queue size: " + renew_queue.size() );
-						if ( SUPER_LEASE_DEBUGGING ) {
-							System.out.println( "Queue contents: " + renew_queue );
-							for( ProxyLeaseInfo pli : renew_queue ) {
-								System.out.println( "  " + pli );
-							}
 
-							List<ProxyLeaseInfo> list =
-								new ArrayList<ProxyLeaseInfo>( renew_queue );
-							Collections.sort( list );
-							System.out.println();
-							System.out.println( "Sorted contents:");
-							for( ProxyLeaseInfo pli : list ) {
-								System.out.println( "  " + pli );
-							}
+					if ( LOG.isDebugEnabled() ) {
+
+						LOG.debug( "--- pulled lease info from queue: {}  Queue size: {}",
+							info, renew_queue.size() );
+
+						if ( LOG.isTraceEnabled() ) {
+							LOG.trace( "(Sorted) queue contents:\n   {}",
+								renew_queue.stream()
+									.sorted()
+									.map( Object::toString )
+									.collect( Collectors.joining( "\n   " ) ) );
 						}
 					}
+
 					if ( info == null ) {
 						checkRefQueue();
 						last_ref_queue_check = post_poll_time;
@@ -299,17 +291,15 @@ class LeaseManager {
 						if ( info.proxy_count <= 0 ) {
 							reschedule = false;
 							sendLeaseMessage( info.vmid, info.object_id, false );
-							if ( LEASE_DEBUGGING ) {
-								System.out.println( "Lease RELEASE sent: " +
-									info.object_id + " @ " + info.vmid );
-							}
+
+							LOG.debug( "Lease RELEASE sent: {} @ {}",
+								info.object_id, info.vmid );
 						}
 						else {
 							sendLeaseMessage( info.vmid, info.object_id, true );
-							if ( LEASE_DEBUGGING ) {
-								System.out.println( "Lease renew sent: " +
-									info.object_id + " @ " + info.vmid );
-							}
+
+							LOG.debug( "Lease renew sent: {} @ {}",
+								info.object_id, info.vmid );
 						}
 					}
 
@@ -350,10 +340,7 @@ class LeaseManager {
 		private void checkRefQueue() {
 			RemoteProxyWeakReference ref;
 			while( ( ref = ( RemoteProxyWeakReference ) ref_queue.poll() ) != null ) {
-				if ( LEASE_DEBUGGING ) {
-					System.out.println( "PIH no longer used: " + ref.vmid + " - " +
-						ref.object_id );
-				}
+				LOG.debug( "PIH no longer used: {} - {}", ref.vmid, ref.object_id );
 
 				proxy_lease_map_lock.lock();
 				try {
@@ -398,7 +385,8 @@ class LeaseManager {
 
 
 		private void pruneLeases() {
-			if ( LEASE_DEBUGGING ) System.out.println( "--- prune leases ---" );
+			LOG.debug( "---- prune leases ----" );
+
 			local_handler_map_lock.lock();
 			try {
 				for( LocalCallHandler handler : local_handler_map.values() ) {

@@ -170,7 +170,7 @@ public class Intrepid {
 			performance_listeners.dispatch(), setup.getPreInvocationValidator() );
 		RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
 			local_handler, vmid, thread_pool, performance_listeners,
-			setup.getChannelAcceptor() );
+			setup.getChannelAcceptor(), setup.getChannelRxWindowSizeFunction() );
 
 		// Init SPI
 		driver.init( server_address, server_port, vmid_hint, remote_handler,

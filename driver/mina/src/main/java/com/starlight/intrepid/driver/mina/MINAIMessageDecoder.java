@@ -29,6 +29,7 @@ import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.driver.DataSource;
 import com.starlight.intrepid.driver.MessageDecoder;
 import com.starlight.intrepid.driver.SessionCloseOption;
+import com.starlight.intrepid.driver.SessionInfo;
 import com.starlight.intrepid.message.IMessage;
 import org.apache.mina.core.buffer.IoBuffer;
 import org.apache.mina.core.session.IoSession;
@@ -44,6 +45,8 @@ import java.nio.BufferUnderflowException;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.util.function.IntConsumer;
+
+import static com.starlight.intrepid.driver.mina.MINAIntrepidDriver.SESSION_INFO_KEY;
 
 
 /**
@@ -70,9 +73,16 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 		deserialization_context_vmid.set( vmid );
 		try {
 			int position_before = in.position();
+
+			SessionInfo session_info =
+				( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );
+			final Byte protocol_version = session_info.getProtocolVersion();
+
 			IMessage message = MessageDecoder.decode( new IoBufferWrapper( in ),
+				protocol_version,
 				( response, close_option ) -> {
-					System.out.println( "Response: " + response );
+					LOG.debug( "Response: {}", response );
+
 					session.write( response );
 
 					if ( close_option != null ) {
@@ -114,7 +124,7 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 
 		@Override
 		public @Nonnull String hex() {
-			return delegate.getHexDump();
+			return delegate.getHexDump( 60 );
 		}
 
 		@Override
@@ -167,6 +177,12 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 		@Override
 		public boolean request( long byte_count ) {
 			return delegate.remaining() >= byte_count;
+		}
+
+
+		@Override
+		public String toString() {
+			return delegate.toString();
 		}
 	}
 }

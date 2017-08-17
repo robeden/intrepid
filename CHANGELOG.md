@@ -10,9 +10,17 @@ real history will start at 1.7.0.
 
 ## [Unreleased]
 ## Added
+- Flow control has been added to virtual channels ([issue #15](https://bitbucket.org/robeden/intrepid/issues/15/))
+  to prevent flooding receivers.
+  
+## Changed
 - Protocol version incremented to 3 ([issue #16](https://bitbucket.org/robeden/intrepid/issues/16)).
   **Protocol versions 0-2 are no longer accepted by default, but support can be 
   enabled via a new System property: `-Dintrepid.min_supported_protocol=<version>`.**
+  
+## Removed
+- `PerformanceListener.invalidMessageReceived` method was removed as messages can no
+  longer be decoded in the state where this was previously notified. 
   
 
 ## [1.6.3] - 2016-09-26

@@ -26,6 +26,11 @@
 package com.starlight.intrepid.message;
 
 import com.starlight.locale.ResourceKey;
+import com.starlight.locale.UnlocalizableTextResourceKey;
+
+import javax.annotation.Nonnegative;
+import javax.annotation.Nullable;
+import java.util.Optional;
 
 
 /**
@@ -34,16 +39,23 @@ import com.starlight.locale.ResourceKey;
 public class ChannelInitResponseIMessage implements IMessage {
 	private final int request_id;
 	private final boolean rejected;
-	private final ResourceKey<String> reject_reason;
+	private final String reject_reason;
+	private final int rx_window;
 
 
 	/**
 	 * Use this constructor to indicate a successful channel creation.
 	 */
-	public ChannelInitResponseIMessage( int request_id ) {
+	public ChannelInitResponseIMessage( int request_id, int rx_window ) {
 		this.request_id = request_id;
 		this.rejected = false;
 		this.reject_reason = null;
+		this.rx_window = rx_window;
+
+		if ( rx_window < 0 ) {
+			throw new IllegalArgumentException(
+				"Illegal negative value for rx_window: " + rx_window );
+		}
 	}
 
 
@@ -51,11 +63,12 @@ public class ChannelInitResponseIMessage implements IMessage {
 	 * Use this constructor to indicate a failed channel creation.
 	 */
 	public ChannelInitResponseIMessage( int request_id,
-		ResourceKey<String> reject_reason ) {
+		@Nullable String reject_reason ) {
 
 		this.request_id = request_id;
 		this.rejected = true;
 		this.reject_reason = reject_reason;
+		this.rx_window = 0;
 	}
 
 
@@ -80,9 +93,29 @@ public class ChannelInitResponseIMessage implements IMessage {
 	/**
 	 * Returns the reason the channel could not be created, which might be null
 	 * if no reason was provided by the server.
+	 *
+	 * @deprecated Use {@link #getRejectReasonString()}
 	 */
 	public ResourceKey<String> getRejectReason() {
-		return reject_reason;
+		return reject_reason == null ? null :
+			new UnlocalizableTextResourceKey( reject_reason );
+	}
+
+	public Optional<String> getRejectReasonString() {
+		return Optional.ofNullable( reject_reason );
+	}
+
+	/**
+	 * The receive window provided during the channel initialization response is the
+	 * window size allowed by the server-side (the sender of this message) for inbound
+	 * data sent by the client-side (the receiver of this message).
+	 *
+	 * A value of '0' indicates no window exists (for pre-1.7 compatibility). Negative
+	 * values are not allowed.
+	 */
+	@Nonnegative
+	public int getRxWindow() {
+		return rx_window;
 	}
 
 

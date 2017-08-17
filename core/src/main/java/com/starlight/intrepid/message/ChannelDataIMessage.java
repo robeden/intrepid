@@ -26,27 +26,30 @@
 package com.starlight.intrepid.message;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 
-/**
- *
- */
-public class ChannelDataIMessage implements IMessage {
-	private final short channel_id;
-	private final ByteBuffer single_buffer;
-	private final ByteBuffer[] multi_buffer;
+public abstract class ChannelDataIMessage implements IMessage {
 
+	public static ChannelDataIMessage create( short channel_id, short message_id,
+		ByteBuffer buffer ) {
 
-	public ChannelDataIMessage( short channel_id, ByteBuffer buffer ) {
-		this.channel_id = channel_id;
-		this.single_buffer = buffer;
-		this.multi_buffer = null;
+		return new SingleBufferChannelDataIMessage( channel_id, message_id, buffer );
 	}
 
-	public ChannelDataIMessage( short channel_id, ByteBuffer... buffers ) {
+	public static ChannelDataIMessage create( short channel_id, short message_id,
+		ByteBuffer... buffers ) {
+
+		return new MultiBufferChannelDataIMessage( channel_id, message_id, buffers );
+	}
+
+
+	private final short channel_id;
+	private final short message_id;
+
+	private ChannelDataIMessage( short channel_id, short message_id ) {
 		this.channel_id = channel_id;
-		this.single_buffer = null;
-		this.multi_buffer = buffers;
+		this.message_id = message_id;
 	}
 
 
@@ -60,18 +63,103 @@ public class ChannelDataIMessage implements IMessage {
 		return channel_id;
 	}
 
-
-	public int getBufferCount() {
-		if ( single_buffer != null ) return 1;
-		else return multi_buffer.length;
+	public short getMessageID() {
+		return message_id;
 	}
 
 
-	public ByteBuffer getBuffer( int index ) {
-		if ( single_buffer != null ) {
-			if ( index == 0 ) return single_buffer;
-			else throw new IndexOutOfBoundsException( "Invalid index: " + index );
+	public abstract int getBufferCount();
+	public abstract ByteBuffer getBuffer( int index );
+
+
+
+	@Override
+	public boolean equals( Object o ) {
+		if ( this == o ) return true;
+		if ( o == null || getClass() != o.getClass() ) return false;
+
+		ChannelDataIMessage that = ( ChannelDataIMessage ) o;
+
+		if ( channel_id != that.channel_id ) return false;
+		return message_id == that.message_id;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = ( int ) channel_id;
+		result = 31 * result + ( int ) message_id;
+		return result;
+	}
+
+
+
+	private static class SingleBufferChannelDataIMessage extends ChannelDataIMessage {
+		private final ByteBuffer buffer;
+
+
+		SingleBufferChannelDataIMessage( short channel_id, short message_id,
+			ByteBuffer buffer ) {
+
+			super( channel_id, message_id );
+
+			this.buffer = buffer;
 		}
-		else return multi_buffer[ index ];
+
+
+
+		@Override
+		public int getBufferCount() {
+			return 1;
+		}
+
+		@Override
+		public ByteBuffer getBuffer( int index ) {
+			if ( index != 0 ) {
+				throw new IllegalArgumentException( "Invalid index: " + index );
+			}
+			return buffer;
+		}
+
+		@Override
+		public String toString() {
+			return "ChannelDataIMessage{" +
+				"channel_id=" + getChannelID() +
+				", message_id=" + getMessageID() +
+				", buffer=" + buffer +
+				'}';
+		}
+	}
+
+	private static class MultiBufferChannelDataIMessage extends ChannelDataIMessage {
+		private final ByteBuffer[] buffers;
+
+
+		MultiBufferChannelDataIMessage( short channel_id, short message_id,
+			ByteBuffer... buffers ) {
+
+			super( channel_id, message_id );
+
+			this.buffers = buffers;
+		}
+
+		@Override
+		public int getBufferCount() {
+			return buffers.length;
+		}
+
+		@Override
+		public ByteBuffer getBuffer( int index ) {
+			return buffers[ index ];
+		}
+
+
+		@Override
+		public String toString() {
+			return "ChannelDataIMessage{" +
+				"channel_id=" + getChannelID() +
+				", message_id=" + getMessageID() +
+				", buffers=" + Arrays.toString( buffers ) +
+				'}';
+		}
 	}
 }

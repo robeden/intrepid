@@ -30,24 +30,20 @@ import com.logicartisan.common.core.Triple;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import com.starlight.intrepid.message.*;
 import com.starlight.locale.ResourceKey;
 import com.starlight.locale.UnlocalizableTextResourceKey;
 import junit.framework.TestCase;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -221,61 +217,16 @@ public class ChannelTest extends TestCase {
 		VMID server_vmid = server.getLocalVMID();
 
 
-		// Create a client PerformanceListener that will check that multiple messages
-		// are sent.
-		final BlockingQueue<Class> expected_message_classes = new LinkedBlockingQueue<Class>(
-			Arrays.asList(
-				SessionInitIMessage.class,      // Session init
-				ChannelInitIMessage.class,      // Channel init
-				ChannelDataIMessage.class,       // Channel data (x5)
-				ChannelDataIMessage.class,
-				ChannelDataIMessage.class,
-				ChannelDataIMessage.class,
-				ChannelDataIMessage.class,
-				ChannelCloseIMessage.class,     // Channel close
-				SessionCloseIMessage.class      // Session close
-			) );
-		final AtomicReference<String> error_slot = new AtomicReference<String>();
-		PerformanceListener client_listener =
-			( PerformanceListener ) java.lang.reflect.Proxy.newProxyInstance(
-			ChannelTest.class.getClassLoader(), new Class[] { PerformanceListener.class },
-			new InvocationHandler() {
-				@Override
-				public Object invoke( Object proxy, Method method, Object[] args )
-					throws Throwable {
+		AtomicInteger data_message_count = new AtomicInteger( 0 );
 
-					if ( method.getName().equals( "hashCode" ) ) {
-						return Integer.valueOf( System.identityHashCode( this ) );
-					}
-					if ( method.getName().equals( "equals" ) ) {
-						return Boolean.valueOf( args[ 0 ] == this );
-					}
+		PerformanceListener client_listener = new PerformanceListener() {
+			@Override public void virtualChannelDataSent( VMID instance_vmid,
+				VMID peer_vmid,
+				short channel_id, short message_id, int bytes ) {
 
-					if ( !method.getName().equals( "messageSent" ) ) return null;
-
-					// Don't overwrite initial error
-					if ( error_slot.get() != null ) return null;
-
-					Class message_class =
-						expected_message_classes.poll( 1, TimeUnit.SECONDS );
-					System.out.println( "Got message class: " +
-						( message_class == null ? "null" : message_class.getSimpleName() ) );
-
-					if ( message_class == null ) {
-						error_slot.set( "Unexpected message: " + args[ 1 ] +
-							" (Queue was empty)" );
-					}
-					else if ( !message_class.isInstance( args[ 1 ] ) ) {
-						error_slot.set( "Unexpected message type. Expecting: " +
-							message_class.getSimpleName() + " Got: " + args[ 1 ] +
-							"  Still in queue: " + expected_message_classes );
-					}
-
-					System.out.println( ">>> " + method.getName() + ": " +
-						Arrays.toString( args ) );
-					return null;
-				}
-			} );
+				data_message_count.incrementAndGet();
+			}
+		};
 
 		client = Intrepid.create( new IntrepidSetup().vmidHint(
 			"client" ).performanceListener( client_listener ) );
@@ -302,7 +253,8 @@ public class ChannelTest extends TestCase {
 
 		client.disconnect( server_vmid );
 
-		assertNull( error_slot.get(), error_slot.get() );
+		System.out.println( "Data messages: " + data_message_count );
+		assertTrue( data_message_count.get() > 1 );
 	}
 
 

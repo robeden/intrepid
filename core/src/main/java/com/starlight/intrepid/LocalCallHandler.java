@@ -341,8 +341,7 @@ class LocalCallHandler {
 
 	// This should only be called from the Lease Manager
 	void pruneLeases() {
-		if ( LeaseManager.LEASE_DEBUGGING ) System.out.println( "---pruneLeases---" );
-		LOG.trace( "---pruneLeases---" );
+		LOG.debug( "---pruneLeases---" );
 		lease_pruner.reset();
 
 		map_lock.lock();
@@ -351,14 +350,9 @@ class LocalCallHandler {
 			while( ( ref = ( ProxyWeakReference ) ref_queue.poll() ) != null ) {
 				object_to_id_map.remove( ref.delegate );
 				id_to_object_map.remove( ref.object_id );
-				if ( LeaseManager.LEASE_DEBUGGING ) {
-					System.out.println( "Removing object " + ref.object_id + ": " +
-						ref.delegate_to_string );
-				}
-				if ( LOG.isTraceEnabled() ) {
-					LOG.trace( "Removing object {}: {}", Integer.valueOf( ref.object_id ),
-						ref.delegate_to_string );
-				}
+
+				LOG.debug( "Removing object {}: {}", Integer.valueOf( ref.object_id ),
+					ref.delegate_to_string );
 
 				performance_listeners.leasedObjectRemoved( vmid, ref.object_id );
 			}
@@ -523,7 +517,7 @@ class LocalCallHandler {
 			weak_ref = new ProxyWeakReference( proxy, object_id, ref_queue, delegate,
 				delegate_to_string );
 
-			if ( LeaseManager.LEASE_DEBUGGING ) {
+			if ( LOG.isTraceEnabled() ) {
 				allocation_trace = new Throwable().getStackTrace();
 			}
 			else allocation_trace = null;
@@ -553,11 +547,9 @@ class LocalCallHandler {
 			try {
 				vmid_lease_map.remove( originating_vmid );
 				if ( vmid_lease_map.isEmpty() ) {
-					if ( LeaseManager.LEASE_DEBUGGING ) {
-						System.out.println( "demoting reference for " + object_id +
-							" (" + delegate_to_string +
-							") after giveUpLease since vmid_lease_map is empty." );
-					}
+					LOG.debug( "demoting reference for {} ({}) after giveUpLease since " +
+						"vmid_lease_map is empty.", object_id, delegate_to_string );
+
 					demoteReference();
 				}
 			}
@@ -579,9 +571,9 @@ class LocalCallHandler {
 			if ( bound || force_strong_ref || strong_ref != null ) return strong_ref;
 
 			strong_ref = weak_ref.get();
-			if ( LeaseManager.LEASE_DEBUGGING && strong_ref == null ) {
-				System.out.println( ">>> Referent for weak reference was null " +
-					"for object " + object_id + " (" + delegate_to_string + ")" );
+			if ( strong_ref == null ) {
+				LOG.debug( ">>> Referent for weak reference was null " +
+					"for object {} ({})", object_id, delegate_to_string);
 			}
 
 			notifyPerformanceListeners( false, false );
@@ -599,21 +591,20 @@ class LocalCallHandler {
 
 			Proxy old_ref = strong_ref;
 
-			if ( LeaseManager.LEASE_DEBUGGING && old_ref != null ) {
-				synchronized ( System.out ) {
-					vmid_lease_map_lock.lock();
-					try {
-						System.out.println( ">>> Demoting reference for " + object_id +
-							"(" + delegate_to_string + "). Lease map: " + vmid_lease_map );
-					}
-					finally {
-						vmid_lease_map_lock.unlock();
-					}
+			if ( old_ref != null && LOG.isTraceEnabled() ) {
+				vmid_lease_map_lock.lock();
+				try {
+					LOG.trace( ">>> Demoting reference for {}({}). Lease map: {}",
+						object_id, delegate_to_string, vmid_lease_map );
+				}
+				finally {
+					vmid_lease_map_lock.unlock();
+				}
 
-					if ( allocation_trace != null ) {
-						for( StackTraceElement element : allocation_trace ) {
-							System.out.println( ">>>    at " + element );
-						}
+				if ( allocation_trace != null ) {
+					LOG.trace( "Allocation trace:" );
+					for( StackTraceElement element : allocation_trace ) {
+						LOG.trace( ">>>    at {}", element );
 					}
 				}
 			}
@@ -680,11 +671,10 @@ class LocalCallHandler {
 			try {
 				// If there are no entries, exit quickly
 				if ( info.vmid_lease_map.isEmpty() ) {
-					if ( LeaseManager.LEASE_DEBUGGING ) {
-						System.out.println( "demoting reference for " + info.object_id +
-							" (" + info.delegate_to_string +
-							") vmid_lease_map is empty at start of LeasePruner." );
-					}
+					LOG.debug( "demoting reference for {} ({}) vmid_lease_map is " +
+						"empty at start of LeasePruner.",
+						info.object_id, info.delegate_to_string );
+
 					boolean demoted = info.demoteReference();
 					if ( demoted ) {
 						LOG.debug( "Reference demoted for {}",
@@ -704,11 +694,10 @@ class LocalCallHandler {
 				}
 
 				if ( info.vmid_lease_map.isEmpty() ) {
-					if ( LeaseManager.LEASE_DEBUGGING ) {
-						System.out.println( "demoting reference for " + info.object_id +
-							" (" + info.delegate_to_string +
-							") vmid_lease_map is empty after pruning entries." );
-					}
+					LOG.debug( "demoting reference for {} ({}) vmid_lease_map is " +
+						"empty after pruning entries.",
+						info.object_id, info.delegate_to_string );
+
 					boolean demoted = info.demoteReference();
 					if ( demoted ) {
 						LOG.debug( "Reference demoted for {}",

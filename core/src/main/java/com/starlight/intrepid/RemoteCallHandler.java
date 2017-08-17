@@ -58,14 +58,19 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntConsumer;
+import java.util.function.ToIntFunction;
+
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -76,13 +81,14 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 
 	private static final int MAX_CHANNEL_MESSAGE_DATA_SIZE =
-		Integer.getInteger( "intrepid.channel.max_message_data",
-		( 1 << 18 ) - 20 ).intValue();  // 256K - 20 bytes
+		Integer.getInteger( "intrepid.channel.max_message_data", 1 << 18 );  // 256K
+
+	private static final int MIN_CHANNEL_MESSAGE_DATA_SIZE =
+		Integer.getInteger( "intrepid.channel.min_message_data", 1024 );
 
 	// Default to 30 seconds, but don't allow anything longer than 2 min
-	private static final byte REQUEST_INVOKE_ACK_RATE_SEC = ( byte )
-		Math.min( 120,
-			Integer.getInteger( "intrepid.req_invoke_ack_rate_sec", 30 ).intValue() );
+	private static final byte REQUEST_INVOKE_ACK_RATE_SEC = ( byte ) Math.min( 120,
+		Integer.getInteger( "intrepid.req_invoke_ack_rate_sec", 30 ).intValue() );
 	static {
 		if ( REQUEST_INVOKE_ACK_RATE_SEC < 0 ) {
 			throw new IllegalArgumentException(
@@ -111,6 +117,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private final VMID local_vmid;
 	private final ScheduledExecutor executor;
 	private final ChannelAcceptor channel_acceptor;
+	private final ToIntFunction<Optional<Object>> channel_window_size_function;
 	private Intrepid instance;		// for call context info
 
 	private final ListenerSupport<PerformanceListener,?> performance_listeners;
@@ -141,14 +148,15 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private final AtomicInteger channel_id_counter = new AtomicInteger();
 
 
-	private final TIntObjectMap<InvokeRunner> runner_map =
-		new TIntObjectHashMap<>();
+	private final TIntObjectMap<InvokeRunner> runner_map = new TIntObjectHashMap<>();
 	private final Lock runner_map_lock = new ReentrantLock();
+
 
 	RemoteCallHandler( IntrepidDriver spi, AuthenticationHandler auth_handler,
 		LocalCallHandler local_handler, VMID local_vmid, ScheduledExecutor executor,
 		ListenerSupport<PerformanceListener, ?> performance_listeners,
-		ChannelAcceptor channel_acceptor ) {
+		ChannelAcceptor channel_acceptor,
+		ToIntFunction<Optional<Object>> channel_window_size_function ) {
 
 		this.auth_handler = auth_handler;
 		this.spi = spi;
@@ -157,6 +165,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		this.executor = executor;
 		this.channel_acceptor = channel_acceptor;
 		this.performance_listeners = performance_listeners;
+		this.channel_window_size_function = requireNonNull( channel_window_size_function );
 	}
 
 	void initInstance( Intrepid instance ) {
@@ -246,7 +255,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				assert vmid != null;
 
 				SessionInfo session_info =
-					spi.sendMessage( vmid, message, protocol_version_slot );
+					spi.sendMessage( vmid, message, protocol_version_slot::set );
 				LOG.trace( "Message sent: {}", call_id_obj );
 
 				VMID current_vmid = session_info.getVMID();
@@ -394,13 +403,14 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		final int call_id = call_id_counter.getAndIncrement();
 
-		ObjectSlot<ChannelInitResponseIMessage> response_slot =
-			new ObjectSlot<>();
+		final AtomicReference<VirtualByteChannel> channel_slot = new AtomicReference<>();
+
+		ObjectSlot<ChannelInitResponseIMessage> response_slot = new ObjectSlot<>();
 		boolean successful = false;
 		short channel_id = -1;
 		try {
 			ChannelInitIMessage channel_init;
-			VirtualByteChannel channel;
+			IntConsumer protocol_consumer;
 
 			channel_map_lock.lock();
 			try {
@@ -425,19 +435,75 @@ class RemoteCallHandler implements InboundMessageHandler {
 					channel_id = ( short ) channel_id_tmp;
 					break;
 				}
-				
-				channel_init = new ChannelInitIMessage( call_id, attachment, channel_id );
-				channel = new VirtualByteChannel( destination, channel_id, this );
-				
+
+				// The protocol version won't be available until the sendMessage method
+				// is called, so we need to do a little dancing to make this all work.
+				//
+				// 1) The channel ID with a null value is inserted into the channel
+				//    map. This is done to ensure the ID is reserved and won't be reused
+				//    (see above ID search code).
+				// 2) The protocol consumer below will be called before the message is
+				//    actually sent and allow final setup prior to sending. In that
+				//    callback, the channel can be created and filled in the map.
+				//
+				// The default RX window is determine without regard to protocol version,
+				// which is okay because the determining function doesn't know and
+				// shouldn't care about protocol version anyway.
+
+				final int channel_rx_window_size =
+					channel_window_size_function.applyAsInt(
+						Optional.ofNullable( attachment ) );
+
+				final short f_channel_id = channel_id;
+				protocol_consumer = proto -> {
+					boolean peer_supports_rx_window =
+						ProtocolVersions.supportsChannelDataRxWindow( ( byte ) proto );
+
+					VBCRxWindowReceiveControl receive_window_control;
+					VBCRxWindowSendControl send_window_control;
+					if ( peer_supports_rx_window ) {
+						receive_window_control =
+							new VBCRxWindowReceiveControl.Simple( channel_rx_window_size );
+
+						// The window size the peer is unknown, so just use ours. It will be
+						// changed when the ChannelInitResponseIMessage comes in.
+						send_window_control = new VBCRxWindowSendControl.RingBuffer(
+							receive_window_control.currentWindowSize() );
+					}
+					else {
+						receive_window_control = VBCRxWindowReceiveControl.UNBOUNDED;
+						send_window_control = VBCRxWindowSendControl.UNBOUNDED;
+					}
+
+					VirtualByteChannel channel = new VirtualByteChannel( destination,
+						f_channel_id, receive_window_control, send_window_control, this );
+					channel_slot.set( channel );
+
+					channel_map_lock.lock();
+					try {
+						channel_id_map.put( f_channel_id, channel );
+					}
+					finally {
+						channel_map_lock.unlock();
+					}
+				};
+				channel_init = new ChannelInitIMessage( call_id, attachment, channel_id,
+					channel_rx_window_size );
+
 				// Register the channel so we're ready to receive data immediately
-				channel_id_map.put( channel_id, channel );
+				channel_id_map.put( channel_id, null );
 			}
 			finally {
 				channel_map_lock.unlock();
 			}
 
-			spi.sendMessage( destination, channel_init, null );
+			spi.sendMessage( destination, channel_init, protocol_consumer );
 
+			VirtualByteChannel channel = channel_slot.get();
+			if ( channel == null ) {
+				throw new IllegalStateException( "Internal logic error: channel was " +
+					"not created by callback in channelCreate method." );
+			}
 			
 			ChannelInitResponseIMessage response = response_slot.waitForValue();
 
@@ -488,7 +554,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			catch( NotConnectedException ex ) {
 				// ignore
 			}
-			catch ( IOException ex ) {
+			catch ( Exception ex ) {
 				LOG.warn( "Unable to send channel close message: {}",
 					Short.valueOf( channel_id ), ex );
 			}
@@ -515,30 +581,86 @@ class RemoteCallHandler implements InboundMessageHandler {
 		}
 	}
 
-	void channelSendData( VMID destination, short channel_id, ByteBuffer data )
-		throws IOException {
+	void channelSendData( VMID destination, short channel_id,
+		ByteBuffer data, VBCRxWindowSendControl send_window_control,
+		ChannelMessageIDSource message_id_source ) throws IOException {
 
 		if ( !data.hasRemaining() ) return;
 
-		int bytes = data.remaining();
+		final int total_size = data.remaining();
 
 		int original_limit = data.limit();
-		while( data.position() < original_limit ) {
-			data.limit( Math.min( original_limit,
-				data.position() + MAX_CHANNEL_MESSAGE_DATA_SIZE ) );
+		int position;
+		while( ( position = data.position() ) < original_limit ) {
+			// Total available in the buffer
+			int available_in_buffer = original_limit - position;
+
+			// Ideally we would send as much as possible
+			int ideal_send_amount =
+				Math.min( available_in_buffer, MAX_CHANNEL_MESSAGE_DATA_SIZE );
+
+			// The minimum amount is some reasonable size, or whatever is in the buffer...
+			// whichever is LESS. (Meaning, wait for Rx Window space if we have a
+			// significant amount to send. If we don't have a significant amount, wait
+			// for what we do have.)
+			int min_send_amount =
+				Math.min( available_in_buffer, MIN_CHANNEL_MESSAGE_DATA_SIZE );
+
+			final short message_id = message_id_source.next();
+
+			int will_send_amount;
+			try {
+
+				// TODO: Need to get message ID along with this and have window control track it and the size
+				will_send_amount = send_window_control.tryAcquire(
+					ideal_send_amount, min_send_amount, message_id );
+			}
+			catch ( InterruptedException e ) {
+				if ( LOG.isDebugEnabled() ) {
+					LOG.debug( "Interrupted while waiting for rx window space: " +
+						"destination={} channel_id={} available_in_buffer={} " +
+						"ideal_send_amount={} min_send_amount={} data={}",
+						destination, channel_id, available_in_buffer, ideal_send_amount,
+						min_send_amount, data );
+				}
+
+				InterruptedIOException ex = new InterruptedIOException();
+				ex.initCause( e );
+				throw ex;
+			}
+
+			data.limit( position + will_send_amount );
 			if ( LOG.isDebugEnabled() ) {
 				LOG.debug( "Sending {} bytes to virtual channel {}",
 					Integer.valueOf( data.remaining() ), Short.valueOf( channel_id ) );
 			}
-			spi.sendMessage( destination,
-				new ChannelDataIMessage( channel_id, data ), null );
-		}
 
-		if ( performance_listeners.hasListeners() ) {
-			performance_listeners.dispatch().virtualChannelDataSent( local_vmid,
-				destination, channel_id, bytes );
+			// NOTE: This call will block until the message is sent, so using the same
+			//       buffer isn't an issue.
+			spi.sendMessage( destination,
+				ChannelDataIMessage.create( channel_id, message_id, data ), null );
+
+			if ( performance_listeners.hasListeners() ) {
+				performance_listeners.dispatch().virtualChannelDataSent( local_vmid,
+					destination, channel_id, message_id, total_size );
+			}
 		}
 	}
+
+	void channelSendDataAck( VMID destination, short channel_id, short message_id,
+		int new_window_size ) throws IOException {
+
+		ChannelDataAckIMessage message =
+			new ChannelDataAckIMessage( channel_id, message_id, new_window_size );
+
+		spi.sendMessage( destination, message, null );
+
+		if ( performance_listeners.hasListeners() ) {
+			performance_listeners.dispatch().virtualChannelDataAckSent( local_vmid,
+				destination, channel_id, message_id, new_window_size );
+		}
+	}
+
 
 	long ping( VMID vmid, long timeout, TimeUnit timeout_unit )
 		throws TimeoutException, IntrepidRuntimeException, InterruptedException {
@@ -683,7 +805,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			case CHANNEL_INIT:
 				response = handleChannelInit( ( ChannelInitIMessage ) message,
-					session_info.getVMID() );
+					session_info.getVMID(),
+					session_info.getProtocolVersion().byteValue() );
 				break;
 
 			case CHANNEL_INIT_RESPONSE:
@@ -692,6 +815,11 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			case CHANNEL_DATA:
 				handleChannelData( ( ChannelDataIMessage ) message, session_info.getVMID() );
+				break;
+
+			case CHANNEL_DATA_ACK:
+				handleChannelDataAck( ( ChannelDataAckIMessage ) message,
+					session_info.getVMID() );
 				break;
 
 			case CHANNEL_CLOSE:
@@ -991,7 +1119,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 
 	private ChannelInitResponseIMessage handleChannelInit( ChannelInitIMessage message,
-		VMID vmid ) {
+		VMID vmid, byte protocol_version ) {
 
 		if ( channel_acceptor == null ) {
 			return new ChannelInitResponseIMessage( message.getRequestID(), null );
@@ -1005,7 +1133,28 @@ class RemoteCallHandler implements InboundMessageHandler {
 			TShortObjectMap<VirtualByteChannel> channel_id_map =
 				channel_map.computeIfAbsent( vmid, k -> new TShortObjectHashMap<>() );
 
-			channel = new VirtualByteChannel( vmid, message.getChannelID(), this );
+			boolean peer_supports_rx_window =
+				ProtocolVersions.supportsChannelDataRxWindow( protocol_version );
+
+			VBCRxWindowReceiveControl receive_window_control;
+			VBCRxWindowSendControl send_window_control;
+			if ( peer_supports_rx_window ) {
+				receive_window_control = new VBCRxWindowReceiveControl.Simple(
+					channel_window_size_function.applyAsInt(
+						Optional.ofNullable( message.getAttachment() ) ) );
+
+				// The window size the peer is unknown, so just use ours. It will be
+				// changed when the ChannelInitResponseIMessage comes in.
+				send_window_control = new VBCRxWindowSendControl.RingBuffer(
+					receive_window_control.currentWindowSize() );
+			}
+			else {
+				receive_window_control = VBCRxWindowReceiveControl.UNBOUNDED;
+				send_window_control = VBCRxWindowSendControl.UNBOUNDED;
+			}
+
+			channel = new VirtualByteChannel( vmid, message.getChannelID(),
+				receive_window_control, send_window_control, this );
 
 			VirtualByteChannel prev_channel = channel_id_map.put( channel_id, channel );
 			if ( prev_channel != null ) {
@@ -1029,7 +1178,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			// NOTE: no need to close VirtualByteChannel
 			return new ChannelInitResponseIMessage( message.getRequestID(),
-				ex.getMessageResourceKey() );
+				ex.getMessageResourceKey().getValue() );
 		}
 
 		if ( performance_listeners.hasListeners() ) {
@@ -1037,7 +1186,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 				vmid, channel_id );
 		}
 
-		return new ChannelInitResponseIMessage( message.getRequestID() );
+		return new ChannelInitResponseIMessage( message.getRequestID(),
+			channel.getCurrentRxWindow() );
 	}
 
 	private void handleChannelInitResponse( ChannelInitResponseIMessage message ) {
@@ -1068,7 +1218,12 @@ class RemoteCallHandler implements InboundMessageHandler {
 			channel_map_lock.unlock();
 		}
 
-		if ( channel == null ) return;      // Log? Send error?
+		if ( channel == null ) {
+			LOG.debug(
+				"Received channel data for unknown channel ({}, message_id={}) from {}",
+				message.getChannelID(), message.getMessageID(), vmid );
+			return;
+		}
 
 		// NOTE: VirtualByteChannel currently hangs on to these buffers
 		final int buffers = message.getBufferCount();
@@ -1076,13 +1231,41 @@ class RemoteCallHandler implements InboundMessageHandler {
 		for( int i = 0; i < buffers; i++ ) {
 			ByteBuffer buffer = message.getBuffer( i );
 			bytes += buffer.remaining();
-			channel.putData( buffer );
+
+			// Only associate the message ID with the final buffer so we don't
+			// prematurely ack the (full) message.
+			boolean last_buffer_in_message = ( i + 1 ) == buffers;
+			channel.putData( buffer,
+				last_buffer_in_message ? message.getMessageID() : Integer.MIN_VALUE );
 		}
 
 		if ( performance_listeners.hasListeners() ) {
 			performance_listeners.dispatch().virtualChannelDataReceived( local_vmid,
 				vmid, message.getChannelID(), bytes );
 		}
+	}
+
+	private void handleChannelDataAck( ChannelDataAckIMessage message, VMID vmid ) {
+		VirtualByteChannel channel = null;
+		channel_map_lock.lock();
+		try {
+			TShortObjectMap<VirtualByteChannel> channel_id_map = channel_map.get( vmid );
+			if ( channel_id_map != null ) {
+				channel = channel_id_map.get( message.getChannelID() );
+			}
+		}
+		finally {
+			channel_map_lock.unlock();
+		}
+
+		if ( channel == null ) {
+			LOG.debug( "Ignoring data ack to channel {} from {}. Channel is unknown. " +
+				"(message={}, rx_window={})", message.getChannelID(), vmid,
+				message.getMessageID(), message.getNewRxWindow() );
+			return;
+		}
+
+		channel.processDataAck( message.getMessageID(), message.getNewRxWindow() );
 	}
 
 	private void handleChannelClose( ChannelCloseIMessage message, VMID vmid ) {
@@ -1335,8 +1518,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		private CallInfoAndAckControl( @Nonnull ScheduledExecutor executor,
 			@Nonnull ObjectSlot<InvokeReturnIMessage> return_slot ) {
 
-			this.executor = Objects.requireNonNull( executor );
-			this.return_slot = Objects.requireNonNull( return_slot );
+			this.executor = requireNonNull( executor );
+			this.return_slot = requireNonNull( return_slot );
 
 			// Default, should be overridden
 			setSessionAckRateSec( REQUEST_INVOKE_ACK_RATE_SEC );
@@ -1399,5 +1582,11 @@ class RemoteCallHandler implements InboundMessageHandler {
 			final ScheduledFuture<?> future = ack_expect_future;
 			if ( future != null ) future.cancel( false );
 		}
+	}
+
+
+	@FunctionalInterface
+	interface ChannelMessageIDSource {
+		short next();
 	}
 }

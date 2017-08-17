@@ -3,16 +3,14 @@ package com.starlight.intrepid.driver;
 import com.starlight.intrepid.OkioBufferData;
 import com.starlight.intrepid.auth.SimpleUserContextInfo;
 import com.starlight.intrepid.auth.UserContextInfo;
-import com.starlight.intrepid.message.ChannelInitIMessage;
-import com.starlight.intrepid.message.ChannelInitResponseIMessage;
-import com.starlight.intrepid.message.IMessage;
-import com.starlight.intrepid.message.InvokeIMessage;
-import com.starlight.locale.UnlocalizableTextResourceKey;
+import com.starlight.intrepid.message.*;
 import okio.Buffer;
+import okio.ByteString;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
@@ -57,20 +55,33 @@ public class EncodeDecoderTest {
 				new Object[] { "foo", "bar" }, info, true ),
 
 
-			new ChannelInitResponseIMessage( 0 ),
-			new ChannelInitResponseIMessage( 10 ),
-			new ChannelInitResponseIMessage( Integer.MAX_VALUE ),
+			new ChannelInitResponseIMessage( 0, 0 ),
+			new ChannelInitResponseIMessage( 10, Integer.MAX_VALUE ),
+			new ChannelInitResponseIMessage( Integer.MAX_VALUE, 9000 ),
 			new ChannelInitResponseIMessage( 5, null ),
-			new ChannelInitResponseIMessage( 5,
-				new UnlocalizableTextResourceKey( "Blah" ) ),
+			new ChannelInitResponseIMessage( 5, "Blah" ),
 
 
-			new ChannelInitIMessage( 0, null, ( short ) 0 ),
-			new ChannelInitIMessage( 0, null, Short.MAX_VALUE ),
-			new ChannelInitIMessage( Integer.MAX_VALUE, null, ( short ) 0 ),
-			new ChannelInitIMessage( Integer.MAX_VALUE, null, Short.MAX_VALUE ),
-			new ChannelInitIMessage( 300, null, ( short ) 3 ),
-			new ChannelInitIMessage( 300, "Hello", ( short ) 3 )
+			new ChannelInitIMessage( 0, null, ( short ) 0, 0 ),
+			new ChannelInitIMessage( 0, null, Short.MAX_VALUE, Integer.MAX_VALUE ),
+			new ChannelInitIMessage( Integer.MAX_VALUE, null, ( short ) 0, 9000 ),
+			new ChannelInitIMessage( Integer.MAX_VALUE, null, Short.MAX_VALUE, 12345 ),
+			new ChannelInitIMessage( 300, null, ( short ) 3, 987654321 ),
+			new ChannelInitIMessage( 300, "Hello", ( short ) 3, 10 ),
+
+
+			new ChannelDataAckIMessage( ( short ) 0, ( short ) 0, 0 ),
+			new ChannelDataAckIMessage( Short.MAX_VALUE, Short.MAX_VALUE,
+				Integer.MAX_VALUE ),
+			new ChannelDataAckIMessage( Short.MIN_VALUE, Short.MIN_VALUE, 9000 ),
+
+
+			ChannelDataIMessage.create( ( short ) 0, ( short ) 0,
+				ByteBuffer.wrap( ByteString.decodeHex( "123456789ABC" ).toByteArray() ) ),
+			ChannelDataIMessage.create( Short.MAX_VALUE, Short.MAX_VALUE,
+				ByteBuffer.wrap( ByteString.decodeHex( "123456789ABC" ).toByteArray() ) ),
+			ChannelDataIMessage.create( Short.MIN_VALUE, Short.MIN_VALUE,
+				ByteBuffer.wrap( ByteString.decodeHex( "123456789ABC" ).toByteArray() ) )
 		);
 	}
 
@@ -93,14 +104,15 @@ public class EncodeDecoderTest {
 
 
 
-		MessageEncoder.encode( message, length_data, data );
+		MessageEncoder.encode( message, ProtocolVersions.PROTOCOL_VERSION,
+			length_data, data );
 
 		Buffer complete = new Buffer();
 		length_buffer.readAll( complete );
 		data_buffer.readAll( complete );
 
 		IMessage new_message = MessageDecoder.decode( new OkioBufferData( complete ),
-			( response, close ) -> {} );
+			ProtocolVersions.PROTOCOL_VERSION, ( response, close ) -> {} );
 
 		assertEquals( message, new_message );
 	}

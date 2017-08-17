@@ -31,7 +31,6 @@ import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.demo.basic.ClientInterface;
 import com.starlight.intrepid.demo.basic.ServerInterface;
-import com.starlight.intrepid.message.IMessage;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

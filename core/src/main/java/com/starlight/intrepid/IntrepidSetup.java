@@ -33,15 +33,26 @@ import com.starlight.intrepid.driver.NoAuthenticationHandler;
 import com.starlight.intrepid.driver.UnitTestHook;
 
 import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.net.InetAddress;
-import java.util.Objects;
+import java.nio.channels.ByteChannel;
+import java.util.Optional;
+import java.util.function.ToIntFunction;
+
+import static java.util.Objects.requireNonNull;
 
 
 /**
  * <a href="http://en.wikipedia.org/wiki/Builder_pattern">Builder</a> class to initialize
  * an Intrepid instance.
  */
+@SuppressWarnings( { "WeakerAccess", "unused" } )
 public class IntrepidSetup {
+	private static final int CHANNEL_RX_WINDOW_DEFAULT_SIZE =
+		Integer.getInteger( "intrepid.channel.default_rx_window", 10_000_000 ).intValue();
+
+
+
 	private IntrepidDriver driver;
 	private InetAddress server_address;
 	private Integer server_port;
@@ -52,6 +63,8 @@ public class IntrepidSetup {
 	private PerformanceListener performance_listener;
 	private ChannelAcceptor channel_acceptor;
 	private PreInvocationValidator validator;
+	private ToIntFunction<Optional<Object>> channel_rx_window_size_function =
+		attachment -> CHANNEL_RX_WINDOW_DEFAULT_SIZE;
 
 	private UnitTestHook unit_test_hook;
 
@@ -119,49 +132,84 @@ public class IntrepidSetup {
 	public IntrepidSetup preInvocationValidator(
 		@Nonnull PreInvocationValidator validator ) {
 
-		this.validator = Objects.requireNonNull( validator );
+		this.validator = requireNonNull( validator );
+		return this;
+	}
+
+	/**
+	 * Provide a function for specifying the "receive window" for data received in
+	 * virtual byte channels. This essentially specifies the amount of data that can sit
+	 * in a queue waiting to be processed. A smaller window size will sometimes result
+	 * is slower performance, depending on the usage pattern of the application.
+	 * This can make a noticeable difference when the sender is very "bursty" and data
+	 * processing is relatively expensive. However, testing in your application is
+	 * recommended because send rate/frequency, receive processing rate and network
+	 * performance can all contribute.
+	 * <p>
+	 * The default implementation is a fixed size controlled by the system property
+	 * {@code intrepid.channel.default_rx_window}.
+	 *
+	 * @param size_function         A function that returns the window size for a channel
+	 *                              given the attachment (from
+	 *                              {@link Intrepid#createChannel(VMID, Serializable)} or
+	 *                              {@link ChannelAcceptor#newChannel(ByteChannel, VMID, Serializable)}).
+	 *                              Note that an Rx Window will be required for both peers
+	 *                              involved in the channel, so this will be called on
+	 *                              both the "client" and "server" side. The windows do
+	 *                              are only used for receiving data, so the returned
+	 *                              values do not need to match between peers.
+	 *                              The size must be greater than zero.
+	 */
+	public IntrepidSetup channelRxWindowSize(
+		@Nonnull ToIntFunction<Optional<Object>> size_function ) {
+
+		channel_rx_window_size_function = requireNonNull( size_function );
 		return this;
 	}
 
 
-	public AuthenticationHandler getAuthHandler() {
+	AuthenticationHandler getAuthHandler() {
 		return auth_handler;
 	}
 
-	public InetAddress getServerAddress() {
+	InetAddress getServerAddress() {
 		return server_address;
 	}
 
-	public Integer getServerPort() {
+	Integer getServerPort() {
 		return server_port;
 	}
 
-	public IntrepidDriver getDriver() {
+	IntrepidDriver getDriver() {
 		return driver;
 	}
 
-	public ScheduledExecutor getThreadPool() {
+	ScheduledExecutor getThreadPool() {
 		return thread_pool;
 	}
 
-	public String getVMIDHint() {
+	String getVMIDHint() {
 		return vmid_hint;
 	}
 
-	public ConnectionListener getConnectionListener() {
+	ConnectionListener getConnectionListener() {
 		return connection_listener;
 	}
 
-	public PerformanceListener getPerformanceListener() {
+	PerformanceListener getPerformanceListener() {
 		return performance_listener;
 	}
 
-	public ChannelAcceptor getChannelAcceptor() {
+	ChannelAcceptor getChannelAcceptor() {
 		return channel_acceptor;
 	}
 
 	PreInvocationValidator getPreInvocationValidator() {
 		return validator;
+	}
+
+	ToIntFunction<Optional<Object>> getChannelRxWindowSizeFunction() {
+		return channel_rx_window_size_function;
 	}
 
 

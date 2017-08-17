@@ -57,6 +57,7 @@ public class DefaultTrackingDataSink implements DataSink.Tracking {
 	@Override
 	public void put( byte[] b, int offset, int length ) {
 		delegate.put( b, offset, length );
+		written += length;
 	}
 
 	@Override

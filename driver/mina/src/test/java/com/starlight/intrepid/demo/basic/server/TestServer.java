@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.demo.basic.server;
 
+import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.Intrepid;
 import com.starlight.intrepid.IntrepidSetup;
 import com.starlight.intrepid.PerformanceListener;
@@ -32,8 +33,6 @@ import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.demo.basic.ClientInterface;
 import com.starlight.intrepid.demo.basic.ServerInterface;
-import com.starlight.intrepid.message.IMessage;
-import com.logicartisan.common.core.thread.ThreadKit;
 
 import java.lang.reflect.Method;
 

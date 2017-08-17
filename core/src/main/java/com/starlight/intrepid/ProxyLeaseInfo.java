@@ -2,6 +2,8 @@ package com.starlight.intrepid;
 
 import gnu.trove.set.hash.TCustomHashSet;
 import gnu.trove.strategy.IdentityHashingStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.concurrent.Delayed;
@@ -12,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 *
 */
 class ProxyLeaseInfo implements Delayed {
+	private static final Logger LOG = LoggerFactory.getLogger( ProxyLeaseInfo.class );
+
 	private static final int LEASE_MAX_ERRORS =
 		Integer.getInteger( "intrepid.lease.max_errors", 10 ).intValue();
 
@@ -75,11 +79,13 @@ class ProxyLeaseInfo implements Delayed {
 
 	@Override
 	public long getDelay( TimeUnit unit ) {
-		long delay = unit.convert( next_lease_expected - System.nanoTime(),
+		final long delay = unit.convert( next_lease_expected - System.nanoTime(),
 			TimeUnit.NANOSECONDS );
-		if ( LeaseManager.SUPER_LEASE_DEBUGGING ) {
-			System.out.println( "*** DELAY: " + delay + " " + unit );
+
+		if ( LOG.isTraceEnabled() ) {
+			LOG.trace( "*** DELAY: {} {}", delay, unit );
 		}
+
 		return delay;
 	}
 
