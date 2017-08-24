@@ -15,14 +15,26 @@ dependencies {
     testRuntime 'org.slf4j:slf4j-simple:1.7.25'
 }
 
+
 test {
     systemProperty 'intrepid.lease.duration', '2000'
     systemProperty 'intrepid.lease.prune_interval', '1000'
     systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
     systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
 
-	systemProperty 'org.slf4j.simpleLogger.defaultLogLevel', 'warn'
+    systemProperty 'org.slf4j.simpleLogger.defaultLogLevel', 'warn'
 
     ignoreFailures true
-	enableAssertions true
+    enableAssertions true
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.project {
+                name 'Intrepid Core'
+                description 'Java RMI framework'
+            }
+        }
+    }
 }
