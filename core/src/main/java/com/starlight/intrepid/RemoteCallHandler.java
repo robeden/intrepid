@@ -610,8 +610,6 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			int will_send_amount;
 			try {
-
-				// TODO: Need to get message ID along with this and have window control track it and the size
 				will_send_amount = send_window_control.tryAcquire(
 					ideal_send_amount, min_send_amount, message_id );
 			}
