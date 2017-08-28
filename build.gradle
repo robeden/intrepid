@@ -91,6 +91,7 @@ subprojects {
                 pom.project {
 	                artifactId "intrepid-${sanitizedName}"
 
+	                name "Intrepid/${sanitizedName}"
                     packaging 'jar'
                     url 'https://bitbucket.org/robeden/intrepid'
 

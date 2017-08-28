@@ -24,14 +24,3 @@ test {
     ignoreFailures true
 	enableAssertions true
 }
-
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            pom.project {
-                name 'Intrepid MINA Driver'
-                description 'MINA driver for the Intrepid framework'
-            }
-        }
-    }
-}

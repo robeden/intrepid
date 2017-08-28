@@ -27,14 +27,3 @@ test {
     ignoreFailures true
     enableAssertions true
 }
-
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            pom.project {
-                name 'Intrepid Core'
-                description 'Java RMI framework'
-            }
-        }
-    }
-}
