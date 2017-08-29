@@ -1,5 +1,5 @@
 plugins {
-   id 'net.nemerosa.versioning' version '2.6.0'
+   id 'net.nemerosa.versioning' version '2.6.1'
 }
 apply plugin: 'base'
 
@@ -7,9 +7,17 @@ apply plugin: 'base'
 group = 'com.logicartisan'
 archivesBaseName = 'intrepid'
 
+
+versioning {
+   releaseBuild = "RELEASE".equalsIgnoreCase( "$System.env.BUILD" )
+   releaseMode = 'snapshot'
+   displayMode = 'snapshot'
+   dirty = { t -> t }
+}
 version = versioning.info.display
 println "Version: ${version}"
 println "Full version info: ${versioning.info}"
+
 
 subprojects {
     apply plugin: 'java'
@@ -91,7 +99,6 @@ subprojects {
                 pom.project {
 	                artifactId "intrepid-${sanitizedName}"
 
-	                name "Intrepid/${sanitizedName}"
                     packaging 'jar'
                     url 'https://bitbucket.org/robeden/intrepid'
 
@@ -116,6 +123,10 @@ subprojects {
                         }
                     }
                 }
+
+				pom.withXml {
+					asNode().appendNode('name', "Intrepid/${sanitizedName}")
+				}
             }
         }
     }
