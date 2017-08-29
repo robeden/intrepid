@@ -9,12 +9,12 @@ archivesBaseName = 'intrepid'
 
 
 versioning {
-   releaseBuild = "RELEASE".equalsIgnoreCase( "$System.env.BUILD" )
-   releaseMode = 'snapshot'
-   displayMode = 'snapshot'
    dirty = { t -> t }
 }
 version = versioning.info.display
+if ( !"RELEASE".equalsIgnoreCase( "$System.env.BUILD" ) ) {
+	version = version + "-SNAPSHOT"
+}
 println "Version: ${version}"
 println "Full version info: ${versioning.info}"
 
