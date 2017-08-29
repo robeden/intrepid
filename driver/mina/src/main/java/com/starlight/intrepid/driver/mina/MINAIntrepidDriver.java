@@ -1274,12 +1274,12 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			this.reconnect_token = reconnect_token;
 			this.host_and_port = host_and_port;
 
-			// Random delay between 1 and 10 seconds for initial firing. This works around
-			// "oscillation" problems with single connection negotiation where each side
-			// closes the other side.
-			int reconnect_delay_sec = ThreadLocalRandom.current().nextInt( 1, 10 );
+			// Random delay between 100 ms and 4 seconds for initial firing. This works
+			// around "oscillation" problems with single connection negotiation where
+			// each side closes the other side.
+			int reconnect_delay_sec = ThreadLocalRandom.current().nextInt( 100, 4000 );
 			next_run_time = System.nanoTime() +
-				TimeUnit.SECONDS.toNanos( reconnect_delay_sec );
+				TimeUnit.MILLISECONDS.toNanos( reconnect_delay_sec );
 		}
 
 		@Override
@@ -1349,6 +1349,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 				}
 
 				if ( vmid == null ) throw RECONNECT_TIMEOUT_EXCEPTION;
+				abend = false;
 			}
 			catch( ClosedChannelException ex ) {
                 if ( LOG.isDebugEnabled() ) {
@@ -1492,6 +1493,9 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		long nice_close_time_ms ) {
 
 		if ( old_session == null || old_session == new_session ) return;
+
+		LOG.debug( "Closing session '{}' because we have a new session '{}'", old_session,
+			new_session );
 
 		// Indicate that it's locally terminated to prevent confusion about reconnection
 		old_session.setAttribute( MINAIntrepidDriver.LOCAL_TERMINATE_KEY, Boolean.TRUE );

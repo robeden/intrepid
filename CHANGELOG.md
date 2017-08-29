@@ -9,6 +9,12 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
+## [unreleased]
+### Changed
+- Random time range used for reconnect attempts reduced from 1-10 seconds to 
+  100ms to 4 seconds.
+
+
 ## [1.7.1] - 2017-08-29
 ### Changed
 - Maven group changed to "com.logicartisan.intrepid". Artifact IDs remain unchanged.

@@ -125,11 +125,8 @@ class ListenerRegistrationManager implements ConnectionListener {
 		try {
 			boolean first_listener = listeners_map.isEmpty();
 
-			Set<ListenerInfo> listeners = listeners_map.get( vmid );
-			if ( listeners == null ) {
-				listeners = new HashSet<>();
-				listeners_map.put( vmid, listeners );
-			}
+			Set<ListenerInfo> listeners =
+				listeners_map.computeIfAbsent( vmid, k -> new HashSet<>() );
 
 			listeners.add( info );
 
@@ -180,12 +177,9 @@ class ListenerRegistrationManager implements ConnectionListener {
 		throws IllegalArgumentException {
 
 		return keepListenerRegistered( listener, vmid, proxy,
-			new BiFunction<P,L,Void>() {
-				@Override
-				public Void apply( P p, L l ) {
-					add_method.accept( p, l );
-					return null;
-				}
+			( BiFunction<P,L,Void> ) ( p, l ) -> {
+				add_method.accept( p, l );
+				return null;
 			}, remove_method, ( not_used ) -> {} );
 	}
 
@@ -204,7 +198,7 @@ class ListenerRegistrationManager implements ConnectionListener {
 			new AtomicReference<>();
 
 
-		public ListenerInfo( P proxy, L listener, BiFunction<P,L,R> add_method,
+		ListenerInfo( P proxy, L listener, BiFunction<P,L,R> add_method,
 			BiConsumer<P,L> remove_method, Consumer<R> return_value_handler ) {
 
 			this.proxy = proxy;

@@ -122,6 +122,8 @@ class IoSessionInfoWrapper implements SessionInfo {
 
 	@Override
 	public void setVMID( VMID vmid, byte ack_rate_sec ) {
+		LOG.debug( "{} -> setVMID({},{})", this, vmid, ack_rate_sec );
+
 		// Setting a null VMID is invalid. It will be null by default, but this is okay.
 		// Allowing null to be set would allow sessions to disappear from the session_map.
 		Objects.requireNonNull( vmid );
