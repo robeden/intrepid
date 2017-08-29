@@ -9,29 +9,32 @@ allows even classes such as HashMap to be used remotely without any changes.
 
 For more information, see [the website](http://intrepid.starlight-systems.com).
 
+[![Javadocs](http://javadoc.io/badge/com.logicartisan.intrepid/intrepid-core.svg)](http://javadoc.io/doc/com.logicartisan.intrepid/intrepid-core)
+
+
 
 Download
 --------
 
-Download the [latest core JAR](https://search.maven.org/remote_content?g=com.logicartisan&a=intrepid-core&v=LATEST)
-and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan&a=intrepid-driver-mina&v=LATEST) or grab via Maven:
+Download the [latest core JAR](https://search.maven.org/remote_content?g=com.logicartisan.intrepid&a=intrepid-core&v=LATEST)
+and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intrepid&a=intrepid-driver-mina&v=LATEST) or grab via Maven:
 ```
 <dependency>
-  <groupId>com.logicartisan</groupId>
+  <groupId>com.logicartisan.intrepid</groupId>
   <artifactId>intrepid-core</artifactId>
-  <version>1.7.0</version>
+  <version>1.7.1</version>
 </dependency>
 <dependency>
-  <groupId>com.logicartisan</groupId>
+  <groupId>com.logicartisan.intrepid</groupId>
   <artifactId>intrepid-driver-mina</artifactId>
-  <version>1.7.0</version>
-  <scope>runtime</scope>
+  <version>1.7.1</version>
+  <scope>runtime</scope>  <!-- runtime only -->
 </dependency>
 ```
 or Gradle:
 ```groovy
-compile 'com.logicartisan:intrepid:1.7.0'
-runtime 'com.logicartisan:intrepid-driver-mina:1.7.0'
+compile 'com.logicartisan.intrepid:intrepid-core:1.7.1'
+runtime 'com.logicartisan.intrepid:intrepid-driver-mina:1.7.1'  // runtime only
 ```
 
 

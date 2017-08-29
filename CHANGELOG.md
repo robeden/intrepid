@@ -8,8 +8,17 @@ Prior to 1.7.0, this changelog wasn't kept. Deepest apologies. In the future
 the details may be recreated by slogging through git logs, but for the moment 
 real history will start at 1.7.0.
 
-## [Unreleased]
-## Added
+
+## [1.7.1] - 2017-08-29
+### Changed
+- Maven group changed to "com.logicartisan.intrepid". Artifact IDs remain unchanged.
+
+## [1.7.0] - 2017-08-29
+### Added
+- The project has been split into "core" and "driver" components. The group is
+  "com.logicartisan" with artifact IDs of "intrepid-core" and "intrepid-driver-mina",
+  respectively. This paves the way for future driver implementations.
+  (Note from the future: the group will change to "com.logicartisan.intrepid" in 1.7.1). 
 - Flow control has been added to virtual channels ([issue #15](https://bitbucket.org/robeden/intrepid/issues/15/))
   to prevent flooding receivers.
 - Added the following tunables for controlling MINA message encode buffers:
@@ -18,9 +27,8 @@ real history will start at 1.7.0.
     * `intrepid.mina.encoder.allocate_direct` - When present, buffers will allocate as direct buffers.
 - Added a `ProxyClassFilter` interface which can be configured per Intrepid instance to
   filter the interfaces exported by a proxy. See [issue #14](https://bitbucket.org/robeden/intrepid/issues/14/).
-
   
-## Changed
+### Changed
 - Protocol version incremented to 3 ([issue #16](https://bitbucket.org/robeden/intrepid/issues/16)).
   **Protocol versions 0-2 are no longer accepted by default, but support can be 
   enabled via a new System property: `-Dintrepid.min_supported_protocol=<version>`. If
@@ -31,7 +39,7 @@ real history will start at 1.7.0.
   "added" section for tunables).
 - `ChannelRejectedException` now extends Exception rather than LocalizableException.
   
-## Removed
+### Removed
 - `PerformanceListener.invalidMessageReceived` method was removed as messages can no
   longer be decoded in the state where this was previously notified. 
   

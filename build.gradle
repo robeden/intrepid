@@ -4,8 +4,7 @@ plugins {
 apply plugin: 'base'
 
 
-group = 'com.logicartisan'
-archivesBaseName = 'intrepid'
+group = 'com.logicartisan.intrepid'
 
 
 versioning {
@@ -30,6 +29,7 @@ subprojects {
 	version = project.rootProject.version
 
 	ext.sanitizedName = project.name.replace( '/', '-' )
+	archivesBaseName = "intrepid-${sanitizedName}"
 
 
     repositories {
