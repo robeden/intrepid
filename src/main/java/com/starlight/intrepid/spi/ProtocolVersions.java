@@ -17,7 +17,6 @@ public class ProtocolVersions {
 	public static final byte MIN_PROTOCOL_VERSION = 0;
 
 
-
 	/**
 	 * This will return the negotiated protocol version based of what the peer and this
 	 * instance support.
@@ -30,15 +29,33 @@ public class ProtocolVersions {
 	public static byte negotiateProtocolVersion( byte peer_min_version,
 		byte peer_pref_version ) {
 
+		return negotiateProtocolVersion( peer_min_version, peer_pref_version,
+			MIN_PROTOCOL_VERSION, PROTOCOL_VERSION );
+	}
+
+
+	/**
+	 * This will return the negotiated protocol version based of what the peer and this
+	 * instance support.
+	 *
+	 * @param peer_min_version      Minimum version supported by the peer.
+	 * @param peer_pref_version     Version preferred by the peer.
+	 *
+	 * @return      The negotiated version or -1 if no suitable version was found.
+	 */
+	static byte negotiateProtocolVersion(
+		byte peer_min_version, byte peer_pref_version,
+		byte our_min_version, byte our_pref_version ) {
+
 		// If they're preferred version is smaller than our minimum, then not compatible
-		if ( peer_pref_version < MIN_PROTOCOL_VERSION ||
-			PROTOCOL_VERSION < peer_min_version ) {
+		if ( peer_pref_version < our_min_version ||
+			our_pref_version < peer_min_version ) {
 
 			return -1;
 		}
 
-		if ( PROTOCOL_VERSION < peer_min_version ) {
-			return PROTOCOL_VERSION;
+		if ( our_pref_version < peer_pref_version ) {
+			return our_pref_version;
 		}
 		else return peer_pref_version;
 	}
