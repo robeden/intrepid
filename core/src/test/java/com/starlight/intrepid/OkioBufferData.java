@@ -9,6 +9,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
@@ -45,6 +46,18 @@ public class OkioBufferData implements DataSink, DataSource {
 
 	@Override public void put( byte[] b, int offset, int length ) {
 		buffer.write( b, offset, length );
+	}
+
+	@Override public void put( ByteBuffer src ) {
+		// See https://github.com/square/okio/issues/318
+		// Hopefully this can be more efficient someday.
+		byte[] data = new byte[ 10_000 ];
+		while( src.hasRemaining() ) {
+			int read = buffer.read( data );
+			if ( read > 0 ) {
+				buffer.write( data, 0, read );
+			}
+		}
 	}
 
 

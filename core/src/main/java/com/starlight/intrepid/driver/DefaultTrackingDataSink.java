@@ -3,6 +3,7 @@ package com.starlight.intrepid.driver;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.util.function.IntConsumer;
@@ -59,6 +60,13 @@ public class DefaultTrackingDataSink implements DataSink.Tracking {
 		delegate.put( b, offset, length );
 		written += length;
 	}
+
+	@Override public void put( ByteBuffer src ) {
+		int remaining = src.remaining();
+		delegate.put( src );
+		written += remaining;
+	}
+
 
 	@Override
 	public void putString( @Nonnull String value,

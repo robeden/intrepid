@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.util.function.IntConsumer;
@@ -194,6 +195,13 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 		public void put( byte[] b, int offset, int length ) {
 			delegate.put( b, offset, length );
 		}
+
+		@Override
+		public void put( ByteBuffer src ) {
+			delegate.put( src );
+		}
+
+
 
 		@Override
 		public void putString( @Nonnull String value,

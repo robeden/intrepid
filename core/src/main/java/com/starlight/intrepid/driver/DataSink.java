@@ -2,6 +2,7 @@ package com.starlight.intrepid.driver;
 
 import javax.annotation.Nonnull;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.util.function.IntConsumer;
@@ -17,6 +18,7 @@ public interface DataSink {
 	void putLong( long value );
 
 	void put( byte[] b, int offset, int length );
+	void put( ByteBuffer src );
 
 
 	/**

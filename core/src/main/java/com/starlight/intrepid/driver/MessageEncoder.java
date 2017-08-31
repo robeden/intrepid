@@ -569,15 +569,9 @@ public final class MessageEncoder  {
 
 		buffer.prepareForData( length );
 
-		byte[] copy_buffer = new byte[ 102400 ];
 		for( int i = 0; i < buffer_count; i++ ) {
 			ByteBuffer nio_buffer = message.getBuffer( i );
-
-			while( nio_buffer.hasRemaining() ) {
-				int to_read = Math.min( copy_buffer.length, nio_buffer.remaining() );
-				nio_buffer.get( copy_buffer, 0, to_read );
-				buffer.put( copy_buffer, 0, to_read );
-			}
+			buffer.put( nio_buffer );
 		}
 
 		if ( proto_version >= 3 ) {
