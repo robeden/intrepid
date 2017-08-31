@@ -701,8 +701,13 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	public SessionInfo sendMessage( VMID destination, IMessage message,
 		@Nullable IntConsumer protocol_version_consumer ) throws IOException {
 
-		Integer message_id = Integer.valueOf( System.identityHashCode( message ) );
-		LOG.trace( "Send message (ID:{}): ", message_id, message );
+		final Integer message_id;
+		if ( LOG.isTraceEnabled() ) {
+			message_id = Integer.valueOf( System.identityHashCode( message ) );
+			LOG.trace( "Send message (ID:{}): ", message_id, message );
+		}
+		else message_id = null;
+
 
 		VMID new_vmid;
 
