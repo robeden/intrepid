@@ -52,11 +52,10 @@ public class OkioBufferData implements DataSink, DataSource {
 		// See https://github.com/square/okio/issues/318
 		// Hopefully this can be more efficient someday.
 		byte[] data = new byte[ 10_000 ];
-		while( src.hasRemaining() ) {
-			int read = buffer.read( data );
-			if ( read > 0 ) {
-				buffer.write( data, 0, read );
-			}
+		for( int remaining = src.remaining(); remaining > 0; remaining = src.remaining() ) {
+			int to_read = Math.min( remaining, data.length );
+			src.get( data, 0, to_read );
+			buffer.write( data, 0, to_read );
 		}
 	}
 
