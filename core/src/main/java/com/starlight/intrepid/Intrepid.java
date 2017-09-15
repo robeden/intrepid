@@ -169,9 +169,11 @@ public class Intrepid {
 		LocalCallHandler local_handler = new LocalCallHandler( vmid,
 			performance_listeners.dispatch(), setup.getPreInvocationValidator(),
 			setup.getProxyClassFilter() );
+		//noinspection deprecation
 		RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
 			local_handler, vmid, thread_pool, performance_listeners,
-			setup.getChannelAcceptor(), setup.getChannelRxWindowSizeFunction() );
+			setup.getChannelAcceptor(), setup.getChannelRxWindowSizeFunction(),
+			setup.forceProtoVersion2() );
 
 		// Init SPI
 		driver.init( server_address, server_port, vmid_hint, remote_handler,

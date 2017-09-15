@@ -31,6 +31,7 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.CRC32;
@@ -45,10 +46,10 @@ class MethodMap {
 
 
 	static TIntObjectMap<Method> generateMethodMap( Class clazz ) {
-		TIntObjectMap<Method> to_return = method_map_cache.get( clazz );
-		if ( to_return != null ) return to_return;
+		TIntObjectMap<Method> cached_map = method_map_cache.get( clazz );
+		if ( cached_map != null ) return cached_map;
 
-		to_return = new TIntObjectHashMap<Method>();
+		final TIntObjectMap<Method> to_return = new TIntObjectHashMap<Method>();
 
 		CRC32 crc = new CRC32();
 
@@ -76,7 +77,7 @@ class MethodMap {
 			if ( value == 0 ) value = 1;		// don't allow 0
 
 			Method collision = to_return.put( value, method );
-			assert collision == null :
+			assert collision == null || methodsAreEquivalent( collision, method ) :
 				"Collision (" + value + "): " + method + " - " + collision;
 		}
 
@@ -87,7 +88,12 @@ class MethodMap {
 		if ( ifcs != null && ifcs.length != 0 ) {
 			for( Class ifc : ifcs ) {
 				TIntObjectMap<Method> ifc_methods = generateMethodMap( ifc );
-				if ( !ifc_methods.isEmpty() ) to_return.putAll( ifc_methods );
+				ifc_methods.forEachEntry( ( value, method ) -> {
+					Method collision = to_return.put( value, method );
+					assert collision == null || methodsAreEquivalent( collision, method ) :
+						"Collision (" + value + "): " + method + " - " + collision;
+					return true;
+				} );
 			}
 		}
 
@@ -104,5 +110,12 @@ class MethodMap {
 			to_return.put( new MethodIDTemplate( map.get( key ) ), key );
 		}
 		return to_return;
+	}
+
+
+	private static boolean methodsAreEquivalent( Method one, Method two ) {
+		return one.getName().equalsIgnoreCase( two.getName() ) &&
+			one.getReturnType().equals( two.getReturnType() ) &&
+			Arrays.equals( one.getParameterTypes(), two.getParameterTypes() );
 	}
 }

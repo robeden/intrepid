@@ -66,6 +66,7 @@ public class IntrepidSetup {
 	private ToIntFunction<Optional<Object>> channel_rx_window_size_function =
 		attachment -> CHANNEL_RX_WINDOW_DEFAULT_SIZE;
 	private ProxyClassFilter proxy_class_filter = ( o, i ) -> true;
+	private boolean force_proto_2 = false;
 
 	private UnitTestHook unit_test_hook;
 
@@ -181,6 +182,13 @@ public class IntrepidSetup {
 	}
 
 
+	@Deprecated
+	public IntrepidSetup forceProtocolVersion2() {
+		force_proto_2 = true;
+		return this;
+	}
+
+
 	AuthenticationHandler getAuthHandler() {
 		return auth_handler;
 	}
@@ -227,6 +235,12 @@ public class IntrepidSetup {
 
 	ProxyClassFilter getProxyClassFilter() {
 		return proxy_class_filter;
+	}
+
+	// TODO: Remove in Intrepid 1.8
+	@Deprecated
+	boolean forceProtoVersion2() {
+		return force_proto_2;
 	}
 
 

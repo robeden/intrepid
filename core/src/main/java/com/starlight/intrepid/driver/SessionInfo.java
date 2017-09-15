@@ -25,10 +25,11 @@
 
 package com.starlight.intrepid.driver;
 
-import com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler;
 import com.starlight.intrepid.VMID;
+import com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler;
 import com.starlight.intrepid.auth.UserContextInfo;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.net.SocketAddress;
 import java.util.concurrent.ScheduledFuture;
@@ -84,7 +85,7 @@ public interface SessionInfo {
 	/**
 	 * Returns the protocol version of the session.
 	 */
-	Byte getProtocolVersion();
+	@Nullable Byte getProtocolVersion();
 
 	/**
 	 * Sets the protocol version for the session.

@@ -9,7 +9,18 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
-## [unreleased]
+## [1.7.2] - 2017-09-15
+### Added
+- Added an option to `IntrepidSetup` to force the usage of protocol version 2 for
+  outbound (i.e., client) connections due to a protocol negotiation bug in versions
+  prior to 1.6.4 which prevents 1.6 from properly negotiating with 1.7.x. When the option
+  is set, ONLY protocol version 2 will be used. Inbound connections are not effected
+  by the configuration and may use protocol version 3.
+
+### Fixed
+- User authentication or other session initialization problems generated an NPE 
+  during message encoding resulting in a "Session unexpectedly closed" error.
+
 ### Changed
 - Random time range used for reconnect attempts reduced from 1-10 seconds to 
   100ms to 4 seconds.

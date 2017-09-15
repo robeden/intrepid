@@ -109,6 +109,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private static final InvokeAttempt[] INVOKE_ATTEMPT = InvokeAttempt.values();
 
 
+	// TODO: remove in Intrepid 1.8
+	private final boolean force_proto_version_2;
 
 	private final AuthenticationHandler auth_handler;
 	private final IntrepidDriver spi;
@@ -155,7 +157,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 		LocalCallHandler local_handler, VMID local_vmid, ScheduledExecutor executor,
 		ListenerSupport<PerformanceListener, ?> performance_listeners,
 		ChannelAcceptor channel_acceptor,
-		ToIntFunction<Optional<Object>> channel_window_size_function ) {
+		ToIntFunction<Optional<Object>> channel_window_size_function,
+		boolean force_proto_version_2 ) {
 
 		this.auth_handler = auth_handler;
 		this.spi = spi;
@@ -165,6 +168,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		this.channel_acceptor = channel_acceptor;
 		this.performance_listeners = performance_listeners;
 		this.channel_window_size_function = requireNonNull( channel_window_size_function );
+		this.force_proto_version_2 = force_proto_version_2;
 	}
 
 	void initInstance( Intrepid instance ) {
@@ -566,7 +570,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				channel_map.get( destination );
 			if ( channel_id_map != null ) {
 				VirtualByteChannel channel = channel_id_map.remove( channel_id );
-				if ( channel != null ) channel.closedByPeer( false );
+				if ( channel != null ) channel.closedByPeer();
 				
 				if ( channel_id_map.isEmpty() ) channel_map.remove( destination );
 			}
@@ -893,7 +897,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		return new SessionInitIMessage( local_vmid, spi.getServerPort(),
 			connection_args, ProtocolVersions.MIN_PROTOCOL_VERSION,
-			ProtocolVersions.PROTOCOL_VERSION, session_info.getReconnectToken(),
+			force_proto_version_2 ? 2 : ProtocolVersions.PROTOCOL_VERSION,
+			session_info.getReconnectToken(),
 			REQUEST_INVOKE_ACK_RATE_SEC );
 	}
 
@@ -919,6 +924,13 @@ class RemoteCallHandler implements InboundMessageHandler {
 		}
 
 		byte proto_version = ( byte ) negotiated_proto_version.getAsInt();
+
+		// WARNING: Make sure the protocol version is set immediately as it will be needed
+		//          for the close message is –for example- user authentication fails
+		session_info.setProtocolVersion( Byte.valueOf( proto_version ) );
+
+		// NOTE: MUST come before setVMID
+		session_info.setPeerServerPort( message.getInitiatorServerPort() );
 
 		// "Normal" connection...
 		UserContextInfo user_context;
@@ -949,12 +961,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 				new SessionCloseIMessage( ex.getMessage(), true ) );
 		}
 
-		session_info.setProtocolVersion( Byte.valueOf( proto_version ) );
 		// NOTE: set user context first, so it's available when the connectionOpened
 		//       message is fired.
 		session_info.setUserContext( user_context );
-		// NOTE: MUST come before setVMID
-		session_info.setPeerServerPort( message.getInitiatorServerPort() );
 
 
 		byte ack_rate = REQUEST_INVOKE_ACK_RATE_SEC;
@@ -997,7 +1006,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 //		System.out.println( "Notified of close for session with " + info.getVMID() +
 //			": " + message.getReason() );
-		throw new CloseSessionIndicator( message.getReason().orElse( null ) );
+		throw new CloseSessionIndicator( message.getReason().orElse( null ),
+			message.isAuthFailure() );
 	}
 
 	private void handleInvoke( InvokeIMessage message,
@@ -1159,7 +1169,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			if ( prev_channel != null ) {
 				assert false : "Duplicate channel ID " + channel_id;
 				LOG.warn( "Duplicate channel ID: {}", Short.valueOf( channel_id ) );
-				prev_channel.closedByPeer( true );
+				prev_channel.closedByPeer();
 			}
 		}
 		finally {
@@ -1391,7 +1401,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private class ChannelCloseProcedure implements TObjectProcedure<VirtualByteChannel> {
 		@Override
 		public boolean execute( VirtualByteChannel channel ) {
-			if ( channel != null ) channel.closedByPeer( true );
+			if ( channel != null ) channel.closedByPeer();
 			return true;
 		}
 	}

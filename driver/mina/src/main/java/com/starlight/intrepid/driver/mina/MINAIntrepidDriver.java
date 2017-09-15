@@ -1102,9 +1102,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 				if ( vmid_future != null ) {
 					if ( close_indicator.getServerReasonMessage() != null ) {
 						IOException exception;
-						if ( close_indicator.getReasonMessage() != null &&
-							close_indicator.getReasonMessage().isAuthFailure() ) {
-
+						if ( close_indicator.isAuthFailure() ) {
 							exception = new ConnectionFailureException(
 								close_indicator.getServerReasonMessage().orElse( null ) );
 						}

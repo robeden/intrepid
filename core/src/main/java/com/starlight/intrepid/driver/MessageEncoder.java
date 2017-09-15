@@ -428,6 +428,10 @@ public final class MessageEncoder  {
 			// VERSION      - removed in proto 3
 			buffer.put( ( byte ) 0 );
 		}
+		else {
+			// PROTOCOL VERSION
+			buffer.put( proto_version );
+		}
 
 		// REASON
 		String reason = message.getReason().orElse( null );
@@ -441,7 +445,6 @@ public final class MessageEncoder  {
 			else {
 				putObject( new UnlocalizableTextResourceKey( reason ), buffer );
 			}
-			putObject( message.getReason(), buffer );
 		}
 
 		// AUTH FAILURE

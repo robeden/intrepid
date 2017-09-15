@@ -47,11 +47,15 @@ public final class CloseSessionIndicator extends Throwable {
 
 	private final SessionCloseIMessage reason_message;
 	private final String server_reason_message;
+	private final boolean auth_failure;
 
 
-	public CloseSessionIndicator( @Nullable String server_reason_message ) {
+	public CloseSessionIndicator( @Nullable String server_reason_message,
+		boolean auth_failure ) {
+
 		this.server_reason_message = server_reason_message;
 		this.reason_message = null;
+		this.auth_failure = auth_failure;
 	}
 
 	/**
@@ -61,6 +65,7 @@ public final class CloseSessionIndicator extends Throwable {
 	public CloseSessionIndicator( SessionCloseIMessage reason_message ) {
 		this.reason_message = reason_message;
 		this.server_reason_message = null;
+		this.auth_failure = reason_message.isAuthFailure();
 	}
 
 
@@ -72,10 +77,24 @@ public final class CloseSessionIndicator extends Throwable {
 		return Optional.ofNullable( server_reason_message );
 	}
 
+	public boolean isAuthFailure() {
+		return auth_failure;
+	}
+
 
 	// Prevent serialization (since the message isn't serializable and this is meant for
 	// internal SPI stuff anyway.
 	private void writeObject( ObjectOutputStream oos ) throws IOException {
 		throw new IOException( "CloseSessionIndicators should never be serialized" );
+	}
+
+
+
+	@Override public String toString() {
+		return "CloseSessionIndicator{" +
+			"reason_message=" + reason_message +
+			", auth_failure=" + auth_failure +
+			", server_reason_message='" + server_reason_message + '\'' +
+			'}';
 	}
 }

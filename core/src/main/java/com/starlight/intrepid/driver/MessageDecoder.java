@@ -113,6 +113,11 @@ public final class MessageDecoder {
 						tracking_source, response_handler, vmid_creator );
 					break;
 
+				case SESSION_CLOSE:
+					// A SessionClose will happen here for things like auth failure
+					message = decodeSessionClose( tracking_source );
+					break;
+
 				default:
 					LOG.warn( "Message type {} was received when the protocol version " +
 						"is unknown (session init incomplete?)", message_type );
@@ -144,7 +149,7 @@ public final class MessageDecoder {
 					break;
 
 				case SESSION_CLOSE:
-					message = decodeSessionClose( proto_version, tracking_source );
+					message = decodeSessionClose( tracking_source );
 					break;
 
 				case INVOKE:
@@ -560,13 +565,13 @@ public final class MessageDecoder {
 	}
 
 
-	private static SessionCloseIMessage decodeSessionClose( byte proto_version,
-		@Nonnull DataSource buffer ) {
+	private static SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) {
+		// VERSION or PROTOCOL_VERSION
+		byte version_or_protocol_version = buffer.get();
 
-		if ( proto_version < 3 ) {
-			// VERSION      - removed in proto 3
-			buffer.get();
-		}
+		byte proto_version;
+		if ( version_or_protocol_version == 0 ) proto_version = 2;
+		else proto_version = version_or_protocol_version;
 
 		// REASON
 		String reason = readStringOrLegacyResourceKey( proto_version, buffer );

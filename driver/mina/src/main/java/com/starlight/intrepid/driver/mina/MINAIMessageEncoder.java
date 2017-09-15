@@ -123,6 +123,17 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 			}
 			final Byte protocol_version = session_info.getProtocolVersion();
 
+			// Getting here is a logic error.
+			if ( protocol_version == null ) {
+				session.close( true );
+
+				String error_message = "Logic error: Should not be sending a " +
+					message_obj.getClass().getName() + " message without the " +
+					"session protocol version being known";
+				LOG.error( error_message );
+				throw new AssertionError( error_message );
+			}
+
 			MessageEncoder.encode( message, protocol_version,
 				length_slice_wrapper, buffer_wrapper );
 		}

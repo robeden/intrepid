@@ -26,9 +26,12 @@
 package com.starlight.intrepid.auth;
 
 import com.starlight.intrepid.*;
-import junit.framework.TestCase;
+import com.starlight.intrepid.exception.ConnectionFailureException;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 
@@ -36,12 +39,12 @@ import java.net.SocketAddress;
 /**
  *
  */
-public class AuthTest extends TestCase {
+public class AuthTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
-	@Override
-	protected void tearDown() throws Exception {
+	@After
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -49,64 +52,52 @@ public class AuthTest extends TestCase {
 		if ( server_instance != null ) server_instance.close();
 	}
 
-	
-	public void testUserAuthentication() throws Exception {
+	@Before
+	public void setUp() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
+
 		server_instance = Intrepid.create( new IntrepidSetup().vmidHint( "server" )
-			.serverPort( 11751 ).authHandler( new UserTestAuthenticationHandler() ) );
+			.serverPort( 0 )
+			.authHandler( new UserTestAuthenticationHandler() ) );
 		CommTest.ServerImpl original_instance =
 			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
 		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+	}
 
-		// Connect to the server
-		VMID server_vmid;
 
-		try {
-			client_instance.connect( InetAddress.getByName( "127.0.0.1" ), 11751, null,
-				null );
-			fail( "Shouldn't succeed" );
-		}
-		catch( IOException ex ) {
-			// This is good... shouldn't allow connections without ConnectionArgs
-			System.out.println( "Got exception: " + ex );
-		}
 
-		try {
-			client_instance.connect( InetAddress.getByName( "127.0.0.1" ), 11751,
-				new UserCredentialsConnectionArgs( "baduser", "blah".toCharArray() ),
-				null );
-			fail( "Shouldn't succeed" );
-		}
-		catch( IOException ex ) {
-			// This is good... shouldn't allow connections without ConnectionArgs
-		}
+	@Test( expected = ConnectionFailureException.class )
+	public void testUserAuth_noCredentials() throws Exception {
+		client_instance.connect( InetAddress.getLoopbackAddress(),
+			server_instance.getServerPort(), null, null );
+	}
 
-		try {
-			client_instance.connect( InetAddress.getByName( "127.0.0.1" ), 11751,
-				new UserCredentialsConnectionArgs( "reden", "badpass".toCharArray() ),
-				null );
-			fail( "Shouldn't succeed" );
-		}
-		catch( IOException ex ) {
-			// This is good... shouldn't allow connections without ConnectionArgs
-		}
+	@Test( expected = ConnectionFailureException.class )
+	public void testUserAuth_badUser() throws Exception {
+		client_instance.connect( InetAddress.getLoopbackAddress(),
+			server_instance.getServerPort(),
+			new UserCredentialsConnectionArgs( "baduser", "blah".toCharArray() ), null );
+	}
 
-		try {
-			server_vmid = client_instance.connect(
-				InetAddress.getByName( "127.0.0.1" ), 11751,
-				new UserCredentialsConnectionArgs( "reden", "12345".toCharArray() ),
-				null );
-			assertEquals( server_instance.getLocalVMID(), server_vmid );
-		}
-		catch( IOException ex ) {
-			ex.printStackTrace();
-			fail( "Unexpected exception: " + ex );
-		}
+	@Test( expected = ConnectionFailureException.class )
+	public void testUserAuth_badPassword() throws Exception {
+		client_instance.connect( InetAddress.getLoopbackAddress(),
+			server_instance.getServerPort(),
+			new UserCredentialsConnectionArgs( "reden", "badpass".toCharArray() ), null );
+	}
+
+	@Test
+	public void testUserAuth_succeed() throws Exception {
+		VMID server_vmid = client_instance.connect(
+			InetAddress.getLoopbackAddress(), server_instance.getServerPort(),
+			new UserCredentialsConnectionArgs( "reden", "12345".toCharArray() ),
+			null );
+		Assert.assertEquals( server_instance.getLocalVMID(), server_vmid );
 	}
 
 
