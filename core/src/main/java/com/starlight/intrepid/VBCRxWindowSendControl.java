@@ -112,6 +112,7 @@ interface VBCRxWindowSendControl {
 		private int[] message_size_ring;
 		private int data_index = 0;             // Index of the next data element
 		private int free_space_index = 0;       // Index of the next free slot
+		private int size = 0;					// Number of slots in use
 
 		RingBuffer( int initial_window ) {
 			this( initial_window, 100 );
@@ -202,12 +203,14 @@ interface VBCRxWindowSendControl {
 
 				while( true ) {
 					// Check for no nodes left
-					if ( free_space_index == data_index ) {
+					if ( size == 0 ) {
 						break;
 					}
 
 					// Space being freed
 					released += message_size_ring[ data_index ];
+
+					size--;
 
 					short node_message_id = message_id_ring[ data_index ];
 
@@ -247,13 +250,14 @@ interface VBCRxWindowSendControl {
 			message_size_ring[ free_space_index ] = reservation;
 
 			free_space_index++;
+			size++;
 		}
 
 		private void growRingIfNecessary() {
 			assert lock.isHeldByCurrentThread();
 
 			final int ring_size = ringSize();
-			if ( ringSize() < message_id_ring.length ) return;
+			if ( ring_size < message_id_ring.length ) return;
 
 			short[] new_message_id_ring = new short[ message_id_ring.length * 2 ];
 			int[] new_message_size_ring = new int[ new_message_id_ring.length ];
@@ -286,13 +290,9 @@ interface VBCRxWindowSendControl {
 			free_space_index = ring_size;
 		}
 
-		private int ringSize() {
-			if ( free_space_index > data_index ) {
-				return free_space_index - data_index;
-			}
-			else {
-				return ( message_size_ring.length - data_index ) + free_space_index;
-			}
+		// Visible for testing
+		int ringSize() {
+			return size;
 		}
 	}
 }
