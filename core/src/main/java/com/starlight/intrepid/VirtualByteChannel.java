@@ -57,9 +57,6 @@ class VirtualByteChannel implements ByteChannel {
 	// Put in the buffer to signal a "normal" close
 	private static final BufferToMessageWrapper CLOSED_FLAG = 
 		new BufferToMessageWrapper( ByteBuffer.allocate( 1 ) );
-	// Put in the buffer to signal a forceful close
-	private static final BufferToMessageWrapper FORCE_CLOSED_FLAG = 
-		new BufferToMessageWrapper( ByteBuffer.allocate( 1 ) );
 
 	private final VMID remote_vmid;
 	private final short id;
@@ -76,7 +73,8 @@ class VirtualByteChannel implements ByteChannel {
 		new LinkedBlockingQueue<>();
 	private volatile BufferToMessageWrapper read_active_wrapper = null;
 
-	private volatile boolean closed = false;
+	private volatile boolean closed_locally = false;
+	private volatile boolean closed_remotely = false;
 
 
 
@@ -108,9 +106,10 @@ class VirtualByteChannel implements ByteChannel {
 	//
 	// Writing is easier as send blocking (for the RX window) is managed externally.
 
+
 	@Override
 	public int read( ByteBuffer buffer ) throws IOException {
-		if ( closed ) throw new ClosedChannelException();
+		if ( closed_locally ) throw new ClosedChannelException();
 
 		if ( !buffer.hasRemaining() ) return 0;
 
@@ -151,6 +150,7 @@ class VirtualByteChannel implements ByteChannel {
 
 
 
+	private volatile int last_message_id;
 	/**
 	 * Queues a buffer to be read by the channel.
 	 *
@@ -159,7 +159,7 @@ class VirtualByteChannel implements ByteChannel {
 	 *                          specified. Otherwise, the value should be a short.
 	 */
 	void putData( ByteBuffer buffer, int message_id ) {
-		if ( closed ) return;
+		if ( closed_locally || closed_remotely ) return;
 
 		// RX Window starts reservation here
 		receive_window_control.reserveInBuffer( buffer.remaining() );
@@ -168,16 +168,31 @@ class VirtualByteChannel implements ByteChannel {
 			LOG.trace( "Put data buffer (size={}) for virtual channel {}",
 				Integer.valueOf( buffer.remaining() ), Short.valueOf( id ) );
 		}
+
+		// Should never have a message ID which exists in the queue
+		assert read_buffer_queue.stream()
+			.noneMatch( wrapper -> wrapper.message_id == message_id ) :
+			"Attempting to put buffer with message ID " + message_id +
+			" into queue when it's already in the queue: " + read_buffer_queue +
+			". Last message ID was " + last_message_id;
+		last_message_id = message_id;
+
 		read_buffer_queue.add(
 			new BufferToMessageWrapper( buffer, message_id & 0xFFFF ) );
 	}
 
-	void closedByPeer( boolean forceful ) {
-		read_buffer_queue.add( forceful ? FORCE_CLOSED_FLAG : CLOSED_FLAG );
+	void closedByPeer() {
+		closed_remotely = true;
+		read_buffer_queue.add( CLOSED_FLAG );
 	}
 
 
 	void processDataAck( short ack_through_message_id, int new_window_size ) {
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug( "Channel {} received ack for message {} (new window={})",
+				id, Short.valueOf( ack_through_message_id ), new_window_size );
+		}
+
 		// If the ack could not be processed, shut the channel down
 		if ( !send_window_control.releaseAndResize(
 			ack_through_message_id, new_window_size ) ) {
@@ -193,6 +208,11 @@ class VirtualByteChannel implements ByteChannel {
 	}
 
 
+
+	/**
+	 * @param ack_message   If set to a value other than Integer.MIN_VALUE, then this is
+	 *                      the ID of the message to be ack'ed.
+	 */
 	private int readIntoBuffer( ByteBuffer dest_buffer, AtomicInteger ack_message )
 		throws IOException, InterruptedException {
 
@@ -228,12 +248,13 @@ class VirtualByteChannel implements ByteChannel {
 		AtomicInteger ack_message ) throws IOException, InterruptedException {
 		
 		assert read_operation_lock.isHeldByCurrentThread();
-		
+
+		if ( closed_locally ) throw new ClosedChannelException();
+
 		// See if there's a buffer active already
 		BufferToMessageWrapper active_wrapper = read_active_wrapper;
 		if ( active_wrapper != null ) {
-			if ( active_wrapper == CLOSED_FLAG ) return -1;
-			if ( active_wrapper == FORCE_CLOSED_FLAG ) throw new ClosedChannelException();
+			if ( active_wrapper == CLOSED_FLAG ) return -1;     // NOTE: Don't clear
 
 			int pos_before_read = active_wrapper.buffer.position();
 
@@ -269,11 +290,11 @@ class VirtualByteChannel implements ByteChannel {
 			( need_data ? read_buffer_queue.take() : read_buffer_queue.poll() ) ) == null ) {
 
 			if ( !need_data ) return 0;
-			if ( closed ) throw new ClosedChannelException();
+			if ( closed_locally ) throw new ClosedChannelException();
 		}
+//		System.out.println( "VBC read wrapper: " + wrapper );
 		read_active_wrapper = wrapper;
 		if ( wrapper == CLOSED_FLAG ) return -1;
-		if ( wrapper == FORCE_CLOSED_FLAG ) throw new ClosedChannelException();
 
 		return 0;   // keep trying
 	}
@@ -282,12 +303,12 @@ class VirtualByteChannel implements ByteChannel {
 
 	@Override
 	public int write( ByteBuffer buffer ) throws IOException {
-		if ( closed ) throw new ClosedChannelException();
+		if ( closed_locally || closed_remotely ) throw new ClosedChannelException();
 
 		int remaining = buffer.remaining();
 		try {
 			handler.channelSendData( remote_vmid, id, buffer, send_window_control,
-				() -> ( short ) message_id_source.get() );
+				() -> ( short ) message_id_source.incrementAndGet() );
 		}
 		catch( NotConnectedException ex ) {
 			handleClose();
@@ -304,7 +325,7 @@ class VirtualByteChannel implements ByteChannel {
 
 	@Override
 	public boolean isOpen() {
-		return !closed;
+		return !closed_locally;
 	}
 
 	@Override
@@ -314,10 +335,19 @@ class VirtualByteChannel implements ByteChannel {
 	}
 
 	private void handleClose() {
-		closed = true;
-		read_active_wrapper = null;
-		read_buffer_queue.clear();              // clear memory
-		read_buffer_queue.add( CLOSED_FLAG );   // ensure nothing is blocked on read
+		closed_locally = true;
+
+		if ( read_active_wrapper == CLOSED_FLAG ) return;
+
+		read_operation_lock.lock();
+		try {
+			read_active_wrapper = CLOSED_FLAG;
+			read_buffer_queue.add( CLOSED_FLAG );   // ensure nothing is blocked on read
+		}
+		finally {
+			read_operation_lock.unlock();
+		}
+
 	}
 
 
@@ -337,6 +367,15 @@ class VirtualByteChannel implements ByteChannel {
 		BufferToMessageWrapper( ByteBuffer buffer, int message_id ) {
 			this.buffer = buffer;
 			this.message_id = message_id;
+		}
+
+		@Override public String toString() {
+			if ( this == CLOSED_FLAG ) return "BufferToMessageWrapper - CLOSED";
+
+			return "BufferToMessageWrapper{" +
+				"message_id=" + message_id +
+				", buffer=" + buffer +
+				'}';
 		}
 	}
 }
