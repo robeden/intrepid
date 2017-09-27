@@ -99,7 +99,8 @@ interface VBCRxWindowSendControl {
 		private static final Logger LOG = LoggerFactory.getLogger( RingBuffer.class );
 
 		// Max size the ring will be allowed to grow
-		private static final int MAX_RING_SIZE = 10240;
+		private static final int DEFAULT_MAX_RING_SIZE = 10240;
+		private static final int DEFAULT_INIT_RING_SIZE = 100;
 
 
 		// Size of the active window
@@ -111,6 +112,8 @@ interface VBCRxWindowSendControl {
 		private final ReentrantLock lock = new ReentrantLock();
 		private final Condition space_freed = lock.newCondition();
 
+		private final int max_ring_size;
+
 		private short[] message_id_ring;
 		private int[] message_size_ring;
 		private int data_index = 0;             // Index of the next data element
@@ -118,12 +121,13 @@ interface VBCRxWindowSendControl {
 		private int size = 0;					// Number of slots in use
 
 		RingBuffer( int initial_window ) {
-			this( initial_window, 100 );
+			this( initial_window, DEFAULT_INIT_RING_SIZE, DEFAULT_MAX_RING_SIZE );
 		}
 
 		// This constructor exists for testing
-		RingBuffer( int initial_window, int ring_size ) {
+		RingBuffer( int initial_window, int ring_size, int max_ring_size ) {
 			configured_window = initial_window;
+			this.max_ring_size = max_ring_size;
 
 			message_id_ring = new short[ ring_size ];
 			message_size_ring = new int[ ring_size ];
@@ -261,6 +265,39 @@ interface VBCRxWindowSendControl {
 
 
 
+		// For testing
+		int windowInUse() {
+			return window_in_use;
+		}
+
+
+
+		/**
+		 * For testing, iterate over elements in the ring.
+		 *
+		 * @return  Number of elements touched
+		 */
+		int forEachElement( MessageSizeConsumer consumer ) {
+			lock.lock();
+			try {
+				int ring_index = data_index;
+				for( int i = 0; i < size; i++ ) {
+					consumer.accept( message_id_ring[ ring_index ],
+						message_size_ring[ ring_index ] );
+
+					ring_index++;
+					if ( ring_index == message_id_ring.length ) ring_index = 0;
+				}
+
+				return size;
+			}
+			finally {
+				lock.unlock();
+			}
+		}
+
+
+
 		/**
 		 * @return      False if the data was not inserted into the ring because no space
 		 *              is available and the ring is not allowed to grow anymore.
@@ -295,7 +332,7 @@ interface VBCRxWindowSendControl {
 			if ( ring_size < message_id_ring.length ) return true;
 
 			int new_ring_capacity = message_size_ring.length * 2;
-			if ( new_ring_capacity > MAX_RING_SIZE ) return false;
+			if ( new_ring_capacity > max_ring_size ) return false;
 
 //			System.out.println( "new ring size: " + new_ring_capacity );
 
@@ -335,5 +372,14 @@ interface VBCRxWindowSendControl {
 		int ringSize() {
 			return size;
 		}
+	}
+
+
+	@FunctionalInterface
+	interface MessageSizeConsumer {
+		/**
+		 * @return      True if processing should continue
+		 */
+		boolean accept( short message_id, int size );
 	}
 }
