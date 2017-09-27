@@ -51,8 +51,8 @@ public class LargeTransfersTest {
 			     1_000_000,
 			    10_000_000,
 			   100_000_000,
-			 1_000_000_000,
-	    	10_000_000_000L
+//			 1_000_000_000,
+//	    	10_000_000_000L
 		};
 		if ( System.getProperty( "intrepid.test.skip_slow" ) != null ) {
 			sizes = LongStream.of( sizes )
@@ -74,8 +74,8 @@ public class LargeTransfersTest {
 
 		int[] buffer_sizes = { 100_000, 1000, 10 };
 
-		for( MessageDigest digest : digests ) {
-			for ( int thread_count : thread_counts ) {
+		for ( int thread_count : thread_counts ) {
+			for( MessageDigest digest : digests ) {
 				for ( long size : sizes ) {
 					for( int buffer_size : buffer_sizes ) {
 						to_return.add(
@@ -107,7 +107,7 @@ public class LargeTransfersTest {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 		// Data that will be sent (repeated as necessary)
-		data_block = new byte[ 100_000 ];
+		data_block = new byte[ args.buffer_size ];
 		new Random().nextBytes( data_block );
 
 		// Determine the data checksum if a digest will be used
@@ -398,7 +398,7 @@ public class LargeTransfersTest {
 
 				double progress = done / ( double ) total;
 
-				System.out.println( name + " Progress: " +
+				System.out.println( "  " + name + " Progress: " +
 					NumberFormat.getPercentInstance().format( progress ) + "  - " +
 					BinaryByteUnit.format( done ) + " / " +
 					BinaryByteUnit.format( total ) );
