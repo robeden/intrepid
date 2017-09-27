@@ -332,7 +332,10 @@ interface VBCRxWindowSendControl {
 			if ( ring_size < message_id_ring.length ) return true;
 
 			int new_ring_capacity = message_size_ring.length * 2;
-			if ( new_ring_capacity > max_ring_size ) return false;
+			if ( new_ring_capacity > max_ring_size ) {
+				LOG.trace( "Channel send ring full: {}", max_ring_size );
+				return false;
+			}
 
 //			System.out.println( "new ring size: " + new_ring_capacity );
 

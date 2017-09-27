@@ -392,16 +392,28 @@ public class LargeTransfersTest {
 		LongSupplier done_supplier ) {
 
 		return new TimerTask() {
+			private final AtomicLong last = new AtomicLong( 0 );
+			private final AtomicLong last_time = new AtomicLong( System.nanoTime() );
+
 			@Override
 			public void run() {
+				long now = System.nanoTime();
+				long last_time = this.last_time.getAndSet( now );
+
 				long done = done_supplier.getAsLong();
+
+				long since_last = done - last.getAndSet( done );
+				double rate = ( since_last /
+					( double ) TimeUnit.NANOSECONDS.toMillis( now - last_time ) ) * 1000.0;
 
 				double progress = done / ( double ) total;
 
 				System.out.println( "  " + name + " Progress: " +
 					NumberFormat.getPercentInstance().format( progress ) + "  - " +
 					BinaryByteUnit.format( done ) + " / " +
-					BinaryByteUnit.format( total ) );
+					BinaryByteUnit.format( total ) + " - " +
+					BinaryByteUnit.format( Math.round( rate ) ) + "/s"
+				);
 			}
 		};
 	}
