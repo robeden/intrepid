@@ -58,6 +58,7 @@ import java.util.function.Consumer;
 /**
  * This class provides static functions for accessing Intrepid's main functionality.
  */
+@SuppressWarnings( { "WeakerAccess", "unused" } )
 public class Intrepid {
 	private static final long CONNECT_TIMEOUT =
 		Long.getLong( "intrepid.connect.timeout", 10000 ).longValue();
