@@ -52,6 +52,12 @@ class VirtualByteChannel implements ByteChannel {
 	private static final Logger LOG =
 		LoggerFactory.getLogger( VirtualByteChannel.class );
 
+	// Size of the read_buffer_queue at which the send window will be forced closed.
+	private static final int READ_QUEUE_HIGH_WATER = 200;
+	// If the window is forced closed due to excessive queue size (see above), it will
+	// remain closed until the queue reaches this size.
+	private static final int READ_QUEUE_LOW_WATER = READ_QUEUE_HIGH_WATER / 2;
+
 
 
 	// Put in the buffer to signal a "normal" close
@@ -75,6 +81,8 @@ class VirtualByteChannel implements ByteChannel {
 
 	private volatile boolean closed_locally = false;
 	private volatile boolean closed_remotely = false;
+
+	private volatile boolean read_queue_throttling_active = false;
 
 
 
@@ -132,6 +140,24 @@ class VirtualByteChannel implements ByteChannel {
 
 		int message_id = ack_message.get();
 		if ( message_id != Integer.MIN_VALUE ) {
+			int queue_size = read_buffer_queue.size();
+			if ( read_queue_throttling_active ) {
+				if ( queue_size < READ_QUEUE_LOW_WATER ) {
+					read_queue_throttling_active = false;
+//					System.out.println( "Window for channel {} will be reopened");
+					LOG.debug( "Window for channel {} will be reopened (queue size " +
+						"no longer critical)", Short.valueOf( id ) );
+				}
+				else new_window_size = 0;
+			}
+			else if ( queue_size >= READ_QUEUE_HIGH_WATER ) {
+				new_window_size = 0;
+				read_queue_throttling_active = true;
+//				System.out.println( "Window for channel {} will be forced closed");
+				LOG.debug( "Window for channel {} will be forced closed (queue " +
+					"size critical: {})", Short.valueOf( id ), queue_size );
+			}
+
 			handler.channelSendDataAck( remote_vmid, id, ( short ) message_id,
 				new_window_size );
 		}

@@ -98,6 +98,9 @@ interface VBCRxWindowSendControl {
 	class RingBuffer implements VBCRxWindowSendControl {
 		private static final Logger LOG = LoggerFactory.getLogger( RingBuffer.class );
 
+		// Max size the ring will be allowed to grow
+		private static final int MAX_RING_SIZE = 10240;
+
 
 		// Size of the active window
 		private volatile int configured_window;
@@ -179,7 +182,25 @@ interface VBCRxWindowSendControl {
 
 				int reservable_amount = Math.min( available, desired_count );
 
-				insertRingData( message_id, reservable_amount );
+				start = debug ? System.nanoTime() : 0;
+				had_to_wait = false;
+				while ( ! insertRingData( message_id, reservable_amount ) ) {
+					had_to_wait = true;
+					// GENTLE REMINDER: It isn't guaranteed that any more free space is
+					//                  actually available when we pop out of this.
+					space_freed.await();
+				}
+
+				if ( debug && had_to_wait ) {
+					long time_ns = System.nanoTime() - start;
+//					System.out.println( "Ring insert wait: " +
+//						TimeUnit.NANOSECONDS.toMillis( time_ns ));
+					LOG.debug( "Had to wait {} ms for space in send message ring " +
+						"buffer for message {}", TimeUnit.NANOSECONDS.toMillis( time_ns ),
+						min_count, desired_count, message_id );
+				}
+
+
 				window_in_use += reservable_amount;
 
 				return reservable_amount;
@@ -239,8 +260,13 @@ interface VBCRxWindowSendControl {
 		}
 
 
-		private void insertRingData( short message_id, int reservation ) {
-			growRingIfNecessary();
+
+		/**
+		 * @return      False if the data was not inserted into the ring because no space
+		 *              is available and the ring is not allowed to grow anymore.
+		 */
+		private boolean insertRingData( short message_id, int reservation ) {
+			if ( !growRingIfNecessary() ) return false;
 
 			// NOTE: At this point the free_space_index may be past the end of the array,
 			//       indicating that it needs to wrap to 0. (We don't wrap until insert)
@@ -251,16 +277,30 @@ interface VBCRxWindowSendControl {
 
 			free_space_index++;
 			size++;
+			return true;
 		}
 
-		private void growRingIfNecessary() {
+
+
+		/**
+		 * @return      An indication as to whether or not all is well with the ring. This
+		 *              will return true if either there was already space in the ring or
+		 *              if the ring needed to grow and successfully did so. Effectively,
+		 *              this returns false in there is no more space in the ring.
+		 */
+		private boolean growRingIfNecessary() {
 			assert lock.isHeldByCurrentThread();
 
 			final int ring_size = ringSize();
-			if ( ring_size < message_id_ring.length ) return;
+			if ( ring_size < message_id_ring.length ) return true;
 
-			short[] new_message_id_ring = new short[ message_id_ring.length * 2 ];
-			int[] new_message_size_ring = new int[ new_message_id_ring.length ];
+			int new_ring_capacity = message_size_ring.length * 2;
+			if ( new_ring_capacity > MAX_RING_SIZE ) return false;
+
+//			System.out.println( "new ring size: " + new_ring_capacity );
+
+			short[] new_message_id_ring = new short[ new_ring_capacity ];
+			int[] new_message_size_ring = new int[ new_ring_capacity ];
 
 			// Simple case, no wrapping
 			if ( free_space_index > data_index ) {
@@ -288,6 +328,7 @@ interface VBCRxWindowSendControl {
 			message_size_ring = new_message_size_ring;
 			data_index = 0;
 			free_space_index = ring_size;
+			return true;
 		}
 
 		// Visible for testing

@@ -45,8 +45,8 @@ public class LargeTransfersTest {
 			100_000,
 			1_000_000,
 			10_000_000,
-			100_000_000,
-			1_000_000_000
+//			100_000_000,
+//			1_000_000_000
 //			10_000_000_000L
 		};
 
@@ -57,15 +57,20 @@ public class LargeTransfersTest {
 		};
 
 		MessageDigest[] digests = {
+			null,                                   // fastest
 			MessageDigest.getInstance( "MD5" ),
-			null,
-			MessageDigest.getInstance( "SHA-256" ),
+			MessageDigest.getInstance( "SHA-256" ), // slowest
 		};
+
+		int[] buffer_sizes = { 10, 1000, 100_000 };
 
 		for( MessageDigest digest : digests ) {
 			for ( int thread_count : thread_counts ) {
 				for ( long size : sizes ) {
-					to_return.add( new Args( size, thread_count, digest ) );
+					for( int buffer_size : buffer_sizes ) {
+						to_return.add(
+							new Args( size, thread_count, digest, buffer_size ) );
+					}
 				}
 			}
 		}
@@ -92,7 +97,7 @@ public class LargeTransfersTest {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 		// Data that will be sent (repeated as necessary)
-		data_block = new byte[ 100_000 ];
+		data_block = new byte[ 1000 ];//100_000 ];
 		new Random().nextBytes( data_block );
 
 		// Determine the data checksum if a digest will be used
@@ -120,7 +125,7 @@ public class LargeTransfersTest {
 
 
 
-	@Test
+	@Test( timeout = 600000 )   // 10 min
 	public void virtualByteChannel() throws Exception {
 		CountDownLatch reader_latch = new CountDownLatch( args.threads );
 
@@ -316,11 +321,13 @@ public class LargeTransfersTest {
 		private final long data_size;
 		private final int threads;
 		private final @Nullable MessageDigest digest;
+		private final int buffer_size;
 
-		Args( long data_size, int threads, MessageDigest digest ) {
+		Args( long data_size, int threads, MessageDigest digest, int buffer_size ) {
 			this.data_size = data_size;
 			this.threads = threads;
 			this.digest = digest;
+			this.buffer_size = buffer_size;
 		}
 
 
@@ -328,7 +335,8 @@ public class LargeTransfersTest {
 		@Override
 		public String toString() {
 			return data_size + " x " + threads + ", digester=" +
-				( digest == null ? "none" : digest.getAlgorithm() );
+				( digest == null ? "none" : digest.getAlgorithm() +
+				", buffer=" + buffer_size );
 		}
 	}
 }
