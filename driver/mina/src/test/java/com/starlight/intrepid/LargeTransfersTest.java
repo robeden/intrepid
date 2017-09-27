@@ -1,6 +1,8 @@
 package com.starlight.intrepid;
 
+import com.jakewharton.byteunits.BinaryByteUnit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
+import com.starlight.intrepid.message.IMessage;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,7 +20,10 @@ import java.text.NumberFormat;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
+import java.util.stream.LongStream;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -37,18 +42,23 @@ public class LargeTransfersTest {
 		List<Args> to_return = new ArrayList<>();
 
 		long[] sizes = {
-			1,
-			10,
-			100,
-			1_000,
-			10_000,
-			100_000,
-			1_000_000,
-			10_000_000,
-//			100_000_000,
-//			1_000_000_000
-//			10_000_000_000L
+			             1,
+			            10,
+			           100,
+			         1_000,
+			        10_000,
+			       100_000,
+			     1_000_000,
+			    10_000_000,
+			   100_000_000,
+			 1_000_000_000,
+	    	10_000_000_000L
 		};
+		if ( System.getProperty( "intrepid.test.skip_slow" ) != null ) {
+			sizes = LongStream.of( sizes )
+				.filter( s -> s <= 1_000_000 )
+				.toArray();
+		}
 
 		int[] thread_counts = {
 			1,
@@ -62,7 +72,7 @@ public class LargeTransfersTest {
 			MessageDigest.getInstance( "SHA-256" ), // slowest
 		};
 
-		int[] buffer_sizes = { 10, 1000, 100_000 };
+		int[] buffer_sizes = { 100_000, 1000, 10 };
 
 		for( MessageDigest digest : digests ) {
 			for ( int thread_count : thread_counts ) {
@@ -97,7 +107,7 @@ public class LargeTransfersTest {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 		// Data that will be sent (repeated as necessary)
-		data_block = new byte[ 1000 ];//100_000 ];
+		data_block = new byte[ 100_000 ];
 		new Random().nextBytes( data_block );
 
 		// Determine the data checksum if a digest will be used
@@ -147,12 +157,23 @@ public class LargeTransfersTest {
 		List<String> write_error_list = Collections.synchronizedList( new ArrayList<>() );
 
 
+		final long total_data_to_write = args.data_size * args.threads;
+
+		final AtomicLong total_read = new AtomicLong( 0 );
 		server_instance = Intrepid.create(
 			new IntrepidSetup()
 				.vmidHint( "server" )
 				.openServer()
+				.performanceListener( new PerformanceListener() {
+					@Override public void messageReceived( VMID source_vmid,
+						IMessage message ) {
+
+//						System.out.println( "Server received: " + message );
+					}
+				} )
 				.channelAcceptor(
-					new TestAcceptor( args.digest, error_consumer, bps_consumer ) ) );
+					new TestAcceptor( args.digest, error_consumer,
+						bps_consumer, total_read ) ) );
 		Integer server_port = server_instance.getServerPort();
 		assertNotNull( server_port );
 
@@ -162,6 +183,16 @@ public class LargeTransfersTest {
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_port.intValue(), null, null );
 		assertNotNull( server_vmid );
+
+		AtomicLong total_data_written = new AtomicLong( 0 );
+		Timer timer = new Timer( "Progress printer", true );
+		TimerTask write_task =
+			createProgressTask( "Write", total_data_to_write, total_data_written::get );
+		timer.scheduleAtFixedRate( write_task, 10000, 5000 );
+
+		TimerTask read_task =
+			createProgressTask( "Read", total_data_to_write, total_read::get );
+		timer.scheduleAtFixedRate( read_task, 10000, 5000 );
 
 		for( int i = 0; i < args.threads; i++ ) {
 			new Thread( () -> {
@@ -182,20 +213,25 @@ public class LargeTransfersTest {
 						}
 
 						while ( write_buffer.hasRemaining() ) {
-							remaining_bytes -= channel.write( write_buffer );
+							int written = channel.write( write_buffer );
+							total_data_written.addAndGet( written );
+							remaining_bytes -= written;
 						}
 					}
+
+					long end = System.nanoTime();
+
+					double write_bps = ( ( double ) args.data_size / ( double ) ( end - start ) ) *
+						TimeUnit.SECONDS.toNanos( 1 );
+					write_bps_list.add( write_bps );
 				}
 				catch( Exception ex ) {
 					write_error_list.add( ex.toString() );
 					ex.printStackTrace();
 				}
-				long end = System.nanoTime();
-
-				double write_bps = ( ( double ) args.data_size / ( double ) ( end - start ) ) *
-					TimeUnit.SECONDS.toNanos( 1 );
-				write_bps_list.add( write_bps );
-				writer_latch.countDown();
+				finally {
+					writer_latch.countDown();
+				}
 
 			}, "Writer " + i ).start();
 		}
@@ -203,6 +239,9 @@ public class LargeTransfersTest {
 
 		writer_latch.await();
 		reader_latch.await();
+
+		read_task.cancel();
+		write_task.cancel();
 
 		assertTrue( write_error_list.toString(), write_error_list.isEmpty() );
 		assertTrue( read_error_list.toString(), read_error_list.isEmpty() );
@@ -221,14 +260,14 @@ public class LargeTransfersTest {
 
 	private String stats( DoubleSummaryStatistics stats ) {
 		if ( stats.getCount() == 1 ) {
-			return FORMATTER.format( stats.getAverage() );
+			return BinaryByteUnit.format( Math.round( stats.getAverage() ) ) + "/s";
 		}
 		else {
 			double range = Math.max(
 				stats.getMax() - stats.getAverage(),
 				stats.getAverage() - stats.getMin() );
-			return FORMATTER.format( stats.getAverage() ) +
-				" ±" + FORMATTER.format( range );
+			return BinaryByteUnit.format( Math.round( stats.getAverage() ) ) + "/s ±" +
+				BinaryByteUnit.format( Math.round( range ) ) + "/s";
 		}
 	}
 
@@ -237,14 +276,17 @@ public class LargeTransfersTest {
 		private final MessageDigest digest;
 		private final Consumer<String> error_message_consumer;
 		private final Consumer<Double> bps_consumer;
+		private final AtomicLong total_read;
 
 
 		TestAcceptor( @Nullable MessageDigest digest,
-			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer ) {
+			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer,
+			AtomicLong total_read ) {
 
 			this.digest = digest;
 			this.error_message_consumer = error_message_consumer;
 			this.bps_consumer = bps_consumer;
+			this.total_read = total_read;
 		}
 
 		@Override
@@ -254,7 +296,7 @@ public class LargeTransfersTest {
 			try {
 				new ChannelReadThread( channel,
 					digest == null ? null : ( MessageDigest ) digest.clone(),
-					error_message_consumer, bps_consumer ).start();
+					error_message_consumer, bps_consumer, total_read ).start();
 			}
 			catch ( CloneNotSupportedException e ) {
 				error_message_consumer.accept( e.toString() );
@@ -268,12 +310,14 @@ public class LargeTransfersTest {
 		private final MessageDigest digest;
 		private final Consumer<String> error_message_consumer;
 		private final Consumer<Double> bps_consumer;
+		private final AtomicLong total_read;
 
 		private final byte[] read_buffer_array = new byte[ 256_000 ];
 		private final ByteBuffer read_buffer = ByteBuffer.wrap( read_buffer_array );
 
 		ChannelReadThread( ByteChannel channel, @Nullable MessageDigest digest,
-			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer ) {
+			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer,
+			AtomicLong total_read ) {
 
 			super( "ChannelReadThread: " + channel );
 
@@ -281,6 +325,7 @@ public class LargeTransfersTest {
 			this.digest = digest;
 			this.error_message_consumer= error_message_consumer;
 			this.bps_consumer = bps_consumer;
+			this.total_read = total_read;
 		}
 
 		@Override
@@ -293,6 +338,8 @@ public class LargeTransfersTest {
 						digest.update( read_buffer_array, 0, read );
 					}
 					read_buffer.clear();
+
+					total_read.addAndGet( read );
 				}
 				long end = System.nanoTime();
 
@@ -335,8 +382,27 @@ public class LargeTransfersTest {
 		@Override
 		public String toString() {
 			return data_size + " x " + threads + ", digester=" +
-				( digest == null ? "none" : digest.getAlgorithm() +
-				", buffer=" + buffer_size );
+				( digest == null ? "none" : digest.getAlgorithm() ) +
+				", buffer=" + buffer_size;
 		}
+	}
+
+
+	private static TimerTask createProgressTask( String name, long total,
+		LongSupplier done_supplier ) {
+
+		return new TimerTask() {
+			@Override
+			public void run() {
+				long done = done_supplier.getAsLong();
+
+				double progress = done / ( double ) total;
+
+				System.out.println( name + " Progress: " +
+					NumberFormat.getPercentInstance().format( progress ) + "  - " +
+					BinaryByteUnit.format( done ) + " / " +
+					BinaryByteUnit.format( total ) );
+			}
+		};
 	}
 }

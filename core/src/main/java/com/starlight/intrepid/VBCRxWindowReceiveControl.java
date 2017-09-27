@@ -53,7 +53,7 @@ interface VBCRxWindowReceiveControl {
 
 	// This is a pretty naive implementation. May want something better in the future
 	// to avoid Silly Window Syndrome (see https://tools.ietf.org/html/rfc813). However,
-	// I haven't really seen SWS in testing and performance has been adequte for now,
+	// I haven't really seen SWS in testing and performance has been adequate for now,
 	// so I'm going to start with this implementation to keep it simple.
 	class Simple implements VBCRxWindowReceiveControl {
 		private final AtomicInteger available;

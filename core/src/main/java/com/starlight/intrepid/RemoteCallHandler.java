@@ -80,10 +80,10 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 
 	private static final int MAX_CHANNEL_MESSAGE_DATA_SIZE =
-		Integer.getInteger( "intrepid.channel.max_message_data", 1 << 18 );  // 256K
+		Integer.getInteger( "intrepid.channel.max_message_data", 256_000 );
 
 	private static final int MIN_CHANNEL_MESSAGE_DATA_SIZE =
-		Integer.getInteger( "intrepid.channel.min_message_data", 1024 );
+		Integer.getInteger( "intrepid.channel.min_message_data", 10_000 );
 
 	// Default to 30 seconds, but don't allow anything longer than 2 min
 	private static final byte REQUEST_INVOKE_ACK_RATE_SEC = ( byte ) Math.min( 120,
@@ -633,8 +633,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			data.limit( position + will_send_amount );
 			if ( LOG.isDebugEnabled() ) {
-				LOG.debug( "Sending {} bytes to virtual channel {}",
-					Integer.valueOf( data.remaining() ), Short.valueOf( channel_id ) );
+				LOG.debug( "Sending {} bytes to virtual channel {} (message ID={})",
+					Integer.valueOf( data.remaining() ), Short.valueOf( channel_id ),
+					message_id );
 			}
 
 			// NOTE: This call will block until the message is sent, so using the same
