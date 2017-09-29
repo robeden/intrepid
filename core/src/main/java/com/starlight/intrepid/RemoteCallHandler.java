@@ -466,7 +466,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 					VBCRxWindowSendControl send_window_control;
 					if ( peer_supports_rx_window ) {
 						receive_window_control =
-							new VBCRxWindowReceiveControl.Simple( channel_rx_window_size );
+							new VBCRxWindowReceiveControl.QuidProQuo(
+								channel_rx_window_size );
 
 						// The window size the peer is unknown, so just use ours. It will be
 						// changed when the ChannelInitResponseIMessage comes in.
@@ -1149,7 +1150,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			VBCRxWindowReceiveControl receive_window_control;
 			VBCRxWindowSendControl send_window_control;
 			if ( peer_supports_rx_window ) {
-				receive_window_control = new VBCRxWindowReceiveControl.Simple(
+				receive_window_control = new VBCRxWindowReceiveControl.ProportionalTimer(
 					channel_window_size_function.applyAsInt(
 						Optional.ofNullable( message.getAttachment() ) ) );
 

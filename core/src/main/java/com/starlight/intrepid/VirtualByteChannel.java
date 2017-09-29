@@ -84,6 +84,7 @@ class VirtualByteChannel implements ByteChannel {
 
 	private volatile boolean read_queue_throttling_active = false;
 
+	private final VBCRxWindowReceiveControl.AckSender ack_sender;
 
 
 	VirtualByteChannel( VMID remote_vmid, short id,
@@ -95,6 +96,19 @@ class VirtualByteChannel implements ByteChannel {
 		this.receive_window_control = requireNonNull( receive_window_control );
 		this.send_window_control = requireNonNull( send_window_control );
 		this.handler = requireNonNull( handler );
+
+//		System.out.println( "Receive window control: " + receive_window_control );
+
+		ack_sender = ( ack_message_id, ack_new_window_size ) -> {
+				try {
+					handler.channelSendDataAck( remote_vmid, id, ack_message_id,
+						ack_new_window_size );
+					return true;
+				}
+				catch ( Exception e ) {
+					return false;
+				}
+			};
 	}
 
 
@@ -134,33 +148,31 @@ class VirtualByteChannel implements ByteChannel {
 			read_operation_lock.unlock();
 		}
 
-		// RX Window reservation released
-		int new_window_size =
-			receive_window_control.releaseFromBufferAndGetWindowSize( read );
-
 		int message_id = ack_message.get();
-		if ( message_id != Integer.MIN_VALUE ) {
-			int queue_size = read_buffer_queue.size();
-			if ( read_queue_throttling_active ) {
-				if ( queue_size < READ_QUEUE_LOW_WATER ) {
-					read_queue_throttling_active = false;
-//					System.out.println( "Window for channel {} will be reopened");
-					LOG.debug( "Window for channel {} will be reopened (queue size " +
-						"no longer critical)", Short.valueOf( id ) );
-				}
-				else new_window_size = 0;
-			}
-			else if ( queue_size >= READ_QUEUE_HIGH_WATER ) {
-				new_window_size = 0;
-				read_queue_throttling_active = true;
-//				System.out.println( "Window for channel {} will be forced closed");
-				LOG.debug( "Window for channel {} will be forced closed (queue " +
-					"size critical: {})", Short.valueOf( id ), queue_size );
-			}
 
-			handler.channelSendDataAck( remote_vmid, id, ( short ) message_id,
-				new_window_size );
-		}
+		// RX Window reservation released
+		receive_window_control.releaseFromBuffer( read, message_id, ack_sender );
+
+//		if ( message_id != Integer.MIN_VALUE ) {
+//			int queue_size = read_buffer_queue.size();
+//			if ( read_queue_throttling_active ) {
+//				if ( queue_size < READ_QUEUE_LOW_WATER ) {
+//					read_queue_throttling_active = false;
+////					System.out.println( "Window for channel {} will be reopened");
+//					LOG.debug( "Window for channel {} will be reopened (queue size " +
+//						"no longer critical)", Short.valueOf( id ) );
+//				}
+//				else new_window_size = 0;
+//			}
+//			else if ( queue_size >= READ_QUEUE_HIGH_WATER ) {
+//				new_window_size = 0;
+//				read_queue_throttling_active = true;
+////				System.out.println( "Window for channel {} will be forced closed");
+//				LOG.debug( "Window for channel {} will be forced closed (queue " +
+//					"size critical: {})", Short.valueOf( id ), queue_size );
+//			}
+//
+//		}
 
 		return read;
 	}
