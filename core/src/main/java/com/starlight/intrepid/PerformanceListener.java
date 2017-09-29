@@ -30,6 +30,7 @@ import com.starlight.intrepid.message.IMessage;
 
 import java.lang.reflect.Method;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
 
 /**
@@ -51,15 +52,26 @@ public interface PerformanceListener {
 
 
 	default void virtualChannelOpened( VMID instance_vmid, VMID peer_vmid,
-		short channel_id ) {}
+		short channel_id, int rx_window_size ) {}
 	default void virtualChannelClosed( VMID instance_vmid, VMID peer_vmid,
 		short channel_id ) {}
 	default void virtualChannelDataReceived( VMID instance_vmid, VMID peer_vmid,
 		short channel_id, int bytes ) {}
+	default void virtualChannelDataAckReceived( VMID instance_vmid, VMID peer_vmid,
+		short channel_id, short message_id, int new_window ) {}
 	default void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-		short channel_id, short message_id, int bytes ) {}
+		short channel_id, short message_id, int bytes, long window_wait_time_nanos ) {}
 	default void virtualChannelDataAckSent( VMID instance_vmid, VMID peer_vmid,
 		short channel_id, short message_id, int new_window ) {}
+	/**
+	 * Indicates that a block of data has been read from a channel (from
+	 * {@link VirtualByteChannel#read(ByteBuffer)}).
+	 *
+	 * @param wait_time_nanos       The time (in nanoseconds) taken for the read
+	 *                              operation. Large numbers indicate time spent waiting
+	 *                              for the sender to send data.
+	 */
+	default void virtualChannelDataRead( short channel_id, long wait_time_nanos ) {}
 
 
 	default void messageSent( VMID destination_vmid, IMessage message ) {}

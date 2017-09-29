@@ -480,7 +480,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 					}
 
 					VirtualByteChannel channel = new VirtualByteChannel( destination,
-						f_channel_id, receive_window_control, send_window_control, this );
+						f_channel_id, receive_window_control, send_window_control, this,
+						performance_listeners );
 					channel_slot.set( channel );
 
 					channel_map_lock.lock();
@@ -514,7 +515,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			if ( response.isSuccessful() ) {
 				if ( performance_listeners.hasListeners() ) {
 					performance_listeners.dispatch().virtualChannelOpened(
-						local_vmid, destination, channel_id );
+						local_vmid, destination, channel_id, response.getRxWindow() );
 				}
 				successful = true;
 
@@ -592,7 +593,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		if ( !data.hasRemaining() ) return;
 
-		final int total_size = data.remaining();
+		final boolean track_timings = performance_listeners.hasListeners();
 
 		int original_limit = data.limit();
 		int position;
@@ -613,6 +614,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			final short message_id = message_id_source.next();
 
+			long start = track_timings ? System.nanoTime() : 0;
 			int will_send_amount;
 			try {
 				will_send_amount = send_window_control.tryAcquire(
@@ -631,6 +633,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				ex.initCause( e );
 				throw ex;
 			}
+			long window_wait_time = track_timings ? System.nanoTime() - start : 0;
 
 			data.limit( position + will_send_amount );
 			if ( LOG.isDebugEnabled() ) {
@@ -646,7 +649,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 			if ( performance_listeners.hasListeners() ) {
 				performance_listeners.dispatch().virtualChannelDataSent( local_vmid,
-					destination, channel_id, message_id, total_size );
+					destination, channel_id, message_id, will_send_amount,
+					window_wait_time );
 			}
 		}
 	}
@@ -1150,7 +1154,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			VBCRxWindowReceiveControl receive_window_control;
 			VBCRxWindowSendControl send_window_control;
 			if ( peer_supports_rx_window ) {
-				receive_window_control = new VBCRxWindowReceiveControl.ProportionalTimer(
+				receive_window_control = new VBCRxWindowReceiveControl.QuidProQuo(
 					channel_window_size_function.applyAsInt(
 						Optional.ofNullable( message.getAttachment() ) ) );
 
@@ -1165,7 +1169,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 			}
 
 			channel = new VirtualByteChannel( vmid, message.getChannelID(),
-				receive_window_control, send_window_control, this );
+				receive_window_control, send_window_control, this,
+				performance_listeners );
 
 			VirtualByteChannel prev_channel = channel_id_map.put( channel_id, channel );
 			if ( prev_channel != null ) {
@@ -1194,7 +1199,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		if ( performance_listeners.hasListeners() ) {
 			performance_listeners.dispatch().virtualChannelOpened( local_vmid,
-				vmid, channel_id );
+				vmid, channel_id, message.getRxWindow() );
 		}
 
 		return new ChannelInitResponseIMessage( message.getRequestID(),
@@ -1277,6 +1282,12 @@ class RemoteCallHandler implements InboundMessageHandler {
 		}
 
 		channel.processDataAck( message.getMessageID(), message.getNewRxWindow() );
+
+		if ( performance_listeners.hasListeners() ) {
+			performance_listeners.dispatch().virtualChannelDataAckReceived( local_vmid,
+				vmid, message.getChannelID(), message.getMessageID(),
+				message.getNewRxWindow() );
+		}
 	}
 
 	private void handleChannelClose( ChannelCloseIMessage message, VMID vmid ) {

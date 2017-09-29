@@ -221,7 +221,8 @@ public class ChannelTest extends TestCase {
 		PerformanceListener client_listener = new PerformanceListener() {
 			@Override public void virtualChannelDataSent( VMID instance_vmid,
 				VMID peer_vmid,
-				short channel_id, short message_id, int bytes ) {
+				short channel_id, short message_id, int bytes,
+				long window_wait_time_nanos ) {
 
 				data_message_count.incrementAndGet();
 			}

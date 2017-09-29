@@ -26,6 +26,7 @@
 package com.starlight.intrepid;
 
 
+import com.logicartisan.common.core.listeners.ListenerSupport;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.starlight.intrepid.exception.NotConnectedException;
 import org.slf4j.Logger;
@@ -59,14 +60,16 @@ class VirtualByteChannel implements ByteChannel {
 	private static final int READ_QUEUE_LOW_WATER = READ_QUEUE_HIGH_WATER / 2;
 
 
-
 	// Put in the buffer to signal a "normal" close
 	private static final BufferToMessageWrapper CLOSED_FLAG = 
 		new BufferToMessageWrapper( ByteBuffer.allocate( 1 ) );
 
+
 	private final VMID remote_vmid;
 	private final short id;
 	private final RemoteCallHandler handler;
+
+	private final ListenerSupport<PerformanceListener,?> performance_listeners;
 
 	private final VBCRxWindowReceiveControl receive_window_control;
 	private final VBCRxWindowSendControl send_window_control;
@@ -89,13 +92,15 @@ class VirtualByteChannel implements ByteChannel {
 
 	VirtualByteChannel( VMID remote_vmid, short id,
 		VBCRxWindowReceiveControl receive_window_control,
-		VBCRxWindowSendControl send_window_control, RemoteCallHandler handler ) {
+		VBCRxWindowSendControl send_window_control, RemoteCallHandler handler,
+		ListenerSupport<PerformanceListener,?> performance_listeners ) {
 
 		this.remote_vmid = requireNonNull( remote_vmid );
 		this.id = id;
 		this.receive_window_control = requireNonNull( receive_window_control );
 		this.send_window_control = requireNonNull( send_window_control );
 		this.handler = requireNonNull( handler );
+		this.performance_listeners = requireNonNull( performance_listeners );
 
 //		System.out.println( "Receive window control: " + receive_window_control );
 
@@ -135,7 +140,10 @@ class VirtualByteChannel implements ByteChannel {
 
 		if ( !buffer.hasRemaining() ) return 0;
 
+		final boolean track_timings = performance_listeners.hasListeners();
+
 		AtomicInteger ack_message = new AtomicInteger( Integer.MIN_VALUE );
+		long start = track_timings ? System.nanoTime() : 0;
 		int read;
 		read_operation_lock.lock();
 		try {
@@ -147,11 +155,16 @@ class VirtualByteChannel implements ByteChannel {
 		finally {
 			read_operation_lock.unlock();
 		}
+		long read_time = track_timings ? System.nanoTime() - start : 0;
 
 		int message_id = ack_message.get();
 
 		// RX Window reservation released
 		receive_window_control.releaseFromBuffer( read, message_id, ack_sender );
+
+		if ( track_timings ) {
+			performance_listeners.dispatch().virtualChannelDataRead( id, read_time );
+		}
 
 //		if ( message_id != Integer.MIN_VALUE ) {
 //			int queue_size = read_buffer_queue.size();

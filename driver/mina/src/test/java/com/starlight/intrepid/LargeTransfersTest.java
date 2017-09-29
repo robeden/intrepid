@@ -2,7 +2,6 @@ package com.starlight.intrepid;
 
 import com.jakewharton.byteunits.BinaryByteUnit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import com.starlight.intrepid.message.IMessage;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,8 +20,10 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 import java.util.stream.LongStream;
 
 import static org.junit.Assert.assertNotNull;
@@ -78,6 +79,8 @@ public class LargeTransfersTest {
 			for( MessageDigest digest : digests ) {
 				for ( long size : sizes ) {
 					for( int buffer_size : buffer_sizes ) {
+						if ( buffer_size == 10 && size >= 100_000_00 ) continue;
+
 						to_return.add(
 							new Args( size, thread_count, digest, buffer_size ) );
 					}
@@ -134,9 +137,21 @@ public class LargeTransfersTest {
 	}
 
 
+	@Test( timeout = 600000 )   // 10 min
+	public void viaDirectChannel() throws Exception {
+		runTest( true );
+	}
+
 
 	@Test( timeout = 600000 )   // 10 min
-	public void virtualByteChannel() throws Exception {
+	public void viaPullFromNormalMethodInvocation() throws Exception {
+		runTest( false );
+	}
+
+
+
+	private void runTest( boolean acceptor_on_server ) throws Exception {
+
 		CountDownLatch reader_latch = new CountDownLatch( args.threads );
 
 		List<String> read_error_list = Collections.synchronizedList( new ArrayList<>() );
@@ -157,51 +172,37 @@ public class LargeTransfersTest {
 		List<String> write_error_list = Collections.synchronizedList( new ArrayList<>() );
 
 
+		AtomicReference<LongSummaryStatistics> write_window_size_stat =
+			new AtomicReference<>( new LongSummaryStatistics() );
+		AtomicReference<LongSummaryStatistics> write_window_wait_stat =
+			new AtomicReference<>( new LongSummaryStatistics() );
+		AtomicReference<LongSummaryStatistics> read_size_stats =
+			new AtomicReference<>( new LongSummaryStatistics() );
+		AtomicReference<LongSummaryStatistics> read_wait_stats =
+			new AtomicReference<>( new LongSummaryStatistics() );
+
 		final long total_data_to_write = args.data_size * args.threads;
 
 		final AtomicLong total_read = new AtomicLong( 0 );
-		server_instance = Intrepid.create(
-			new IntrepidSetup()
-				.vmidHint( "server" )
-				.openServer()
-				.performanceListener( new PerformanceListener() {
-					@Override public void messageReceived( VMID source_vmid,
-						IMessage message ) {
 
-//						System.out.println( "Server received: " + message );
-					}
-				} )
-				.channelAcceptor(
-					new TestAcceptor( args.digest, error_consumer,
-						bps_consumer, total_read ) ) );
-		Integer server_port = server_instance.getServerPort();
-		assertNotNull( server_port );
-
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
-
-		// Connect to the server
-		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
-			server_port.intValue(), null, null );
-		assertNotNull( server_vmid );
+		Consumer<ByteChannel> read_consumer = channel -> {
+			try {
+				new ChannelReadThread( channel,
+					args.digest == null ? null : ( MessageDigest ) args.digest.clone(),
+					error_consumer, bps_consumer, total_read ).start();
+			}
+			catch ( CloneNotSupportedException e ) {
+				error_consumer.accept( e.toString() );
+			}
+		};
 
 		AtomicLong total_data_written = new AtomicLong( 0 );
-		Timer timer = new Timer( "Progress printer", true );
-		TimerTask write_task =
-			createProgressTask( "Write", total_data_to_write, total_data_written::get );
-		timer.scheduleAtFixedRate( write_task, 10000, 5000 );
-
-		TimerTask read_task =
-			createProgressTask( "Read", total_data_to_write, total_read::get );
-		timer.scheduleAtFixedRate( read_task, 10000, 5000 );
-
-		for( int i = 0; i < args.threads; i++ ) {
+		Consumer<ByteChannel> write_consumer = channel ->
 			new Thread( () -> {
 				ByteBuffer write_buffer = ByteBuffer.wrap( data_block );
 
 				long start = System.nanoTime();
-				try ( ByteChannel channel =
-					client_instance.createChannel( server_vmid, null ) ) {
-
+				try {
 					long remaining_bytes = args.data_size;
 					while ( remaining_bytes > 0 ) {
 						write_buffer
@@ -230,10 +231,139 @@ public class LargeTransfersTest {
 					ex.printStackTrace();
 				}
 				finally {
+					try {
+						channel.close();
+					}
+					catch ( Exception e ) {
+						// ignore
+					}
+
 					writer_latch.countDown();
 				}
 
-			}, "Writer " + i ).start();
+			}, "Writer: " + channel ).start();
+
+		// Build server instance
+		{
+			IntrepidSetup setup = new IntrepidSetup()
+				.vmidHint( "server" )
+				.openServer()
+				.performanceListener( new PerformanceListener() {
+					@Override public void virtualChannelDataReceived( VMID instance_vmid,
+						VMID peer_vmid, short channel_id, int bytes ) {
+
+						read_size_stats.get().accept( bytes );
+					}
+
+					@Override public void virtualChannelDataRead( short channel_id,
+						long wait_time_nanos ) {
+
+						read_wait_stats.get().accept( wait_time_nanos );
+					}
+				} );
+			if ( acceptor_on_server ) {
+				setup.channelAcceptor( new SimpleAcceptor( read_consumer ) );
+			}
+			server_instance = Intrepid.create( setup );
+
+			if ( !acceptor_on_server ) {
+				server_instance.getLocalRegistry().bind( "server",
+					( ServerInterface ) client_vmid -> {
+						try{
+							// NOTE: DON'T CLOSE (done in write consumer)
+							ByteChannel channel =
+								server_instance.createChannel( client_vmid, null );
+							read_consumer.accept( channel );
+						}
+						catch ( Exception ex ) {
+							write_error_list.add( ex.toString() );
+							ex.printStackTrace();
+						}
+					} );
+			}
+		}
+		Integer server_port = server_instance.getServerPort();
+		assertNotNull( server_port );
+
+		// Build client instance
+		{
+			IntrepidSetup setup = new IntrepidSetup()
+				.vmidHint( "client" )
+				.performanceListener( new PerformanceListener() {
+					private int active = -1;
+
+					@Override public void virtualChannelOpened( VMID instance_vmid,
+						VMID peer_vmid, short channel_id, int rx_window_size ) {
+
+						active = rx_window_size;
+						write_window_size_stat.get().accept( rx_window_size );
+					}
+
+					@Override public void virtualChannelDataAckReceived(
+						VMID instance_vmid, VMID peer_vmid, short channel_id,
+						short message_id, int new_window ) {
+
+						if ( new_window >= 0 ) active = new_window;
+
+						write_window_size_stat.get().accept( active );
+					}
+
+					@Override public void virtualChannelDataSent( VMID instance_vmid,
+						VMID peer_vmid, short channel_id, short message_id, int bytes,
+						long window_wait_time_nanos ) {
+
+						write_window_wait_stat.get().accept( window_wait_time_nanos );
+					}
+				} );
+			if ( !acceptor_on_server ) {
+				setup.channelAcceptor(
+					new SimpleAcceptor( write_consumer ) );
+			}
+			client_instance = Intrepid.create( setup );
+		}
+
+		// Connect to the server
+		VMID server_vmid = client_instance.tryConnect( InetAddress.getByName( "127.0.0.1" ),
+			server_port.intValue(), null, null, 10, TimeUnit.SECONDS );
+		assertNotNull( server_vmid );
+
+		Timer timer = new Timer( "Progress printer", true );
+		TimerTask write_task =
+			createProgressTask( "Write", total_data_to_write, total_data_written::get,
+				"write window size",
+				() -> write_window_size_stat.getAndSet( new LongSummaryStatistics() ),
+				"window wait",
+				() -> write_window_wait_stat.getAndSet( new LongSummaryStatistics() ) );
+		timer.scheduleAtFixedRate( write_task, 10000, 5000 );
+
+		TimerTask read_task =
+			createProgressTask( "Read ", total_data_to_write, total_read::get,
+				"read size",
+				() -> read_size_stats.getAndSet( new LongSummaryStatistics() ),
+				"wait",
+				() -> read_wait_stats.getAndSet( new LongSummaryStatistics() ) );
+		timer.scheduleAtFixedRate( read_task, 10000, 5000 );
+
+		for( int i = 0; i < args.threads; i++ ) {
+			new Thread( () -> {
+				if ( acceptor_on_server ) {
+					try {
+						write_consumer
+							.accept( client_instance.createChannel( server_vmid, null ) );
+					}
+					catch( Exception ex ) {
+						write_error_list.add( ex.toString() );
+						ex.printStackTrace();
+					}
+				}
+				else {
+					ServerInterface server_ifc = ( ServerInterface )
+						client_instance.getRemoteRegistry( server_vmid ).lookup( "server" );
+					// blocks until copy is done
+					server_ifc.openChannelFromServer( client_instance.getLocalVMID());
+				}
+
+			}, "Client Initiator " + i ).start();
 		}
 
 
@@ -258,6 +388,8 @@ public class LargeTransfersTest {
 			stats( write_stats ) + "   Read: " + stats( read_stats ) );
 	}
 
+
+
 	private String stats( DoubleSummaryStatistics stats ) {
 		if ( stats.getCount() == 1 ) {
 			return BinaryByteUnit.format( Math.round( stats.getAverage() ) ) + "/s";
@@ -272,35 +404,18 @@ public class LargeTransfersTest {
 	}
 
 
-	public class TestAcceptor implements ChannelAcceptor {
-		private final MessageDigest digest;
-		private final Consumer<String> error_message_consumer;
-		private final Consumer<Double> bps_consumer;
-		private final AtomicLong total_read;
+	class SimpleAcceptor implements ChannelAcceptor {
+		private final Consumer<ByteChannel> consumer;
 
-
-		TestAcceptor( @Nullable MessageDigest digest,
-			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer,
-			AtomicLong total_read ) {
-
-			this.digest = digest;
-			this.error_message_consumer = error_message_consumer;
-			this.bps_consumer = bps_consumer;
-			this.total_read = total_read;
+		SimpleAcceptor( Consumer<ByteChannel> consumer ) {
+			this.consumer = consumer;
 		}
 
 		@Override
 		public void newChannel( ByteChannel channel, VMID source_vmid,
 			Serializable attachment ) throws ChannelRejectedException {
 
-			try {
-				new ChannelReadThread( channel,
-					digest == null ? null : ( MessageDigest ) digest.clone(),
-					error_message_consumer, bps_consumer, total_read ).start();
-			}
-			catch ( CloneNotSupportedException e ) {
-				error_message_consumer.accept( e.toString() );
-			}
+			consumer.accept( channel );
 		}
 	}
 
@@ -312,8 +427,8 @@ public class LargeTransfersTest {
 		private final Consumer<Double> bps_consumer;
 		private final AtomicLong total_read;
 
-		private final byte[] read_buffer_array = new byte[ 256_000 ];
-		private final ByteBuffer read_buffer = ByteBuffer.wrap( read_buffer_array );
+		private final byte[] read_buffer_array;
+		private final ByteBuffer read_buffer;
 
 		ChannelReadThread( ByteChannel channel, @Nullable MessageDigest digest,
 			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer,
@@ -326,6 +441,16 @@ public class LargeTransfersTest {
 			this.error_message_consumer= error_message_consumer;
 			this.bps_consumer = bps_consumer;
 			this.total_read = total_read;
+
+			// NOTE TO SELF: Non-direct buffers seem to be faster
+//			if ( digest == null ) {
+//				read_buffer_array = null;
+//				read_buffer = ByteBuffer.allocateDirect( 256_000 );
+//			}
+//			else {
+				read_buffer_array = new byte[ 25_000 ];
+				read_buffer = ByteBuffer.wrap( read_buffer_array );
+//			}
 		}
 
 		@Override
@@ -389,7 +514,11 @@ public class LargeTransfersTest {
 
 
 	private static TimerTask createProgressTask( String name, long total,
-		LongSupplier done_supplier ) {
+		LongSupplier done_supplier,
+		String stats1_description,
+		Supplier<LongSummaryStatistics> stats1_supplier,
+		@Nullable String stats2_description,
+		@Nullable Supplier<LongSummaryStatistics> stats2_supplier ) {
 
 		return new TimerTask() {
 			private final AtomicLong last = new AtomicLong( 0 );
@@ -412,9 +541,29 @@ public class LargeTransfersTest {
 					NumberFormat.getPercentInstance().format( progress ) + "  - " +
 					BinaryByteUnit.format( done ) + " / " +
 					BinaryByteUnit.format( total ) + " - " +
-					BinaryByteUnit.format( Math.round( rate ) ) + "/s"
-				);
+					BinaryByteUnit.format( Math.round( rate ) ) + "/s  --- " +
+					statsString( stats1_description, stats1_supplier ) + "  " +
+					statsString( stats2_description, stats2_supplier ) );
+			}
+
+
+			private String statsString( @Nullable String description,
+				@Nullable Supplier<LongSummaryStatistics> supplier ) {
+
+				if ( supplier == null ) return "";
+
+				LongSummaryStatistics stats = supplier.get();
+				return description + ": " +
+					FORMATTER.format( stats.getAverage() );// +
+//					"(" + stats.getMin() + "-" + stats.getMax() + " x " +
+//					stats.getCount() + ")";
 			}
 		};
+	}
+
+
+
+	public interface ServerInterface {
+		void openChannelFromServer( VMID client_vmid );
 	}
 }

@@ -584,7 +584,7 @@ public class PerformanceListenerTest extends TestCase {
 
 		@Override
 		public void virtualChannelOpened( VMID instance_vmid, VMID peer_vmid,
-			short channel_id ) {
+			short channel_id, int rx_window_size ) {
 
 			if ( want_messages ) return;
 
@@ -619,7 +619,7 @@ public class PerformanceListenerTest extends TestCase {
 
 		@Override
 		public void virtualChannelDataSent( VMID instance_vmid, VMID peer_vmid,
-			short channel_id, short message_id, int bytes ) {
+			short channel_id, short message_id, int bytes, long window_wait_time_nanos ) {
 
 			if ( want_messages ) return;
 
