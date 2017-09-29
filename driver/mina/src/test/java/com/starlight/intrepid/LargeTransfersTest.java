@@ -52,12 +52,12 @@ public class LargeTransfersTest {
 			     1_000_000,
 			    10_000_000,
 			   100_000_000,
-//			 1_000_000_000,
-//	    	10_000_000_000L
+			 1_000_000_000,
+	    	10_000_000_000L
 		};
-		if ( System.getProperty( "intrepid.test.skip_slow" ) != null ) {
+		if ( System.getProperty( "intrepid.test.include_slow" ) == null ) {
 			sizes = LongStream.of( sizes )
-				.filter( s -> s <= 1_000_000 )
+				.filter( s -> s <= 10_000_000 )
 				.toArray();
 		}
 
@@ -78,8 +78,10 @@ public class LargeTransfersTest {
 		for ( int thread_count : thread_counts ) {
 			for( MessageDigest digest : digests ) {
 				for ( long size : sizes ) {
+					if ( thread_count > 1 && size >= 10_000_000) continue;
+
 					for( int buffer_size : buffer_sizes ) {
-						if ( buffer_size == 10 && size >= 100_000_00 ) continue;
+						if ( buffer_size == 10 && size >= 10_000_000 ) continue;
 
 						to_return.add(
 							new Args( size, thread_count, digest, buffer_size ) );
@@ -137,13 +139,13 @@ public class LargeTransfersTest {
 	}
 
 
-	@Test( timeout = 600000 )   // 10 min
+	@Test( timeout = 1200000 )   // 20 min
 	public void viaDirectChannel() throws Exception {
 		runTest( true );
 	}
 
 
-	@Test( timeout = 600000 )   // 10 min
+	@Test( timeout = 1200000 )   // 20 min
 	public void viaPullFromNormalMethodInvocation() throws Exception {
 		runTest( false );
 	}
@@ -222,7 +224,8 @@ public class LargeTransfersTest {
 
 					long end = System.nanoTime();
 
-					double write_bps = ( ( double ) args.data_size / ( double ) ( end - start ) ) *
+					double write_bps =
+						( ( double ) args.data_size / ( double ) ( end - start ) ) *
 						TimeUnit.SECONDS.toNanos( 1 );
 					write_bps_list.add( write_bps );
 				}
@@ -539,9 +542,9 @@ public class LargeTransfersTest {
 
 				System.out.println( "  " + name + " Progress: " +
 					NumberFormat.getPercentInstance().format( progress ) + "  - " +
-					BinaryByteUnit.format( done ) + " / " +
-					BinaryByteUnit.format( total ) + " - " +
-					BinaryByteUnit.format( Math.round( rate ) ) + "/s  --- " +
+					BinaryByteUnit.format( done ) + " of " +
+					BinaryByteUnit.format( total ) + " at " +
+					BinaryByteUnit.format( Math.round( rate ) ) + "/s      " +
 					statsString( stats1_description, stats1_supplier ) + "  " +
 					statsString( stats2_description, stats2_supplier ) );
 			}

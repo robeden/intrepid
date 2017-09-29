@@ -19,6 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  */
 interface VBCRxWindowReceiveControl {
+
 	void reserveInBuffer( @Nonnegative int bytes );
 
 	/**
@@ -65,6 +66,24 @@ interface VBCRxWindowReceiveControl {
 
 
 
+	static VBCRxWindowReceiveControl create( int initial_window_size ) {
+		String impl = System.getProperty( "intrepid.channel.window_control",
+			"ProportionalTimer" ).toLowerCase();
+		switch( impl ) {
+			case "ProportionalTimer":
+				return new ProportionalTimer( initial_window_size );
+
+			case "QuidProQuo":
+				return new QuidProQuo( initial_window_size );
+
+			default:
+				throw new IllegalArgumentException(
+					"Unknown VBCRxWindowReceiveControl implementation specified in " +
+					"'intrepid.channel.window_control': " + impl );
+		}
+	}
+
+
 
 	// Naïve implementation in which every message is ack'ed. This is likely to lead to
 	// Silly Window Syndrome.
@@ -89,6 +108,7 @@ interface VBCRxWindowReceiveControl {
 
 			if ( message_id == Integer.MIN_VALUE ) return;
 
+			//noinspection ResultOfMethodCallIgnored
 			ack_sender.send( ( short ) message_id, available.addAndGet( release_bytes ) );
 		}
 
@@ -163,7 +183,7 @@ interface VBCRxWindowReceiveControl {
 			if ( old_timer != null ) old_timer.cancel( false );
 
 			boolean schedule_timer = true;
-//			data_lock.lock();
+			data_lock.lock();
 			try {
 				if ( message_id == Integer.MIN_VALUE ) {
 					// Data associated outside a message context is tracked separately so
@@ -184,7 +204,7 @@ interface VBCRxWindowReceiveControl {
 				}
 			}
 			finally {
-//				data_lock.unlock();
+				data_lock.unlock();
 			}
 
 			if ( schedule_timer ) {

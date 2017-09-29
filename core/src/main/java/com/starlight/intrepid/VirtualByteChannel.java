@@ -41,7 +41,6 @@ import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Objects.requireNonNull;
 
@@ -61,7 +60,7 @@ class VirtualByteChannel implements ByteChannel {
 
 
 	// Put in the buffer to signal a "normal" close
-	private static final BufferToMessageWrapper CLOSED_FLAG = 
+	private static final BufferToMessageWrapper CLOSED_FLAG =
 		new BufferToMessageWrapper( ByteBuffer.allocate( 1 ) );
 
 
@@ -77,7 +76,6 @@ class VirtualByteChannel implements ByteChannel {
 		// Setting a random range so we hit rollover frequently
 		new Random().nextInt( Short.MAX_VALUE ) );
 
-	private final ReentrantLock read_operation_lock = new ReentrantLock();
 	private final BlockingQueue<BufferToMessageWrapper> read_buffer_queue =
 		new LinkedBlockingQueue<>();
 	private volatile BufferToMessageWrapper read_active_wrapper = null;
@@ -145,15 +143,11 @@ class VirtualByteChannel implements ByteChannel {
 		AtomicInteger ack_message = new AtomicInteger( Integer.MIN_VALUE );
 		long start = track_timings ? System.nanoTime() : 0;
 		int read;
-		read_operation_lock.lock();
 		try {
 			read = readIntoBuffer( buffer, ack_message );
 		}
 		catch( InterruptedException ex ) {
 			throw new InterruptedIOException();
-		}
-		finally {
-			read_operation_lock.unlock();
 		}
 		long read_time = track_timings ? System.nanoTime() - start : 0;
 
@@ -221,11 +215,11 @@ class VirtualByteChannel implements ByteChannel {
 		}
 
 		// Should never have a message ID which exists in the queue
-		assert read_buffer_queue.stream()
-			.noneMatch( wrapper -> wrapper.message_id == message_id ) :
-			"Attempting to put buffer with message ID " + message_id +
-			" into queue when it's already in the queue: " + read_buffer_queue +
-			". Last message ID was " + last_message_id;
+//		assert read_buffer_queue.stream()
+//			.noneMatch( wrapper -> wrapper.message_id == message_id ) :
+//			"Attempting to put buffer with message ID " + message_id +
+//			" into queue when it's already in the queue: " + read_buffer_queue +
+//			". Last message ID was " + last_message_id;
 		last_message_id = message_id;
 
 		read_buffer_queue.add(
@@ -298,8 +292,6 @@ class VirtualByteChannel implements ByteChannel {
 	private int readPiece( ByteBuffer dest_buffer, boolean need_data,
 		AtomicInteger ack_message ) throws IOException, InterruptedException {
 		
-		assert read_operation_lock.isHeldByCurrentThread();
-
 		if ( closed_locally ) throw new ClosedChannelException();
 
 		// See if there's a buffer active already
@@ -387,18 +379,6 @@ class VirtualByteChannel implements ByteChannel {
 
 	private void handleClose() {
 		closed_locally = true;
-
-		if ( read_active_wrapper == CLOSED_FLAG ) return;
-
-		read_operation_lock.lock();
-		try {
-			read_active_wrapper = CLOSED_FLAG;
-			read_buffer_queue.add( CLOSED_FLAG );   // ensure nothing is blocked on read
-		}
-		finally {
-			read_operation_lock.unlock();
-		}
-
 	}
 
 
