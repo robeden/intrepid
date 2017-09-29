@@ -9,7 +9,7 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
-## [1.7.2] - 2017-09-15
+## [1.7.2] - 2017-09-29
 ### Added
 - Added an option to `IntrepidSetup` to force the usage of protocol version 2 for
   outbound (i.e., client) connections due to a protocol negotiation bug in versions
@@ -20,6 +20,10 @@ real history will start at 1.7.0.
 ### Fixed
 - User authentication or other session initialization problems generated an NPE 
   during message encoding resulting in a "Session unexpectedly closed" error.
+- Fixed a number of logic errors with virtual byte channels. Performance is now improved
+  due to a smarter window ack algorithm. The algorithm may be changed via the system
+  property `intrepid.channel.window_control`. Possible options are `ProportionalTimer`
+  (the default) or `QuidProQuo`.
 
 ### Changed
 - Random time range used for reconnect attempts reduced from 1-10 seconds to 
