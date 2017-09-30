@@ -9,7 +9,7 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
-## [1.7.2] - 2017-09-29
+## [1.7.2] - 2017-09-30
 ### Added
 - Added an option to `IntrepidSetup` to force the usage of protocol version 2 for
   outbound (i.e., client) connections due to a protocol negotiation bug in versions
