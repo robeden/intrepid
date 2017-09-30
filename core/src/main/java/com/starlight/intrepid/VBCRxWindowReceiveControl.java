@@ -70,10 +70,10 @@ interface VBCRxWindowReceiveControl {
 		String impl = System.getProperty( "intrepid.channel.window_control",
 			"ProportionalTimer" ).toLowerCase();
 		switch( impl ) {
-			case "ProportionalTimer":
+			case "proportionaltimer":
 				return new ProportionalTimer( initial_window_size );
 
-			case "QuidProQuo":
+			case "quidproquo":
 				return new QuidProQuo( initial_window_size );
 
 			default:
