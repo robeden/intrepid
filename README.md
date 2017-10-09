@@ -7,8 +7,6 @@ and more transparent usage with more flexible control over sessions and security
 Any object implementing an interface can be used as a remote object with no changes. This
 allows even classes such as HashMap to be used remotely without any changes.
 
-For more information, see [the website](http://intrepid.starlight-systems.com).
-
 [![Javadocs](http://javadoc.io/badge/com.logicartisan.intrepid/intrepid-core.svg)](http://javadoc.io/doc/com.logicartisan.intrepid/intrepid-core)
 
 
