@@ -347,7 +347,7 @@ public class CommTest {
 
 
 		try {
-			server.testUnserializable( new UnserializableClass() );
+			server.testDoNothingForArg( new UnserializableClass() );
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -361,7 +361,7 @@ public class CommTest {
 		}
 
 		try {
-			server.testSerializationError( new SerializationErrorClass() );
+			server.testDoNothingForArg( new SerializationErrorClass() );
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -371,7 +371,7 @@ public class CommTest {
 		}
 
 		try {
-			server.testSerializationError2( new SerializationErrorClass2() );
+			server.testDoNothingForArg( new SerializationErrorClass2() );
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -409,6 +409,50 @@ public class CommTest {
 
 		try {
 			server.testSerializationReturnError2();
+			fail( "Shouldn't have been serializable" );
+		}
+		catch( IntrepidRuntimeException ex ) {
+			// This is good
+			assertNotNull( ex.getCause() );
+			assertTrue( ex.getCause() instanceof IOException );
+			assertNotNull( ex.getCause().getCause() );
+			assertEquals( "Test NullPointerException",
+				ex.getCause().getCause().getMessage() );
+		}
+	}
+
+	@Test
+	public void testNoClassDefOnDeserialize() throws Exception {
+		// Make sure we test the full stack. See comment on
+		// "Intrepid.disable_inter_instance_bridge" for more info.
+		IntrepidTesting.setInterInstanceBridgeDisabled( true );
+
+		server_instance = Intrepid.create(
+			new IntrepidSetup().vmidHint( "server" ).serverPort( 11751 ).openServer().driver(
+				createSPI( true ) ) );
+		ServerImpl original_instance =
+			new ServerImpl( true, server_instance.getLocalVMID() );
+		server_instance.getLocalRegistry().bind( "server", original_instance );
+
+		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
+				createSPI( false ) ) );
+
+		// Connect to the server
+		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
+			11751, null, null );
+		assertNotNull( server_vmid );
+
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
+		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+
+		// Lookup the server object
+		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
+		Server server = ( Server ) server_registry.lookup( "server" );
+		assertNotNull( server );
+
+
+		try {
+			server.testDoNothingForArg( new SerializationErrorClass3() );
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
@@ -730,9 +774,7 @@ public class CommTest {
 		void testUndeclaredRuntimeException();
 		void testUndeclaredError();
 
-		void testUnserializable( UnserializableClass obj );
-		void testSerializationError( SerializationErrorClass obj );
-		void testSerializationError2( SerializationErrorClass2 obj );
+		void testDoNothingForArg( Object obj );
 
 		UnserializableClass testUnserializableReturn();
 		SerializationErrorClass testSerializationReturnError();
@@ -818,14 +860,9 @@ public class CommTest {
 			throw new Error( "Test Error" );
 		}
 
-		@Override
-		public void testSerializationError( SerializationErrorClass obj ) {}
 
 		@Override
-		public void testUnserializable( UnserializableClass obj ) {}
-
-		@Override
-		public void testSerializationError2( SerializationErrorClass2 obj ) {}
+		public void testDoNothingForArg( Object obj ) {}
 
 		@Override
 		public SerializationErrorClass testSerializationReturnError() {
@@ -901,6 +938,18 @@ public class CommTest {
 		public void writeExternal( ObjectOutput out ) throws IOException {
 			throw new NullPointerException( "Test NullPointerException" );
 		}
+	}
+
+	public static class SerializationErrorClass3 implements Externalizable {
+		@Override
+		public void readExternal( ObjectInput in )
+			throws IOException, ClassNotFoundException {
+
+			throw new NoClassDefFoundError( "Pretend I couldn't load a class" );
+		}
+
+		@Override
+		public void writeExternal( ObjectOutput out ) throws IOException {}
 	}
 
 
