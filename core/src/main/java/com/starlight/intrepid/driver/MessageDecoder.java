@@ -221,10 +221,10 @@ public final class MessageDecoder {
 		}
 
 		if ( tracking_source.bytesRead() < length ) {
-			LOG.warn( "Read too few bytes. Expected: {} Read: {}",
+			// NOTE: This is a possibly normal case which can occur when data can't be
+			//       deserialized (i.e., user error).
+			LOG.debug( "Read too few bytes. Expected: {} Read: {}",
 				length, tracking_source.bytesRead() );
-			assert false :
-				"Too little data read: " + length + " < " + tracking_source.bytesRead();
 			while( tracking_source.bytesRead() < length ) {
 				tracking_source.get();
 			}

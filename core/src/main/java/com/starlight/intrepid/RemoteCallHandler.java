@@ -98,10 +98,6 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 	private static final InvokeCloseFlag SESSION_CLOSED_FLAG = new InvokeCloseFlag();
 
-	private static final InvokeNotAckedFlag NEVER_ACKED_FLAG =
-		new InvokeNotAckedFlag( false );
-	private static final InvokeNotAckedFlag SUBSEQUENT_NOT_ACKED_FLAG =
-		new InvokeNotAckedFlag( true );
 
 
 
@@ -1582,9 +1578,9 @@ class RemoteCallHandler implements InboundMessageHandler {
 		public void run() {
 			InvokeNotAckedFlag flag;
 			if ( received_an_ack ) {
-				flag = SUBSEQUENT_NOT_ACKED_FLAG;
+				flag = new InvokeNotAckedFlag( true );
 			}
-			else flag = NEVER_ACKED_FLAG;
+			else flag = new InvokeNotAckedFlag( false );
 
 
 			ack_handler_lock.lock();
