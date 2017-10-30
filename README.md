@@ -20,12 +20,12 @@ and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intr
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
   <artifactId>intrepid-core</artifactId>
-  <version>1.7.2</version>
+  <version>1.7.3</version>
 </dependency>
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
   <artifactId>intrepid-driver-mina</artifactId>
-  <version>1.7.2</version>
+  <version>1.7.3</version>
   <scope>runtime</scope>  <!-- runtime only -->
 </dependency>
 ```
