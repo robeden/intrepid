@@ -15,6 +15,7 @@ real history will start at 1.7.0.
   continually (due to appending to a singleton object).
 - Remove an "assert fail" call in a location which wasn't a logic error which was 
   preventing delivery of invocation failure responses.
+- Handle errors thrown during deserialization of message pieces.
 
 ## [1.7.2] - 2017-09-30
 ### Added

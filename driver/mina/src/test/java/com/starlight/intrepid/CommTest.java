@@ -456,6 +456,7 @@ public class CommTest {
 			fail( "Shouldn't have been serializable" );
 		}
 		catch( IntrepidRuntimeException ex ) {
+			ex.printStackTrace( System.out );
 			// This is good
 			assertNotNull( ex.getCause() );
 			assertTrue( ex.getCause() instanceof IOException );

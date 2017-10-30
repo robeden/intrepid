@@ -394,7 +394,7 @@ public final class MessageDecoder {
 					args[ i ] = readObject( buffer );
 				}
 			}
-			catch( Exception ex ) {
+			catch( Throwable ex ) {
 				LOG.info( "Unable to de-serialize method argument", ex );
 				// Write an error and return nothing
 				response_handler.sendMessage(
@@ -437,7 +437,7 @@ public final class MessageDecoder {
 
 				user_context = readObject( buffer );
 			}
-			catch( Exception ex ) {
+			catch( Throwable ex ) {
 				LOG.info( "Error de-serializing user context", ex );
 				// Write an error and return nothing
 				response_handler.sendMessage(
@@ -485,7 +485,7 @@ public final class MessageDecoder {
 				value = readObject( buffer );
 				is_thrown = has_thrown_value;
 			}
-			catch ( Exception e ) {
+			catch ( Throwable e ) {
 				value = e;
 				is_thrown = true;
 			}
@@ -556,7 +556,7 @@ public final class MessageDecoder {
 			}
 			else reconnect_token = null;
 		}
-		catch( Exception ex ) {
+		catch( Throwable ex ) {
 			LOG.warn( "Error while decoding session token change reconnect token", ex );
 			reconnect_token = null;
 		}
@@ -635,7 +635,7 @@ public final class MessageDecoder {
 			try {
 				attachment = readObject( buffer );
 			}
-			catch( Exception ex ) {
+			catch( Throwable ex ) {
 				LOG.warn( "Error while decoding channel init attachment", ex );
 
 				// Write an error, close the session and return nothing
