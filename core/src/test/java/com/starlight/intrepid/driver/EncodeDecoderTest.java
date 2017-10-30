@@ -13,6 +13,7 @@ import org.junit.runners.Parameterized;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.Assert.assertEquals;
 
@@ -54,6 +55,9 @@ public class EncodeDecoderTest {
 			new InvokeIMessage( 1, 2, "Name", 3,
 				new Object[] { "foo", "bar" }, info, true ),
 
+			new InvokeReturnIMessage( 1, "test", false, null, null ),
+			new InvokeReturnIMessage( 1, "test", false, 123, 9999L ),
+			new InvokeReturnIMessage( 1, new ComparableThrowable( "Test" ), true, null, null ),
 
 			new ChannelInitResponseIMessage( 0, 0 ),
 			new ChannelInitResponseIMessage( 10, Integer.MAX_VALUE ),
@@ -120,5 +124,37 @@ public class EncodeDecoderTest {
 			} );
 
 		assertEquals( message, new_message );
+	}
+
+
+
+
+	// Throwable and subclasses don't implement equals/hashCode, so this is an instance
+	// that will.
+	static class ComparableThrowable extends Throwable {
+		public ComparableThrowable( String message ) {
+			super( message );
+		}
+
+		@Override
+		public boolean equals( Object o ) {
+			if ( this == o ) return true;
+			if ( o == null || getClass() != o.getClass() ) return false;
+
+			ComparableThrowable that = ( ComparableThrowable ) o;
+
+			if ( !Objects.equals( getMessage(), that.getMessage() ) ) return false;
+			if ( !Arrays.equals( getStackTrace(), that.getStackTrace() ) ) return false;
+
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			int result = 0;
+			result = 31 * result + ( getMessage() != null ? getMessage().hashCode() : 0 );
+			result = 31 * result + ( Arrays.hashCode( getStackTrace() ) );
+			return result;
+		}
 	}
 }

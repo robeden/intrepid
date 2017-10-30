@@ -81,4 +81,35 @@ public class InvokeReturnIMessage implements IMessage {
 			", server_time=" + server_time_ns +
 			'}';
 	}
+
+
+
+	@Override
+	public boolean equals( Object o ) {
+		if ( this == o ) return true;
+		if ( o == null || getClass() != o.getClass() ) return false;
+
+		InvokeReturnIMessage that = ( InvokeReturnIMessage ) o;
+
+		if ( call_id != that.call_id ) return false;
+		if ( is_thrown != that.is_thrown ) return false;
+		if ( value != null ? !value.equals( that.value ) : that.value != null )
+			return false;
+		if ( new_object_id != null ? !new_object_id.equals( that.new_object_id ) :
+			that.new_object_id != null ) {
+			return false;
+		}
+		return server_time_ns != null ? server_time_ns.equals( that.server_time_ns ) :
+			that.server_time_ns == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = call_id;
+		result = 31 * result + ( value != null ? value.hashCode() : 0 );
+		result = 31 * result + ( is_thrown ? 1 : 0 );
+		result = 31 * result + ( new_object_id != null ? new_object_id.hashCode() : 0 );
+		result = 31 * result + ( server_time_ns != null ? server_time_ns.hashCode() : 0 );
+		return result;
+	}
 }
