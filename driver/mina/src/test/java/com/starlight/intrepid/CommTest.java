@@ -455,14 +455,12 @@ public class CommTest {
 			server.testDoNothingForArg( new SerializationErrorClass3() );
 			fail( "Shouldn't have been serializable" );
 		}
-		catch( IntrepidRuntimeException ex ) {
+		catch( ServerException ex ) {
 			ex.printStackTrace( System.out );
+
 			// This is good
 			assertNotNull( ex.getCause() );
-			assertTrue( ex.getCause() instanceof IOException );
-			assertNotNull( ex.getCause().getCause() );
-			assertEquals( "Test NullPointerException",
-				ex.getCause().getCause().getMessage() );
+			assertEquals( NoClassDefFoundError.class, ex.getCause().getClass() );
 		}
 	}
 
