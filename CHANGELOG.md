@@ -9,13 +9,15 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
-## [1.7.3] - 2017-10-30
+## [1.7.3] - 2017-10-31
 ### Fixed
 - Fixed an issue where the stack trace for method invocations which time out would grow
   continually (due to appending to a singleton object).
 - Remove an "assert fail" call in a location which wasn't a logic error which was 
   preventing delivery of invocation failure responses.
 - Handle errors thrown during deserialization of message pieces.
+- Fix bug where failing to decode a message (due to something like a deserialization
+  error) would block the receive queue and prevent further messages from being delivered.
 
 ## [1.7.2] - 2017-09-30
 ### Added

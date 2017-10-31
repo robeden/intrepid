@@ -35,6 +35,7 @@ import com.starlight.locale.ResourceKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
@@ -44,6 +45,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 
 /**
@@ -74,7 +76,9 @@ public final class MessageDecoder {
 	public static @Nullable IMessage decode( @Nonnull DataSource source,
 		@Nullable Byte proto_version,
 		@Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		throws MessageConsumedButInvalidException {
+
 
 		if ( LOG.isTraceEnabled() ) {
 			LOG.trace( "Decoder called: {}", source.hex() );
@@ -100,124 +104,14 @@ public final class MessageDecoder {
 
 		LOG.trace( "Message type: {} (proto version={})", message_type, proto_version );
 
-		final IMessage message;
-		if ( proto_version == null ) {
-			switch ( message_type ) {
-				case SESSION_INIT:
-					message = decodeSessionInit(
-						tracking_source, response_handler, vmid_creator );
-					break;
-
-				case SESSION_INIT_RESPONSE:
-					message = decodeSessionInitResponse(
-						tracking_source, response_handler, vmid_creator );
-					break;
-
-				case SESSION_CLOSE:
-					// A SessionClose will happen here for things like auth failure
-					message = decodeSessionClose( tracking_source );
-					break;
-
-				default:
-					LOG.warn( "Message type {} was received when the protocol version " +
-						"is unknown (session init incomplete?)", message_type );
-					response_handler.sendMessage(
-						new SessionCloseIMessage(
-							"Invalid message type: " + message_type, false ),
-						SessionCloseOption.ATTEMPT_FLUSH );
-					return null;
-			}
+		MessageConsumedButInvalidException invalid_message_exception = null;
+		IMessage message = null;
+		try {
+			message = decode0( message_type,
+				tracking_source, proto_version, response_handler, vmid_creator );
 		}
-		else {
-			switch ( message_type ) {
-				// NOTE: Allowing session init messages even if proto version is known.
-				//       Old intrepid versions allow re-init
-				case SESSION_INIT:
-					message = decodeSessionInit(
-						tracking_source, response_handler, vmid_creator );
-					break;
-
-				// NOTE: Allowing session init messages even if proto version is known.
-				//       Old intrepid versions allow re-init
-				case SESSION_INIT_RESPONSE:
-					message = decodeSessionInitResponse(
-						tracking_source, response_handler, vmid_creator );
-					break;
-
-				case SESSION_TOKEN_CHANGE:
-					message = decodeSessionTokenChange( proto_version, tracking_source );
-					break;
-
-				case SESSION_CLOSE:
-					message = decodeSessionClose( tracking_source );
-					break;
-
-				case INVOKE:
-					message = decodeInvoke( proto_version, tracking_source,
-						response_handler );
-					break;
-
-				case INVOKE_RETURN:
-					message = decodeInvokeReturn( proto_version, tracking_source );
-					break;
-
-				case INVOKE_INTERRUPT:
-					message = decodeInvokeInterrupt( proto_version, tracking_source );
-					break;
-
-				case INVOKE_ACK:
-					message = decodeInvokeAck( proto_version, tracking_source );
-					break;
-
-				case LEASE:
-					message = decodeLease( proto_version, tracking_source );
-					break;
-
-				case LEASE_RELEASE:
-					message = decodeLeaseRelease( proto_version, tracking_source );
-					break;
-
-				case CHANNEL_INIT:
-					message = decodeChannelInit( proto_version, tracking_source,
-						response_handler );
-					break;
-
-				case CHANNEL_INIT_RESPONSE:
-					message = decodeChannelInitResponse( proto_version, tracking_source );
-					break;
-
-				case CHANNEL_DATA:
-					try {
-						message = decodeChannelData( proto_version, tracking_source );
-					} catch ( EOFException e ) {
-						return null;           // Didn't have enough data
-					}
-					break;
-
-				case CHANNEL_DATA_ACK:
-					message = decodeChannelDataAck( proto_version, tracking_source );
-					break;
-
-				case CHANNEL_CLOSE:
-					message = decodeChannelClose( proto_version, tracking_source );
-					break;
-
-				case PING:
-					message = decodePing( proto_version, tracking_source );
-					break;
-
-				case PING_RESPONSE:
-					message = decodePingResponse( proto_version, tracking_source );
-					break;
-
-				default:
-					LOG.warn( "Unknown message type: {}", message_type );
-					response_handler.sendMessage(
-						new SessionCloseIMessage(
-							"Invalid message type: " + message_type, false ),
-						SessionCloseOption.ATTEMPT_FLUSH );
-					return null;
-			}
+		catch( MessageConsumedButInvalidException ex ) {
+			invalid_message_exception = ex;
 		}
 
 		if ( tracking_source.bytesRead() < length ) {
@@ -230,14 +124,152 @@ public final class MessageDecoder {
 			}
 		}
 
+		if ( invalid_message_exception != null ) throw invalid_message_exception;
+
+		return message;
+	}
+
+	private static @Nullable IMessage decode0(
+		@Nonnull IMessageType message_type,
+		@Nonnull DataSource source,
+		@Nullable Byte proto_version,
+		@Nonnull ResponseHandler response_handler,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		throws MessageConsumedButInvalidException {
+
+		final IMessage message;
+		if ( proto_version == null ) {
+			switch ( message_type ) {
+				case SESSION_INIT:
+					message = decodeSessionInit(
+						source, response_handler, vmid_creator );
+					break;
+
+				case SESSION_INIT_RESPONSE:
+					message = decodeSessionInitResponse(
+						source, response_handler, vmid_creator );
+					break;
+
+				case SESSION_CLOSE:
+					// A SessionClose will happen here for things like auth failure
+					message = decodeSessionClose( source );
+					break;
+
+				default:
+					LOG.warn( "Message type {} was received when the protocol version " +
+						"is unknown (session init incomplete?)", message_type );
+					response_handler.sendMessage(
+						new SessionCloseIMessage(
+							"Invalid message type: " + message_type, false ),
+						SessionCloseOption.ATTEMPT_FLUSH );
+					throw new MessageConsumedButInvalidException(
+						"Invalid message type (" + message_type +
+						") at negotation stage" );
+			}
+		}
+		else {
+			switch ( message_type ) {
+				// NOTE: Allowing session init messages even if proto version is known.
+				//       Old intrepid versions allow re-init
+				case SESSION_INIT:
+					message = decodeSessionInit(
+						source, response_handler, vmid_creator );
+					break;
+
+				// NOTE: Allowing session init messages even if proto version is known.
+				//       Old intrepid versions allow re-init
+				case SESSION_INIT_RESPONSE:
+					message = decodeSessionInitResponse(
+						source, response_handler, vmid_creator );
+					break;
+
+				case SESSION_TOKEN_CHANGE:
+					message = decodeSessionTokenChange( proto_version, source );
+					break;
+
+				case SESSION_CLOSE:
+					message = decodeSessionClose( source );
+					break;
+
+				case INVOKE:
+					message = decodeInvoke( proto_version, source,
+						response_handler );
+					break;
+
+				case INVOKE_RETURN:
+					message = decodeInvokeReturn( proto_version, source );
+					break;
+
+				case INVOKE_INTERRUPT:
+					message = decodeInvokeInterrupt( proto_version, source );
+					break;
+
+				case INVOKE_ACK:
+					message = decodeInvokeAck( proto_version, source );
+					break;
+
+				case LEASE:
+					message = decodeLease( proto_version, source );
+					break;
+
+				case LEASE_RELEASE:
+					message = decodeLeaseRelease( proto_version, source );
+					break;
+
+				case CHANNEL_INIT:
+					message = decodeChannelInit( proto_version, source,
+						response_handler );
+					break;
+
+				case CHANNEL_INIT_RESPONSE:
+					message = decodeChannelInitResponse( proto_version, source );
+					break;
+
+				case CHANNEL_DATA:
+					try {
+						message = decodeChannelData( proto_version, source );
+					}
+					catch ( EOFException e ) {
+						return null;           // Didn't have enough data
+					}
+					break;
+
+				case CHANNEL_DATA_ACK:
+					message = decodeChannelDataAck( proto_version, source );
+					break;
+
+				case CHANNEL_CLOSE:
+					message = decodeChannelClose( proto_version, source );
+					break;
+
+				case PING:
+					message = decodePing( proto_version, source );
+					break;
+
+				case PING_RESPONSE:
+					message = decodePingResponse( proto_version, source );
+					break;
+
+				default:
+					LOG.warn( "Unknown message type: {}", message_type );
+					response_handler.sendMessage(
+						new SessionCloseIMessage(
+							"Invalid message type: " + message_type, false ),
+						SessionCloseOption.ATTEMPT_FLUSH );
+					throw new MessageConsumedButInvalidException(
+						"Unknown message type: " + message_type );
+			}
+		}
+
 		return message;
 	}
 
 
 	// NOTE: protocol version is unknown
-	private static SessionInitIMessage decodeSessionInit( @Nonnull DataSource buffer,
-		@Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+	private static @Nonnull SessionInitIMessage decodeSessionInit(
+		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler,
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		throws MessageConsumedButInvalidException {
 
 		// VERSION
 		byte version = buffer.get();
@@ -258,14 +290,9 @@ public final class MessageDecoder {
 			connection_args = readPossiblyModernObject( version < 4, true, buffer );
 		}
 		catch( Exception ex ) {
-			LOG.info( "Error while decoding session init vmid/args", ex );
-
-			// Write an error, close the session and return nothing
-			response_handler.sendMessage(
-				new SessionCloseIMessage(
-					"Unable to de-serialize session init info: " + ex.toString(), false ),
-				SessionCloseOption.ATTEMPT_FLUSH );
-			return null;
+			throw handleDeserializationError( "vmid", ex,
+				response_handler,
+				msg -> new SessionCloseIMessage( msg, false ) );
 		}
 
 		// SERVER PORT
@@ -284,8 +311,9 @@ public final class MessageDecoder {
 				reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
 			}
 			catch( Exception ex ) {
-				LOG.info( "Error while decoding session init reconnect token", ex );
-				reconnect_token = null;
+				throw handleDeserializationError( "reconnect token", ex,
+					response_handler,
+					msg -> new SessionCloseIMessage( msg, false ) );
 			}
 		}
 
@@ -302,7 +330,8 @@ public final class MessageDecoder {
 	private static SessionInitResponseIMessage decodeSessionInitResponse(
 		@Nonnull DataSource buffer,
 		@Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		throws MessageConsumedButInvalidException {
 
 		// VERSION
 		byte version = buffer.get();
@@ -316,14 +345,9 @@ public final class MessageDecoder {
 			vmid = readVMID( version < 4, buffer, vmid_creator );
 		}
 		catch( Exception ex ) {
-			LOG.info( "Error while decoding session init response vmid", ex );
-
-			// Write an error, close the session and return nothing
-			response_handler.sendMessage(
-				new SessionCloseIMessage(
-					"Unable to de-serialize session init info: " + ex, false ),
-				SessionCloseOption.ATTEMPT_FLUSH );
-			return null;
+			throw handleDeserializationError( "vmid", ex,
+				response_handler,
+				msg -> new SessionCloseIMessage( msg, false ) );
 		}
 
 		// SERVER PORT
@@ -342,9 +366,9 @@ public final class MessageDecoder {
 				reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
 			}
 			catch( Exception ex ) {
-				LOG.info( "Error while decoding session init response " +
-					"reconnect token", ex );
-				reconnect_token = null;
+				throw handleDeserializationError( "reconnect token", ex,
+					response_handler,
+					msg -> new SessionCloseIMessage( msg, false ) );
 			}
 		}
 
@@ -358,8 +382,14 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeIMessage decodeInvoke( byte proto_version,
-		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler ) {
+
+	/**
+	 * @return      The message or {@code null} if the message is invalid. In that case,
+	 *              an appropriate response will have been sent.
+	 */
+	private static @Nonnull InvokeIMessage decodeInvoke( byte proto_version,
+		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler )
+		throws MessageConsumedButInvalidException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -387,21 +417,19 @@ public final class MessageDecoder {
 		Object[] args;
 		if ( !has_args ) args = null;
 		else {
-			try {
-				int length = buffer.get() & 0xFF;					// WARNING: Max of 255
-				args = new Object[ length ];
-				for( int i = 0; i < args.length; i++ ) {
+			int length = buffer.get() & 0xFF;					// WARNING: Max of 255
+			args = new Object[ length ];
+			for( int i = 0; i < args.length; i++ ) {
+				try {
 					args[ i ] = readObject( buffer );
 				}
-			}
-			catch( Throwable ex ) {
-				LOG.info( "Unable to de-serialize method argument", ex );
-				// Write an error and return nothing
-				response_handler.sendMessage(
-					new InvokeReturnIMessage( call_id,
-						new ServerException( "Error de-serializing method argument", ex ),
-						true, null, null ), null );
-				return null;
+				catch( Throwable ex ) {
+					throw handleDeserializationError( "method argument " + i, ex,
+						response_handler,
+						msg -> new InvokeReturnIMessage( call_id,
+							new ServerException( msg, ex ),
+							true, null, null ) );
+				}
 			}
 		}
 
@@ -417,13 +445,11 @@ public final class MessageDecoder {
 				LOG.trace( "  decoded persistent name: {}", persistent_name );
 			}
 			catch ( CharacterCodingException ex ) {
-				LOG.info( "Error decoding object persistent name", ex );
-				// Write an error and return nothing
-				response_handler.sendMessage(
-					new InvokeReturnIMessage( call_id,
-						new ServerException( "Error decoding object persistent name", ex ),
-						true, null, null ), null );
-				return null;
+				throw handleDeserializationError( "object persistent name", ex,
+					response_handler,
+					msg -> new InvokeReturnIMessage( call_id,
+						new ServerException( msg, ex ),
+						true, null, null ) );
 			}
 		}
 
@@ -438,13 +464,11 @@ public final class MessageDecoder {
 				user_context = readObject( buffer );
 			}
 			catch( Throwable ex ) {
-				LOG.info( "Error de-serializing user context", ex );
-				// Write an error and return nothing
-				response_handler.sendMessage(
-					new InvokeReturnIMessage( call_id,
-						new ServerException( "Error de-serializing user context", ex ),
-						true, null, null ), null );
-				return null;
+				throw handleDeserializationError( "user context", ex,
+					response_handler,
+					msg -> new InvokeReturnIMessage( call_id,
+						new ServerException( msg, ex ),
+						true, null, null ) );
 			}
 		}
 
@@ -453,8 +477,8 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeReturnIMessage decodeInvokeReturn( byte proto_version,
-		@Nonnull DataSource buffer ) {
+	private static @Nonnull InvokeReturnIMessage decodeInvokeReturn( byte proto_version,
+		@Nonnull DataSource buffer ) throws MessageConsumedButInvalidException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -486,6 +510,8 @@ public final class MessageDecoder {
 				is_thrown = has_thrown_value;
 			}
 			catch ( Throwable e ) {
+				LOG.warn( "Error de-serializing return value for call {}", call_id, e );
+
 				value = e;
 				is_thrown = true;
 			}
@@ -509,7 +535,7 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeInterruptIMessage decodeInvokeInterrupt(
+	private static @Nonnull InvokeInterruptIMessage decodeInvokeInterrupt(
 		byte proto_version, @Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -524,7 +550,7 @@ public final class MessageDecoder {
 	}
 
 
-	private static InvokeAckIMessage decodeInvokeAck( byte proto_version,
+	private static @Nonnull InvokeAckIMessage decodeInvokeAck( byte proto_version,
 		@Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -539,8 +565,9 @@ public final class MessageDecoder {
 	}
 
 
-	private static SessionTokenChangeIMessage decodeSessionTokenChange(
-		byte proto_version, @Nonnull DataSource buffer ) {
+	private static @Nonnull SessionTokenChangeIMessage decodeSessionTokenChange(
+		byte proto_version, @Nonnull DataSource buffer )
+		throws MessageConsumedButInvalidException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -557,15 +584,15 @@ public final class MessageDecoder {
 			else reconnect_token = null;
 		}
 		catch( Throwable ex ) {
-			LOG.warn( "Error while decoding session token change reconnect token", ex );
-			reconnect_token = null;
+			throw handleDeserializationError(
+				"session token change reconnect token", ex );
 		}
 
 		return new SessionTokenChangeIMessage( reconnect_token );
 	}
 
 
-	private static SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) {
+	private static @Nonnull SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) {
 		// VERSION or PROTOCOL_VERSION
 		byte version_or_protocol_version = buffer.get();
 
@@ -583,7 +610,7 @@ public final class MessageDecoder {
 	}
 
 
-	private static LeaseIMessage decodeLease( byte proto_version,
+	private static @Nonnull LeaseIMessage decodeLease( byte proto_version,
 		@Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -600,7 +627,7 @@ public final class MessageDecoder {
 		return new LeaseIMessage( oids );
 	}
 
-	private static LeaseReleaseIMessage decodeLeaseRelease( byte proto_version,
+	private static @Nonnull LeaseReleaseIMessage decodeLeaseRelease( byte proto_version,
 		@Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -618,7 +645,11 @@ public final class MessageDecoder {
 	}
 
 
-	private static ChannelInitIMessage decodeChannelInit( byte proto_version,
+	/**
+	 * @return      The message or {@code null} if the message is invalid. In that case,
+	 *              an appropriate response will have been sent.
+	 */
+	private static @Nullable ChannelInitIMessage decodeChannelInit( byte proto_version,
 		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler ) {
 
 		if ( proto_version < 3 ) {
@@ -684,7 +715,7 @@ public final class MessageDecoder {
 		}
 	}
 
-	private static ChannelDataIMessage decodeChannelData( byte proto_version,
+	private static @Nonnull ChannelDataIMessage decodeChannelData( byte proto_version,
 		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
@@ -709,7 +740,7 @@ public final class MessageDecoder {
 		return ChannelDataIMessage.create( channel_id, message_id, data_buffer );
 	}
 
-	private static ChannelDataAckIMessage decodeChannelDataAck(
+	private static @Nonnull ChannelDataAckIMessage decodeChannelDataAck(
 		byte proto_version, @Nonnull DataSource buffer ) {
 
 		assert proto_version >= 3 :
@@ -740,7 +771,7 @@ public final class MessageDecoder {
 		return new ChannelDataAckIMessage( channel_id, message_id, new_window_size );
 	}
 
-	private static ChannelCloseIMessage decodeChannelClose( byte proto_version,
+	private static @Nonnull ChannelCloseIMessage decodeChannelClose( byte proto_version,
 		@Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -754,7 +785,7 @@ public final class MessageDecoder {
 		return new ChannelCloseIMessage( channel_id );
 	}
 
-	private static PingIMessage decodePing( byte proto_version,
+	private static @Nonnull PingIMessage decodePing( byte proto_version,
 		@Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -768,7 +799,7 @@ public final class MessageDecoder {
 		return new PingIMessage( seq_number );
 	}
 
-	private static PingResponseIMessage decodePingResponse( byte proto_version,
+	private static @Nonnull PingResponseIMessage decodePingResponse( byte proto_version,
 		@Nonnull DataSource buffer ) {
 
 		if ( proto_version < 3 ) {
@@ -959,5 +990,39 @@ public final class MessageDecoder {
 				return ( T ) in.readObject();
 			}
 		}
+	}
+
+
+	@CheckReturnValue
+	private static MessageConsumedButInvalidException handleDeserializationError(
+		@Nonnull String attribute_name, @Nonnull Throwable cause )  {
+
+		LOG.info( "Error de-serializing {}", attribute_name, cause );
+		return new MessageConsumedButInvalidException(
+			"Unable to decode " + attribute_name, cause );
+	}
+
+	/**
+	 * @param message_builder       Given error text, build a suitable response message.
+	 *                              If the message is a {@code SessionCloseIMessage},
+	 *                              the session will be closed (after attempting to flush
+	 *                              the message).
+	 */
+	@CheckReturnValue
+	private static MessageConsumedButInvalidException handleDeserializationError(
+		@Nonnull String attribute_name, @Nonnull Throwable cause,
+		@Nonnull ResponseHandler response_handler,
+		@Nonnull Function<String,IMessage> message_builder ) {
+
+		IMessage message_to_send =
+			message_builder.apply( "Error de-serializing " + attribute_name );
+
+		SessionCloseOption close_option = null;
+		if ( message_to_send instanceof SessionCloseIMessage ) {
+			close_option = SessionCloseOption.ATTEMPT_FLUSH;
+		}
+		response_handler.sendMessage( message_to_send, close_option );
+
+		return handleDeserializationError( attribute_name, cause );
 	}
 }

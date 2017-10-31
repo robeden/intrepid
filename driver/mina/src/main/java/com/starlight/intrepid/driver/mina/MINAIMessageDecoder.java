@@ -26,10 +26,7 @@
 package com.starlight.intrepid.driver.mina;
 
 import com.starlight.intrepid.VMID;
-import com.starlight.intrepid.driver.DataSource;
-import com.starlight.intrepid.driver.MessageDecoder;
-import com.starlight.intrepid.driver.SessionCloseOption;
-import com.starlight.intrepid.driver.SessionInfo;
+import com.starlight.intrepid.driver.*;
 import com.starlight.intrepid.message.IMessage;
 import org.apache.mina.core.buffer.IoBuffer;
 import org.apache.mina.core.session.IoSession;
@@ -109,6 +106,10 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 				out.write( message );
 				return true;
 			}
+		}
+		catch( MessageConsumedButInvalidException ex ) {
+			LOG.debug( "Invalid message consumed: {}", ex.getMessage() );
+			return true;
 		}
 		catch( Exception ex ) {
 			LOG.warn( "Error during decode", ex );

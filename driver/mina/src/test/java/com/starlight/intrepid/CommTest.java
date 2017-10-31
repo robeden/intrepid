@@ -421,7 +421,7 @@ public class CommTest {
 		}
 	}
 
-	@Test
+	@Test( timeout = 5000 )
 	public void testNoClassDefOnDeserialize() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -462,6 +462,14 @@ public class CommTest {
 			assertNotNull( ex.getCause() );
 			assertEquals( NoClassDefFoundError.class, ex.getCause().getClass() );
 		}
+
+
+		// NOTE (10/31/2017): What we saw here was that the error was caught and passed
+		//                    back correctly but that it jammed up all future messages
+		//                    because the original message wasn't properly consumed...
+		//                    or something... I'll tell you when I figure it out.
+		// This should now succeed
+		assertEquals( "Message from server", server.getMessage() );
 	}
 
 
