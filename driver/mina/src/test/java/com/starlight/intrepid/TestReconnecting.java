@@ -25,8 +25,10 @@ public class TestReconnecting {
 	private static void runServer() throws Exception {
 		System.out.println( "Running server..." );
 
-		Intrepid instance =
-			Intrepid.create( new IntrepidSetup().openServer().serverPort( 11751 ) );
+		Intrepid instance = Intrepid.newBuilder()
+			.openServer()
+			.serverPort( 11751 )
+			.build();
 
 		instance.addConnectionListener( new ConnectionListener() {
 			@Override
@@ -70,7 +72,7 @@ public class TestReconnecting {
 	private static void runClient() throws Exception {
 		System.out.println( "Running client..." );
 
-		final Intrepid intrepid = Intrepid.create( new IntrepidSetup() );
+		final Intrepid intrepid = Intrepid.newBuilder().build();
 
 		System.out.println( "Connecting to 127.0.0.1:11751...");
 

@@ -29,10 +29,10 @@ public class CallArgSerializationTest extends TestCase {
 
 	@Override
 	protected void setUp() throws Exception {
-		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		server_instance = Intrepid.newBuilder().openServer().build();
 		server_instance.getLocalRegistry().bind( "copy", new BasicCopyServer() );
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_instance.getServerPort().intValue(), null, null );
 		copy_server = ( CopyServer ) client_instance.getRemoteRegistry(

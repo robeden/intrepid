@@ -25,7 +25,10 @@
 
 package com.starlight.intrepid.auth;
 
-import com.starlight.intrepid.*;
+import com.starlight.intrepid.CommTest;
+import com.starlight.intrepid.Intrepid;
+import com.starlight.intrepid.IntrepidTesting;
+import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.exception.ConnectionFailureException;
 import org.junit.After;
 import org.junit.Assert;
@@ -59,14 +62,16 @@ public class AuthTest {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 
-		server_instance = Intrepid.create( new IntrepidSetup().vmidHint( "server" )
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
 			.serverPort( 0 )
-			.authHandler( new UserTestAuthenticationHandler() ) );
+			.authHandler( new UserTestAuthenticationHandler() )
+			.build();
 		CommTest.ServerImpl original_instance =
 			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 	}
 
 

@@ -64,11 +64,11 @@ public class ReconnectTest extends TestCase {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
 		assertNotNull( port );
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -104,8 +104,10 @@ public class ReconnectTest extends TestCase {
 			fail( "Unexpected exception: " + ex );
 		}
 
-		server_instance = Intrepid.create( new IntrepidSetup().serverPort(
-			port.intValue() ).openServer() );
+		server_instance = Intrepid.newBuilder()
+			.serverPort( port.intValue() )
+			.openServer()
+			.build();
 		System.out.println( "Server instance recreated: " + port );
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
@@ -135,11 +137,11 @@ public class ReconnectTest extends TestCase {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
 		assertNotNull( port );
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -194,8 +196,10 @@ public class ReconnectTest extends TestCase {
 			// This is good
 		}
 
-		server_instance = Intrepid.create( new IntrepidSetup().serverPort(
-			port.intValue() ).openServer() );
+		server_instance = Intrepid.newBuilder()
+			.serverPort( port.intValue() )
+			.openServer()
+			.build();
 		System.out.println( "Server instance recreated: " + port );
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
@@ -226,11 +230,11 @@ public class ReconnectTest extends TestCase {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
 		assertNotNull( port );
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 
 		final AtomicBoolean new_connection_flag = new AtomicBoolean( false );
 		client_instance.addConnectionListener( new ConnectionListener() {
@@ -279,11 +283,11 @@ public class ReconnectTest extends TestCase {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
 		assertNotNull( port );
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 
 		final AtomicInteger connections = new AtomicInteger( 0 );
 		client_instance.addConnectionListener( new ConnectionListener() {
@@ -362,14 +366,14 @@ public class ReconnectTest extends TestCase {
 
 		EasyMock.replay( mock_auth_handler );
 
-		IntrepidSetup setup = new IntrepidSetup();
+		Intrepid.Builder setup = Intrepid.newBuilder();
 		setup.authHandler( mock_auth_handler );
 		setup.serverPort( 0 );
-		server_instance = Intrepid.create( setup );
+		server_instance = setup.build();
 		Integer port = server_instance.getServerPort();
 		assertNotNull( port );
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -412,7 +416,7 @@ public class ReconnectTest extends TestCase {
 		ThreadKit.sleep( 1000 );
 
 		setup.serverPort( port.intValue() );
-		server_instance = Intrepid.create( setup );
+		server_instance = setup.build();
 		System.out.println( "Server instance recreated: " + port );
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 

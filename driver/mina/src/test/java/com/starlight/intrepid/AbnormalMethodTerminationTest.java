@@ -1,9 +1,9 @@
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.exception.InterruptedCallException;
-import com.starlight.intrepid.exception.ServerException;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
+import com.starlight.intrepid.exception.InterruptedCallException;
+import com.starlight.intrepid.exception.ServerException;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
@@ -29,12 +29,15 @@ public class AbnormalMethodTerminationTest extends TestCase {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).serverPort( 11751 ).openServer() );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.build();
 		ServerImpl original_instance = new ServerImpl();
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),

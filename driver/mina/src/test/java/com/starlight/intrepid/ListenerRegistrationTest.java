@@ -44,14 +44,14 @@ public class ListenerRegistrationTest extends TestCase {
 
 
 	public void testKeepListenerRegistered() throws Exception {
-		server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.newBuilder().openServer().build();
 		int server_port = server.getServerPort().intValue();
 
 		Server server_mock = Mockito.mock( Server.class );
 		server.getLocalRegistry().bind( "server", server_mock );
 
 
-		client = Intrepid.create( new IntrepidSetup() );
+		client = Intrepid.newBuilder().build();
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
@@ -95,8 +95,10 @@ public class ListenerRegistrationTest extends TestCase {
 			Mockito.verifyNoMoreInteractions( server_mock );
 
 			// Bring the server back
-			server = Intrepid.create(
-				new IntrepidSetup().openServer().serverPort( server_port ) );
+			server = Intrepid.newBuilder()
+				.openServer()
+				.serverPort( server_port )
+				.build();
 			server.getLocalRegistry().bind( "server", server_mock );
 
 			// Make sure we get the add call
@@ -135,7 +137,7 @@ public class ListenerRegistrationTest extends TestCase {
 
 	@SuppressWarnings( "AutoBoxing" )
 	public void testKeepListenerRegisteredWithReturn() throws Exception {
-		server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.newBuilder().openServer().build();
 		int server_port = server.getServerPort().intValue();
 
 		Server server_mock = Mockito.mock( Server.class );
@@ -147,7 +149,7 @@ public class ListenerRegistrationTest extends TestCase {
 		//noinspection unchecked
 		Consumer<Integer> consumer_mock = Mockito.mock( Consumer.class );
 
-		client = Intrepid.create( new IntrepidSetup() );
+		client = Intrepid.newBuilder().build();
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
@@ -193,8 +195,10 @@ public class ListenerRegistrationTest extends TestCase {
 			Mockito.verifyNoMoreInteractions( consumer_mock );
 
 			// Bring the server back
-			server = Intrepid.create(
-				new IntrepidSetup().openServer().serverPort( server_port ) );
+			server = Intrepid.newBuilder()
+				.openServer()
+				.serverPort( server_port )
+				.build();
 			server.getLocalRegistry().bind( "server", server_mock );
 
 			// Make sure we get the add call
@@ -234,7 +238,7 @@ public class ListenerRegistrationTest extends TestCase {
 
 
 	public void testKeepListenerRegistered_exceptionRetry() throws Exception {
-		server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.newBuilder().openServer().build();
 		int server_port = server.getServerPort().intValue();
 
 		AtomicBoolean temp_unbound_from_registry = new AtomicBoolean( false );
@@ -256,7 +260,7 @@ public class ListenerRegistrationTest extends TestCase {
 		server.getLocalRegistry().bind( "server", server_impl );
 
 
-		client = Intrepid.create( new IntrepidSetup() );
+		client = Intrepid.newBuilder().build();
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
@@ -290,8 +294,7 @@ public class ListenerRegistrationTest extends TestCase {
 
 		// Bring the server back... BUT DON'T SERVER BIND TO REGISTRY
 		temp_unbound_from_registry.set( true );
-		server = Intrepid.create(
-			new IntrepidSetup().openServer().serverPort( server_port ) );
+		server = Intrepid.newBuilder().openServer().serverPort( server_port ).build();
 
 		// Wait a while and make sure we're still not connected
 		for( int i = 0; i < 5; i++ ) {     // 5 seconds

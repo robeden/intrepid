@@ -53,9 +53,10 @@ public class SessionInitBypassTest {
 			}
 		};
 
-		server = Intrepid.create( new IntrepidSetup()
+		server = Intrepid.newBuilder()
 			.openServer()
-			.performanceListener( perf_listener ) );
+			.performanceListener( perf_listener )
+			.build();
 
 		method_invoked = new AtomicBoolean( false );
 		indicated_in_call = new AtomicBoolean( false );

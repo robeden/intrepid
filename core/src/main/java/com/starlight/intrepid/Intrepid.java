@@ -30,7 +30,10 @@ import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.starlight.intrepid.auth.AuthenticationHandler;
 import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.auth.PreInvocationValidator;
 import com.starlight.intrepid.driver.IntrepidDriver;
+import com.starlight.intrepid.driver.NoAuthenticationHandler;
+import com.starlight.intrepid.driver.UnitTestHook;
 import com.starlight.intrepid.exception.ChannelRejectedException;
 import com.starlight.intrepid.exception.ConnectionFailureException;
 import com.starlight.intrepid.exception.IntrepidRuntimeException;
@@ -44,7 +47,7 @@ import java.net.UnknownHostException;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -53,6 +56,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.ToIntFunction;
+
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -97,100 +103,9 @@ public class Intrepid {
 	private volatile boolean closed = false;
 
 
-	/**
-	 * Initialize Intrepid with the SPI to implement the lower-level communication
-	 * mechanism.
-	 *
-	 * @param setup 		Builder object containing the settings for the instance.
-	 * 						Null will create an instance with the default settings for
-	 * 						client usage.
-	 *
-	 * @throws IllegalStateException    If already initialized (without being shut down).
-	 * @throws IOException				If an error occurs when initializing the SPI
-	 *                                  driver. This generally means server socket setup.
-	 */
-	public static Intrepid create( IntrepidSetup setup )
-		throws IOException {
 
-		if ( setup == null ) setup = new IntrepidSetup();
-
-		IntrepidDriver driver = setup.getDriver();
-		if ( driver == null ) {
-			try {
-				driver = ( IntrepidDriver ) Class.forName(
-					"com.starlight.intrepid.driver.mina.MINAIntrepidDriver" ).newInstance();
-			}
-			catch( Exception ex ) {
-				throw new UnsupportedOperationException( "Unable to find a default " +
-					"driver. Either a known driver is needed in the classpath or " +
-					"a driver will need to be manually specified." );
-			}
-		}
-
-		ScheduledExecutor thread_pool = setup.getThreadPool();
-		if ( thread_pool == null ) {
-			thread_pool = SharedThreadPool.INSTANCE;
-		}
-
-		InetAddress server_address = setup.getServerAddress();
-		Integer server_port = setup.getServerPort();
-		AuthenticationHandler auth_handler = setup.getAuthHandler();
-		String vmid_hint = setup.getVMIDHint();
-		if ( vmid_hint == null ) {
-			if ( server_address != null ) vmid_hint = server_address.getHostAddress();
-			else {
-				try {
-					InetAddress local_host = InetAddress.getLocalHost();
-					if ( !local_host.isLoopbackAddress() ) {
-						vmid_hint = local_host.getHostAddress();
-					}
-				}
-				catch ( UnknownHostException ex ) {
-					// ignore
-				}
-			}
-		}
-
-		ListenerSupport<ConnectionListener,?> connection_listeners =
-			ListenerSupport.forType( ConnectionListener.class ).build();
-		if ( setup.getConnectionListener() != null ) {
-			connection_listeners.add( setup.getConnectionListener() );
-		}
-
-		ListenerSupport<PerformanceListener,?> performance_listeners =
-			ListenerSupport.forType( PerformanceListener.class ).build();
-		final PerformanceListener perf_listener = setup.getPerformanceListener();
-		if ( perf_listener != null ) {
-			performance_listeners.add( perf_listener );
-		}
-
-		VMID vmid = new VMID( UUID.randomUUID(), vmid_hint );
-
-		// Create handlers
-		LocalCallHandler local_handler = new LocalCallHandler( vmid,
-			performance_listeners.dispatch(), setup.getPreInvocationValidator(),
-			setup.getProxyClassFilter() );
-		//noinspection deprecation
-		RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
-			local_handler, vmid, thread_pool, performance_listeners,
-			setup.getChannelAcceptor(), setup.getChannelRxWindowSizeFunction(),
-			setup.forceProtoVersion2() );
-
-		// Init SPI
-		driver.init( server_address, server_port, vmid_hint, remote_handler,
-			connection_listeners.dispatch(), thread_pool, vmid,
-			ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch(),
-			setup.getUnitTestHook(), VMID::new );
-
-		Intrepid instance = new Intrepid( driver, vmid, local_handler, remote_handler,
-			connection_listeners, performance_listeners );
-
-		local_handler.initInstance( instance );
-		remote_handler.initInstance( instance );
-
-		INSTANCE_LISTENERS.dispatch().instanceOpened( vmid, instance );
-
-		return instance;
+	public static Builder newBuilder() {
+		return new Builder();
 	}
 
 
@@ -506,7 +421,7 @@ public class Intrepid {
 		Object attachment, long timeout, TimeUnit timeout_units )
 		throws IOException, InterruptedException {
 
-		Objects.requireNonNull( host );
+		requireNonNull( host );
 
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
@@ -521,7 +436,7 @@ public class Intrepid {
 	public void disconnect( VMID host_vmid ) {
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
-		Objects.requireNonNull( host_vmid );
+		requireNonNull( host_vmid );
 
 		spi.disconnect( host_vmid );
 	}
@@ -545,7 +460,7 @@ public class Intrepid {
 	public ByteChannel createChannel( VMID destination, Serializable attachment )
 		throws IOException, ChannelRejectedException {
 
-		Objects.requireNonNull( destination );
+		requireNonNull( destination );
 
 		if ( destination.equals( vmid ) ) {
 			throw new IllegalArgumentException( "Destination cannot be local instance" );
@@ -746,6 +661,223 @@ public class Intrepid {
 		@Override
 		public void setMessageSendDelay( Long delay_ms ) {
 			spi.setMessageSendDelay( delay_ms );
+		}
+	}
+
+
+
+	public static class Builder {
+		private IntrepidDriver driver;
+		private InetAddress server_address;
+		private Integer server_port;
+		private ScheduledExecutor thread_pool = SharedThreadPool.INSTANCE;
+		private AuthenticationHandler auth_handler;
+		private String vmid_hint;
+		private ConnectionListener connection_listener;
+		private PerformanceListener performance_listener;
+		private ChannelAcceptor channel_acceptor;
+		private PreInvocationValidator validator;
+		private ToIntFunction<Optional<Object>>
+			channel_rx_window_size_function = attachment ->
+			Integer.getInteger( "intrepid.channel.default_rx_window", 10_000_000 );
+		private ProxyClassFilter proxy_class_filter = ( o, i ) -> true;
+		private boolean force_proto_2 = false;
+
+		private UnitTestHook unit_test_hook;
+
+
+		public Builder authHandler( AuthenticationHandler auth_handler ) {
+			if ( this.auth_handler != null ) {
+				throw new IllegalStateException(
+					"An AuthenticationHandler is already installed." );
+			}
+			this.auth_handler = auth_handler;
+			return this;
+		}
+
+		public Builder serverAddress( InetAddress server_address ) {
+			this.server_address = server_address;
+			return this;
+		}
+
+		public Builder serverPort( int server_port ) {
+			this.server_port = Integer.valueOf( server_port );
+			return this;
+		}
+
+		public Builder driver(IntrepidDriver driver ) {
+			this.driver = driver;
+			return this;
+		}
+
+		public Builder threadPool( ScheduledExecutor thread_pool ) {
+			this.thread_pool = thread_pool;
+			return this;
+		}
+
+		public Builder vmidHint( String vmid_hint ) {
+			this.vmid_hint = vmid_hint;
+			return this;
+		}
+
+		public Builder openServer() {
+			if ( this.auth_handler != null ) {
+				throw new IllegalStateException(
+					"An AuthenticationHandler is already installed." );
+			}
+			this.auth_handler = new NoAuthenticationHandler();
+			if ( server_port == null ) server_port = Integer.valueOf( 0 );
+
+			return this;
+		}
+
+		public Builder connectionListener( ConnectionListener listener ) {
+			this.connection_listener = listener;
+			return this;
+		}
+
+		public Builder performanceListener( PerformanceListener listener ) {
+			this.performance_listener = listener;
+			return this;
+		}
+
+		public Builder channelAcceptor( ChannelAcceptor acceptor ) {
+			this.channel_acceptor = acceptor;
+			return this;
+		}
+
+		public Builder preInvocationValidator(
+			@Nonnull PreInvocationValidator validator ) {
+
+			this.validator = requireNonNull( validator );
+			return this;
+		}
+
+		/**
+		 * Provide a function for specifying the "receive window" for data received in
+		 * virtual byte channels. This essentially specifies the amount of data that can sit
+		 * in a queue waiting to be processed. A smaller window size will sometimes result
+		 * is slower performance, depending on the usage pattern of the application.
+		 * This can make a noticeable difference when the sender is very "bursty" and data
+		 * processing is relatively expensive. However, testing in your application is
+		 * recommended because send rate/frequency, receive processing rate and network
+		 * performance can all contribute.
+		 * <p>
+		 * The default implementation is a fixed size controlled by the system property
+		 * {@code intrepid.channel.default_rx_window}.
+		 *
+		 * @param size_function         A function that returns the window size for a channel
+		 *                              given the attachment (from
+		 *                              {@link Intrepid#createChannel(VMID, Serializable)} or
+		 *                              {@link ChannelAcceptor#newChannel(ByteChannel, VMID, Serializable)}).
+		 *                              Note that an Rx Window will be required for both peers
+		 *                              involved in the channel, so this will be called on
+		 *                              both the "client" and "server" side. The windows do
+		 *                              are only used for receiving data, so the returned
+		 *                              values do not need to match between peers.
+		 *                              The size must be greater than zero.
+		 */
+		public Builder channelRxWindowSize(
+			@Nonnull ToIntFunction<Optional<Object>> size_function ) {
+
+			channel_rx_window_size_function = requireNonNull( size_function );
+			return this;
+		}
+
+
+		/**
+		 * Provide a filter that will verify the interfaces implemented by proxies. The
+		 * default implementation approves all interfaces.
+		 *
+		 * @see ProxyClassFilter
+		 */
+		public Builder proxyClassFilter( @Nonnull ProxyClassFilter filter ) {
+			proxy_class_filter = requireNonNull( filter );
+			return this;
+		}
+
+
+		@Deprecated
+		public Builder forceProtocolVersion2() {
+			force_proto_2 = true;
+			return this;
+		}
+
+
+		Builder unitTestHook( @Nonnull UnitTestHook hook ) {
+			this.unit_test_hook = hook;
+			return this;
+		}
+
+
+		public Intrepid build() throws IOException {
+			if ( driver == null ) {
+				try {
+					driver = ( IntrepidDriver ) Class.forName(
+						"com.starlight.intrepid.driver.mina.MINAIntrepidDriver" ).newInstance();
+				}
+				catch( Exception ex ) {
+					throw new UnsupportedOperationException( "Unable to find a default " +
+						"driver. Either a known driver is needed in the classpath or " +
+						"a driver will need to be manually specified." );
+				}
+			}
+
+			if ( vmid_hint == null ) {
+				if ( server_address != null ) vmid_hint = server_address.getHostAddress();
+				else {
+					try {
+						InetAddress local_host = InetAddress.getLocalHost();
+						if ( !local_host.isLoopbackAddress() ) {
+							vmid_hint = local_host.getHostAddress();
+						}
+					}
+					catch ( UnknownHostException ex ) {
+						// ignore
+					}
+				}
+			}
+	
+			ListenerSupport<ConnectionListener,?> connection_listeners =
+				ListenerSupport.forType( ConnectionListener.class ).build();
+			if ( this.connection_listener != null ) {
+				connection_listeners.add( this.connection_listener );
+			}
+	
+			ListenerSupport<PerformanceListener,?> performance_listeners =
+				ListenerSupport.forType( PerformanceListener.class ).build();
+			final PerformanceListener perf_listener = this.performance_listener;
+			if ( perf_listener != null ) {
+				performance_listeners.add( perf_listener );
+			}
+	
+			VMID vmid = new VMID( UUID.randomUUID(), vmid_hint );
+	
+			// Create handlers
+			LocalCallHandler local_handler = new LocalCallHandler( vmid,
+				performance_listeners.dispatch(), this.validator,
+				this.proxy_class_filter );
+			//noinspection deprecation
+			RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
+				local_handler, vmid, thread_pool, performance_listeners,
+				this.channel_acceptor, this.channel_rx_window_size_function,
+				this.force_proto_2 );
+	
+			// Init SPI
+			driver.init( server_address, server_port, vmid_hint, remote_handler,
+				connection_listeners.dispatch(), thread_pool, vmid,
+				ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch(),
+				this.unit_test_hook, VMID::new );
+	
+			Intrepid instance = new Intrepid( driver, vmid, local_handler, remote_handler,
+				connection_listeners, performance_listeners );
+	
+			local_handler.initInstance( instance );
+			remote_handler.initInstance( instance );
+	
+			INSTANCE_LISTENERS.dispatch().instanceOpened( vmid, instance );
+
+			return instance;
 		}
 	}
 }

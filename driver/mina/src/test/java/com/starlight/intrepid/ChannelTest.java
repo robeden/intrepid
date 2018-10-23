@@ -60,8 +60,8 @@ public class ChannelTest extends TestCase {
 	}
 
 	public void testNoAcceptor() throws Exception {
-		server = Intrepid.create( new IntrepidSetup().openServer() );
-		client = Intrepid.create( null );
+		server = Intrepid.newBuilder().openServer().build();
+		client = Intrepid.newBuilder().build();
 
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
@@ -79,9 +79,8 @@ public class ChannelTest extends TestCase {
 	public void testChannelReject() throws IOException {
 		ChannelAcceptor acceptor = new TestAcceptor( "Test reject" );
 
-		server = Intrepid.create(
-			new IntrepidSetup().openServer().channelAcceptor( acceptor ) );
-		client = Intrepid.create( null );
+		server = Intrepid.newBuilder().openServer().channelAcceptor( acceptor ).build();
+		client = Intrepid.newBuilder().build();
 
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
@@ -101,9 +100,12 @@ public class ChannelTest extends TestCase {
 	public void testBasic() throws Exception {
 		TestAcceptor acceptor = new TestAcceptor( null );
 
-		server = Intrepid.create( new IntrepidSetup().openServer().channelAcceptor(
-			acceptor ).vmidHint( "server" ) );
-		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		server = Intrepid.newBuilder()
+			.openServer()
+			.channelAcceptor( acceptor )
+			.vmidHint( "server" )
+			.build();
+		client = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
@@ -211,8 +213,11 @@ public class ChannelTest extends TestCase {
 		TestAcceptor acceptor = new TestAcceptor( null );
 
 		// Server setup
-		server = Intrepid.create( new IntrepidSetup().openServer().channelAcceptor(
-			acceptor ).vmidHint( "server" ) );
+		server = Intrepid.newBuilder()
+			.openServer()
+			.channelAcceptor( acceptor )
+			.vmidHint( "server" )
+			.build();
 		VMID server_vmid = server.getLocalVMID();
 
 
@@ -228,8 +233,10 @@ public class ChannelTest extends TestCase {
 			}
 		};
 
-		client = Intrepid.create( new IntrepidSetup().vmidHint(
-			"client" ).performanceListener( client_listener ) );
+		client = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.performanceListener( client_listener )
+			.build();
 
 
 		client.connect( InetAddress.getLoopbackAddress(),
@@ -268,9 +275,12 @@ public class ChannelTest extends TestCase {
 		TestAcceptorServerWrite acceptor = new TestAcceptorServerWrite( to_write );
 
 
-		server = Intrepid.create( new IntrepidSetup().openServer().channelAcceptor(
-			acceptor ).vmidHint( "server" ) );
-		client = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		server = Intrepid.newBuilder()
+			.openServer()
+			.channelAcceptor( acceptor )
+			.vmidHint( "server" )
+			.build();
+		client = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );

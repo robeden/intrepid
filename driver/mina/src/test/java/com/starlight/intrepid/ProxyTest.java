@@ -39,7 +39,7 @@ public class ProxyTest extends TestCase {
 
 	@Override
 	protected void setUp() throws Exception {
-		intrepid = Intrepid.create( null );
+		intrepid = Intrepid.newBuilder().build();
 	}
 
 	@Override

@@ -1,10 +1,11 @@
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.auth.*;
+import com.starlight.intrepid.auth.SimpleUserContextInfo;
+import com.starlight.intrepid.auth.UserContextInfo;
+import com.starlight.intrepid.auth.UserCredentialsConnectionArgs;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
-import java.net.SocketAddress;
 
 
 /**
@@ -35,22 +36,18 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup tail
 		TailInstance tail_proxy_instance = new TailInstance();
-		tail_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		tail_instance = Intrepid.newBuilder().openServer().build();
 		tail_instance.getLocalRegistry().bind( "lib/test", tail_proxy_instance );
 
 		// Setup head & connect to tail
-		Intrepid head_instance = Intrepid.create(
-			new IntrepidSetup().serverPort( -1 ).authHandler( new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
-
-					UserCredentialsConnectionArgs user_args =
-						( UserCredentialsConnectionArgs ) connection_args;
-					return new SimpleUserContextInfo( user_args.getUser() );
-				}
-			} ) );
+		Intrepid head_instance = Intrepid.newBuilder()
+			.serverPort( -1 )
+			.authHandler( ( connection_args, remote_address, session_source ) -> {
+				UserCredentialsConnectionArgs user_args =
+					( UserCredentialsConnectionArgs ) connection_args;
+				return new SimpleUserContextInfo( user_args.getUser() );
+			} )
+			.build();
 		VMID vmid = head_instance.connect( InetAddress.getLoopbackAddress(),
 			tail_instance.getServerPort().intValue(), null, null );
 		assertEquals( tail_instance.getLocalVMID(), vmid );
@@ -60,7 +57,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		head_instance.getLocalRegistry().bind( "lib/test", head_proxy_instance );
 
 		// Setup client and connect to head
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );
@@ -86,35 +83,26 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup tail
 		TailInstance tail_proxy_instance = new TailInstance();
-		tail_instance = Intrepid.create(
-			new IntrepidSetup().serverPort( -1 ).authHandler(
-				new AuthenticationHandler() {
-					@Override
-					public UserContextInfo checkConnection(
-						ConnectionArgs connection_args,
-						SocketAddress remote_address, Object session_source )
-						throws ConnectionAuthFailureException {
-
-						UserCredentialsConnectionArgs user_args =
-							( UserCredentialsConnectionArgs ) connection_args;
-						return new SimpleUserContextInfo( user_args.getUser() );
-					}
-				} ) );
-		tail_instance.getLocalRegistry().bind( "lib/test", tail_proxy_instance );
-
-		// Setup head & connect to tail
-		head_instance = Intrepid.create(
-			new IntrepidSetup().serverPort( -1 ).authHandler( new AuthenticationHandler() {
-				@Override
-				public UserContextInfo checkConnection( ConnectionArgs connection_args,
-					SocketAddress remote_address, Object session_source )
-					throws ConnectionAuthFailureException {
-
+		tail_instance = Intrepid.newBuilder()
+			.serverPort( -1 )
+			.authHandler(
+				( connection_args, remote_address, session_source ) -> {
 					UserCredentialsConnectionArgs user_args =
 						( UserCredentialsConnectionArgs ) connection_args;
 					return new SimpleUserContextInfo( user_args.getUser() );
-				}
-			} ) );
+				} )
+			.build();
+		tail_instance.getLocalRegistry().bind( "lib/test", tail_proxy_instance );
+
+		// Setup head & connect to tail
+		head_instance = Intrepid.newBuilder()
+			.serverPort( -1 )
+			.authHandler( ( connection_args, remote_address, session_source ) -> {
+				UserCredentialsConnectionArgs user_args =
+					( UserCredentialsConnectionArgs ) connection_args;
+				return new SimpleUserContextInfo( user_args.getUser() );
+			} )
+			.build();
 		VMID vmid = head_instance.connect( InetAddress.getLoopbackAddress(),
 			tail_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "**NOT**reden", "blah".toCharArray() ),
@@ -126,7 +114,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		head_instance.getLocalRegistry().bind( "lib/test", head_proxy_instance );
 
 		// Setup client and connect to head
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );

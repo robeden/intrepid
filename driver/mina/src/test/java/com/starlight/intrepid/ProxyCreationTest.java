@@ -42,7 +42,7 @@ public class ProxyCreationTest extends TestCase {
 
 
 	public void testDuplicateProxyCreation() throws Exception {
-		instance = Intrepid.create( null );
+		instance = Intrepid.newBuilder().build();
 
 		CommTest.ServerImpl delegate =
 			new CommTest.ServerImpl( true, instance.getLocalVMID() );
@@ -57,7 +57,7 @@ public class ProxyCreationTest extends TestCase {
 
 
 	public void testIDsAndClose() throws Exception {
-		instance = Intrepid.create( null );
+		instance = Intrepid.newBuilder().build();
 
 		CommTest.ServerImpl delegate =
 			new CommTest.ServerImpl( true, instance.getLocalVMID() );
@@ -71,7 +71,7 @@ public class ProxyCreationTest extends TestCase {
 		// Close and restart the instance. This should flush the internal maps causing a
 		// new ID for the proxy when re-created.
 		instance.close();
-		instance = Intrepid.create( null );
+		instance = Intrepid.newBuilder().build();
 		proxy = ( CommTest.Server ) instance.createProxy( delegate );
 
 		int second_object_id = ( ( Proxy ) proxy ).__intrepid__getObjectID();
@@ -82,7 +82,7 @@ public class ProxyCreationTest extends TestCase {
 
 
 	public void testComplexInterface() throws Exception {
-		instance = Intrepid.create( null );
+		instance = Intrepid.newBuilder().build();
 
 		ABImpl original = new ABImpl();
 

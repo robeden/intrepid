@@ -25,13 +25,13 @@
 
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.auth.SimpleUserContextInfo;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.auth.SimpleUserContextInfo;
 import com.starlight.intrepid.auth.UserContextInfo;
 import junit.framework.TestCase;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -66,14 +66,17 @@ public class ConnectionListenerTest extends TestCase {
 		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
 		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
 
-		server_instance = Intrepid.create( new IntrepidSetup()
+		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
 			.serverPort( 11751 )
 			.openServer()
-			.connectionListener( s_listener ) );
+			.connectionListener( s_listener )
+			.build();
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" )
-			.connectionListener( c_listener ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.connectionListener( c_listener )
+			.build();
 
 		assertTrue( s_listener.event_queue.isEmpty() );
 		assertTrue( c_listener.event_queue.isEmpty() );
@@ -157,15 +160,18 @@ public class ConnectionListenerTest extends TestCase {
 
 		UserContextInfo user_context = new SimpleUserContextInfo( "test_user" );
 
-		server_instance = Intrepid.create( new IntrepidSetup()
+		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
 			.serverPort( 11751 )
 			.connectionListener( s_listener )
 			.authHandler(
-				( connection_args, remote_address, session_source ) -> user_context ) );
+				( connection_args, remote_address, session_source ) -> user_context )
+			.build();
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" )
-			.connectionListener( c_listener ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.connectionListener( c_listener )
+			.build();
 
 		assertTrue( s_listener.event_queue.isEmpty() );
 		assertTrue( c_listener.event_queue.isEmpty() );

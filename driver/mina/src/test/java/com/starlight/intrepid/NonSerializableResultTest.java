@@ -1,9 +1,9 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.IOKit;
-import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.logicartisan.common.core.thread.ObjectSlot;
 import com.logicartisan.common.core.thread.SharedThreadPool;
+import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import junit.framework.TestCase;
 
 import java.io.NotSerializableException;
@@ -40,8 +40,8 @@ public class NonSerializableResultTest extends TestCase {
 	public void testReturnValue() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server = Intrepid.create( new IntrepidSetup().openServer() );
-		client = Intrepid.create( null );
+		server = Intrepid.newBuilder().openServer().build();
+		client = Intrepid.newBuilder().build();
 
 		server.getLocalRegistry().bind( "server", new MyIfc() {
 			@Override
@@ -94,8 +94,8 @@ public class NonSerializableResultTest extends TestCase {
 	public void testThrow() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server = Intrepid.create( new IntrepidSetup().openServer() );
-		client = Intrepid.create( null );
+		server = Intrepid.newBuilder().openServer().build();
+		client = Intrepid.newBuilder().build();
 
 		server.getLocalRegistry().bind( "server", new MyIfc() {
 			@Override

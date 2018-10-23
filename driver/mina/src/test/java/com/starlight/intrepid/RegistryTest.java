@@ -25,8 +25,8 @@
 
 package com.starlight.intrepid;
 
-import com.starlight.intrepid.exception.ObjectNotBoundException;
 import com.logicartisan.common.core.thread.ThreadKit;
+import com.starlight.intrepid.exception.ObjectNotBoundException;
 import junit.framework.TestCase;
 
 import java.util.concurrent.TimeUnit;
@@ -45,7 +45,7 @@ public class RegistryTest extends TestCase {
 
 
 	public void testBinding() throws Exception {
-		instance = Intrepid.create( new IntrepidSetup().driver( new StubIntrepidDriver() ) );
+		instance = Intrepid.newBuilder().driver( new StubIntrepidDriver() ).build();
 
 		LocalRegistry registry = instance.getLocalRegistry();
 
@@ -81,7 +81,7 @@ public class RegistryTest extends TestCase {
 
 
 	public void testTryLookup() throws Exception {
-		instance = Intrepid.create( new IntrepidSetup().driver( new StubIntrepidDriver() ) );
+		instance = Intrepid.newBuilder().driver( new StubIntrepidDriver() ).build();
 
 		final LocalRegistry registry = instance.getLocalRegistry();
 

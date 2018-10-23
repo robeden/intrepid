@@ -37,7 +37,7 @@ public class IntrepidInstanceListenerTest extends TestCase {
 		assertNull( vmid_slot.get() );
 		assertNull( instance_slot.get() );
 
-		instance = Intrepid.create( null );
+		instance = Intrepid.newBuilder().build();
 
 		assertSame( instance, instance_slot.waitForValue( 1000 ) );
 		instance_slot.clear();

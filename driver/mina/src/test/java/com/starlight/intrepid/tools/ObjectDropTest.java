@@ -1,11 +1,10 @@
 package com.starlight.intrepid.tools;
 
-import com.starlight.intrepid.IntrepidSetup;
-import com.starlight.intrepid.IntrepidTesting;
-import com.starlight.intrepid.exception.ChannelRejectedException;
 import com.logicartisan.common.core.IOKit;
 import com.starlight.intrepid.Intrepid;
+import com.starlight.intrepid.IntrepidTesting;
 import com.starlight.intrepid.VMID;
+import com.starlight.intrepid.exception.ChannelRejectedException;
 import junit.framework.TestCase;
 
 import java.io.IOException;
@@ -87,11 +86,11 @@ public class ObjectDropTest extends TestCase {
 
 	
 	private void doBasicTest( boolean compress, boolean drop_to_caller ) throws Exception {
-		server = Intrepid.create( new IntrepidSetup().openServer() );
+		server = Intrepid.newBuilder().openServer().build();
 		server.getLocalRegistry().bind( "lib/test", new ServerImpl( server, compress ) );
 
 		ObjectDrop client_drop = new ObjectDrop();
-		client = Intrepid.create( new IntrepidSetup().channelAcceptor( client_drop ) );
+		client = Intrepid.newBuilder().channelAcceptor( client_drop ).build();
 		VMID server_vmid = client.connect( InetAddress.getByName( "127.0.0.1" ),
 			server.getServerPort().intValue(), null, null );
 

@@ -29,7 +29,7 @@ public class PreInvocationValidatorTest extends TestCase {
 
 		InetAddress localhost = InetAddress.getByName( "127.0.0.1" );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		PreInvocationValidator validator =
 			( instance, calling_vmid, calling_host, user_context, method, target, args ) -> {
@@ -46,12 +46,12 @@ public class PreInvocationValidatorTest extends TestCase {
 		};
 
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup()
-				.vmidHint( "server" )
-				.serverPort( 11751 )
-				.openServer()
-				.preInvocationValidator( validator ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.preInvocationValidator( validator )
+			.build();
 		ServerImpl original_instance = new ServerImpl();
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 

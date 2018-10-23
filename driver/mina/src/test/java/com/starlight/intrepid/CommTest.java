@@ -73,8 +73,11 @@ public class CommTest {
 	@Test
 	public void testPortReleaseOnShutdown() throws Exception {
 		for( int i = 0; i < 100; i++ ) {
-			Intrepid instance = Intrepid.create( new IntrepidSetup().serverPort(
-				11751 ).openServer().driver( createSPI( true ) ) );
+			Intrepid instance = Intrepid.newBuilder()
+				.serverPort( 11751 )
+				.openServer()
+				.driver( createSPI( true ) )
+				.build();
 			instance.close();
 		}
 	}
@@ -86,15 +89,20 @@ public class CommTest {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).serverPort( 11751 ).openServer().driver(
-				createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.driver( createSPI( true ) )
+			.build();
 		ServerImpl original_instance =
 			new ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -212,15 +220,19 @@ public class CommTest {
 	public void testInterInstanceBridge() throws Exception {
 		// NOTE: leave inter-instance bridge enabled
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).serverPort( 11751 ).openServer().driver(
-				createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer().driver( createSPI( true ) )
+			.build();
 		ServerImpl original_instance =
 			new ServerImpl( false, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -322,15 +334,20 @@ public class CommTest {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).serverPort( 11751 ).openServer().driver(
-				createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.driver( createSPI( true ) )
+			.build();
 		ServerImpl original_instance =
 			new ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-				createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -427,15 +444,20 @@ public class CommTest {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).serverPort( 11751 ).openServer().driver(
-				createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.driver( createSPI( true ) )
+			.build();
 		ServerImpl original_instance =
 			new ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-				createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -475,7 +497,7 @@ public class CommTest {
 
 	@Test
 	public void testConnectFailure() throws Exception {
-		Intrepid client = Intrepid.create( new IntrepidSetup().driver( createSPI( false ) ) );
+		Intrepid client = Intrepid.newBuilder().driver( createSPI( false ) ).build();
 		try {
 			client.connect( InetAddress.getByName( "127.0.0.1" ), 11751, null, null );
 			fail( "Shouldn't have worked" );
@@ -494,7 +516,7 @@ public class CommTest {
 	@Ignore( value = "this test is proving to be problematic" )
 	@Test
 	public void testConnectInterrupt() throws Exception {
-		Intrepid client = Intrepid.create( new IntrepidSetup().driver( createSPI( false ) ) );
+		Intrepid client = Intrepid.newBuilder().driver( createSPI( false ) ).build();
 		try {
 			final Thread test_thread = Thread.currentThread();
 			new Thread( () -> {
@@ -522,8 +544,10 @@ public class CommTest {
 
 	@Test
 	public void testTryConnect() throws Exception {
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect and fail immediately, since the server isn't there
 		try {
@@ -552,9 +576,12 @@ public class CommTest {
 		// Start the server in 3 seconds
 		SharedThreadPool.INSTANCE.schedule( () -> {
 			try {
-				server_instance = Intrepid.create( new IntrepidSetup().vmidHint(
-					"server" ).serverPort( 11751 ).openServer().driver(
-					createSPI( true ) ) );
+				server_instance = Intrepid.newBuilder()
+					.vmidHint( "server" )
+					.serverPort( 11751 )
+					.openServer()
+					.driver( createSPI( true ) )
+					.build();
 			}
 			catch( Exception ex ) {
 				ex.printStackTrace();
@@ -589,7 +616,7 @@ public class CommTest {
 	public void testNestedInterfaces() throws Exception {
 		ClientImpl2 client_impl = new ClientImpl2();
 
-		client_instance = Intrepid.create( new IntrepidSetup().driver( createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder().driver( createSPI( false ) ).build();
 
 		try {
 			Client client = ( Client ) client_instance.createProxy( client_impl );
@@ -608,17 +635,21 @@ public class CommTest {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer().driver(
-			createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.driver( createSPI( true ) )
+			.build();
 		Integer server_port = server_instance.getServerPort();
 		assertNotNull( server_port );
 		ServerImpl original_instance =
 			new ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -655,16 +686,21 @@ public class CommTest {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer().driver( createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.driver( createSPI( true ) )
+			.build();
 		Integer server_port = server_instance.getServerPort();
 		assertNotNull( server_port );
 		ServerImpl original_instance =
 			new ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -697,16 +733,21 @@ public class CommTest {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer().driver( createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.driver( createSPI( true ) )
+			.build();
 		Integer server_port = server_instance.getServerPort();
 		assertNotNull( server_port );
 		ServerImpl original_instance =
 			new ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -731,8 +772,10 @@ public class CommTest {
 
 
 		// Create the client first and try to connect to the server, which won't be there
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ).driver(
-			createSPI( false ) ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.driver( createSPI( false ) )
+			.build();
 		try {
 			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null,
 				null );
@@ -743,8 +786,12 @@ public class CommTest {
 		}
 
 		// Set up the server
-		server_instance = Intrepid.create( new IntrepidSetup().vmidHint(
-			"server" ).openServer().serverPort( 11751 ).driver( createSPI( true ) ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.serverPort( 11751 )
+			.driver( createSPI( true ) )
+			.build();
 
 		// Try to connect again, should work this time
 		VMID server_vmid =

@@ -25,7 +25,6 @@
 
 package com.starlight.intrepid.driver.mina;
 
-import com.starlight.intrepid.IntrepidSetup;
 import com.starlight.intrepid.Intrepid;
 import junit.framework.TestCase;
 
@@ -38,7 +37,10 @@ public class MINAIntrepidDriverTest extends TestCase {
 		Intrepid instance = null;
 		try {
 			MINAIntrepidDriver spi = new MINAIntrepidDriver();
-			instance = Intrepid.create( new IntrepidSetup().driver( spi ).openServer() );
+			instance = Intrepid.newBuilder()
+				.driver( spi )
+				.openServer()
+				.build();
 
 			System.out.println( "Server address: " + spi.getServerAddress() );
 			assertNotNull( spi.getServerAddress() );
@@ -56,8 +58,11 @@ public class MINAIntrepidDriverTest extends TestCase {
 		Intrepid instance = null;
 		try {
 			MINAIntrepidDriver spi = new MINAIntrepidDriver();
-			instance = Intrepid.create(
-				new IntrepidSetup().driver( spi ).openServer().serverPort( 11751 ) );
+			instance = Intrepid.newBuilder()
+				.driver( spi )
+				.openServer()
+				.serverPort( 11751 )
+				.build();
 
 			System.out.println( "Server address: " + spi.getServerAddress() );
 			assertNotNull( spi.getServerAddress() );

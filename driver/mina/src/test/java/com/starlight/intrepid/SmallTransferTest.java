@@ -71,15 +71,15 @@ public class SmallTransferTest {
 
 
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup()
-				.vmidHint( "server" )
-				.openServer()
-				.channelAcceptor( acceptor ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.channelAcceptor( acceptor )
+			.build();
 		Integer server_port = server_instance.getServerPort();
 		Assert.assertNotNull( server_port );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),

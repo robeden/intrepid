@@ -9,6 +9,13 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
+
+## [1.8.0]
+### Removed
+- `IntrepidSetup`/`Intrepid.create` has been removed and replaced by `Intrepid.newBuilder`
+  followed by a `build()` call on the builder when configured. 
+
+
 ## [1.7.3] - 2017-10-31
 ### Fixed
 - Fixed an issue where the stack trace for method invocations which time out would grow

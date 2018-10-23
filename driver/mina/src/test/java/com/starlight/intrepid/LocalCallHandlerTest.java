@@ -128,8 +128,7 @@ public class LocalCallHandlerTest extends TestCase {
 
 
 	public void testStringProxy() throws Exception {
-		intrepid = Intrepid.create(
-			new IntrepidSetup().driver( new StubIntrepidDriver() ) );
+		intrepid = Intrepid.newBuilder().driver( new StubIntrepidDriver() ).build();
 		try {
 			String source = "this is my test string";
 			CharSequence proxy = ( CharSequence ) intrepid.createProxy( source );
@@ -153,8 +152,7 @@ public class LocalCallHandlerTest extends TestCase {
 
 
 	public void testSerializedStringProxy() throws Exception {
-		intrepid =
-			Intrepid.create( new IntrepidSetup().driver( new StubIntrepidDriver() ) );
+		intrepid = Intrepid.newBuilder().driver( new StubIntrepidDriver() ).build();
 		try {
 			String source = "this is my test string";
 			CharSequence proxy = ( CharSequence ) intrepid.createProxy( source );

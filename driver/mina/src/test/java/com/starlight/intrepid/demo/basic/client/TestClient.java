@@ -62,7 +62,7 @@ public class TestClient implements ClientInterface {
 			port = Integer.parseInt( args[ 1 ] );
 		}
 
-		Intrepid intrepid = Intrepid.create( null );	// init as client
+		Intrepid intrepid = Intrepid.newBuilder().build();	// init as client
 		intrepid.addPerformanceListener( new PerformanceListener() {
 			@Override
 			public void inboundRemoteCallCompleted(VMID instance_vmid, long time,

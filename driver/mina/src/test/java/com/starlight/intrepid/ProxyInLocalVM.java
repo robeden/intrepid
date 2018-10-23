@@ -22,11 +22,11 @@ public class ProxyInLocalVM {
 	public void setUp() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup()
-				.vmidHint( "server" )
-				.serverPort( 11751 )
-				.openServer() );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.build();
 	}
 
 	@After

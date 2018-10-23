@@ -248,7 +248,7 @@ public class LargeTransfersTest {
 
 		// Build server instance
 		{
-			IntrepidSetup setup = new IntrepidSetup()
+			Intrepid.Builder setup = Intrepid.newBuilder()
 				.vmidHint( "server" )
 				.openServer()
 				.performanceListener( new PerformanceListener() {
@@ -267,7 +267,7 @@ public class LargeTransfersTest {
 			if ( acceptor_on_server ) {
 				setup.channelAcceptor( new SimpleAcceptor( read_consumer ) );
 			}
-			server_instance = Intrepid.create( setup );
+			server_instance = setup.build();
 
 			if ( !acceptor_on_server ) {
 				server_instance.getLocalRegistry().bind( "server",
@@ -290,7 +290,7 @@ public class LargeTransfersTest {
 
 		// Build client instance
 		{
-			IntrepidSetup setup = new IntrepidSetup()
+			Intrepid.Builder setup = Intrepid.newBuilder()
 				.vmidHint( "client" )
 				.performanceListener( new PerformanceListener() {
 					private int active = -1;
@@ -322,7 +322,7 @@ public class LargeTransfersTest {
 				setup.channelAcceptor(
 					new SimpleAcceptor( write_consumer ) );
 			}
-			client_instance = Intrepid.create( setup );
+			client_instance = setup.build();
 		}
 
 		// Connect to the server

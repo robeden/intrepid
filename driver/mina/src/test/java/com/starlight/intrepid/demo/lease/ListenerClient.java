@@ -1,9 +1,9 @@
 package com.starlight.intrepid.demo.lease;
 
-import com.starlight.intrepid.Registry;
-import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.VMID;
 import com.logicartisan.common.core.thread.SharedThreadPool;
+import com.starlight.intrepid.Intrepid;
+import com.starlight.intrepid.Registry;
+import com.starlight.intrepid.VMID;
 
 import java.net.InetAddress;
 import java.util.Date;
@@ -21,7 +21,7 @@ public class ListenerClient implements Runnable {
 
 
 	public static void main( String[] args ) throws Exception {
-		Intrepid intrepid = Intrepid.create( null );
+		Intrepid intrepid = Intrepid.newBuilder().build();
 		VMID server_vmid = intrepid.connect( InetAddress.getLoopbackAddress(),
 			Integer.parseInt( args[ 0 ] ), null, null );
 

@@ -35,11 +35,11 @@ public class DisconnectDuringCallTest {
 	@Test public void testDisconnecting() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create( new IntrepidSetup().openServer() );
+		server_instance = Intrepid.newBuilder().openServer().build();
 		server_instance.getLocalRegistry().bind( "server", new ConnectionKillServer() );
 
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			server_instance.getServerPort().intValue(), null, null );
 
@@ -72,11 +72,13 @@ public class DisconnectDuringCallTest {
 		AtomicReference<FakeChannelReader> reader_slot =
 			new AtomicReference<FakeChannelReader>();
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().openServer().channelAcceptor(
-			new FakeReaderAcceptor( read_start_latch, read_exit_latch, reader_slot ) ) );
+		server_instance = Intrepid.newBuilder()
+			.openServer()
+			.channelAcceptor(
+				new FakeReaderAcceptor( read_start_latch, read_exit_latch, reader_slot ) )
+			.build();
 
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			server_instance.getServerPort().intValue(), null, null );
 

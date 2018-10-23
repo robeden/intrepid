@@ -70,16 +70,21 @@ public class PerformanceListenerTest extends TestCase {
 			}
 		};
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).serverPort(
-			11751 ).openServer().performanceListener( server_listener ).channelAcceptor(
-			server_channel_acceptor ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.serverPort( 11751 )
+			.openServer()
+			.performanceListener( server_listener )
+			.channelAcceptor( server_channel_acceptor )
+			.build();
 		CommTest.ServerImpl original_instance =
 			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint(
-			"client" ).performanceListener( client_listener ) );
+		client_instance = Intrepid.newBuilder()
+			.vmidHint( "client" )
+			.performanceListener( client_listener )
+			.build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -311,10 +316,12 @@ public class PerformanceListenerTest extends TestCase {
 			new TestPerformanceListener( "client", true );
 
 		// Listener added during setup
-		server_instance = Intrepid.create(
-			new IntrepidSetup().openServer().performanceListener( server_listener ) );
+		server_instance = Intrepid.newBuilder()
+			.openServer()
+			.performanceListener( server_listener )
+			.build();
 		// Listener added after setup
-		client_instance = Intrepid.create( null );
+		client_instance = Intrepid.newBuilder().build();
 		client_instance.addPerformanceListener( client_listener );
 
 

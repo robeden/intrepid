@@ -1,12 +1,12 @@
 package com.starlight.intrepid;
 
+import com.logicartisan.common.core.thread.ObjectSlot;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import com.logicartisan.common.core.thread.ObjectSlot;
 import junit.framework.TestCase;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 
@@ -69,11 +69,11 @@ public class BidirectionalConnectionsTest extends TestCase {
 		};
 
 
-		a_instance = Intrepid.create( new IntrepidSetup().openServer().vmidHint( "---A---" ) );
+		a_instance = Intrepid.newBuilder().openServer().vmidHint( "---A---" ).build();
 		a_instance.addConnectionListener( connection_listener );
 
 
-		b_instance = Intrepid.create( new IntrepidSetup().openServer().vmidHint( "---B---" ) );
+		b_instance = Intrepid.newBuilder().openServer().vmidHint( "---B---" ).build();
 		b_instance.addConnectionListener( connection_listener );
 
 

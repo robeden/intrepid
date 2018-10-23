@@ -26,7 +26,7 @@ public class TestListenerLeases /*implements Runnable*/ {
 //		ServerThread server = new ServerThread();
 //
 //		Intrepid intrepid =
-//			Intrepid.create( new IntrepidSetup().openServer().serverPort( 11223 ) );
+//			Intrepid.newBuilder().openServer().serverPort( 11223 ) );
 //		intrepid.getLocalRegistry().bind( "test", server );
 //		server.start();
 //
@@ -36,7 +36,7 @@ public class TestListenerLeases /*implements Runnable*/ {
 //	private static void runClient() throws Exception {
 //		TestListenerLeases test = new TestListenerLeases();
 //
-//		Intrepid intrepid = Intrepid.create( null );
+//		Intrepid intrepid = Intrepid.newBuilder().build();
 //		VMID server_vmid =
 //			intrepid.connect( InetAddress.getByName( "127.0.0.1" ), 11223, null, null );
 //		Registry registry = intrepid.getRemoteRegistry( server_vmid );

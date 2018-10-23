@@ -1,11 +1,9 @@
 package com.starlight.intrepid.demo.lease;
 
 import com.logicartisan.common.core.listeners.ListenerSupport;
-import com.logicartisan.common.core.listeners.ListenerSupportFactory;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.starlight.intrepid.Intrepid;
 import com.starlight.intrepid.IntrepidContext;
-import com.starlight.intrepid.IntrepidSetup;
 import com.starlight.intrepid.IntrepidTestProxyAccess;
 
 import java.util.Date;
@@ -16,8 +14,8 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class LeaseServer implements ServerIfc {
-	private final ListenerSupport<Runnable,Void> listeners =
-		ListenerSupportFactory.create( Runnable.class, true );
+	private final ListenerSupport<Runnable,?> listeners =
+		ListenerSupport.forType( Runnable.class ).asynchronous().build();
 
 
 	@Override
@@ -49,7 +47,7 @@ public class LeaseServer implements ServerIfc {
 
 
 	public static void main( String[] args ) throws Exception {
-		Intrepid instance = Intrepid.create( new IntrepidSetup().openServer() );
+		Intrepid instance = Intrepid.newBuilder().openServer().build();
 
 		final LeaseServer server = new LeaseServer();
 		instance.getLocalRegistry().bind( "server", server );

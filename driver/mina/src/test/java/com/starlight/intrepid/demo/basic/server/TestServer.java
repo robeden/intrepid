@@ -27,7 +27,6 @@ package com.starlight.intrepid.demo.basic.server;
 
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.Intrepid;
-import com.starlight.intrepid.IntrepidSetup;
 import com.starlight.intrepid.PerformanceListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -64,8 +63,10 @@ public class TestServer implements ServerInterface {
 		}
 
 		System.out.print( "Initializing..." );
-		Intrepid intrepid = Intrepid.create(
-			new IntrepidSetup().serverPort( port ).openServer() );
+		Intrepid intrepid = Intrepid.newBuilder()
+			.serverPort( port )
+			.openServer()
+			.build();
 		intrepid.addPerformanceListener( new PerformanceListener() {
 			@Override
 			public void inboundRemoteCallCompleted( VMID instance_vmid, long time,
@@ -106,14 +107,11 @@ public class TestServer implements ServerInterface {
 
 		System.out.println( "Server ready!" );
 
-		new Thread() {
-			@Override
-			public void run() {
-				while( true ) {
-					ThreadKit.sleep( 10000 );
-					System.gc();
-				}
+		new Thread( () -> {
+			while( true ) {
+				ThreadKit.sleep( 10000 );
+				System.gc();
 			}
-		}.start();
+		} ).start();
 	}
 }

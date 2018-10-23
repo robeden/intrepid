@@ -48,11 +48,14 @@ public class ForceProxyTest extends TestCase {
 		// "Intrepid.disable_inter_instance_bridge" for more info.
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create( new IntrepidSetup().serverPort( 11751 )
-			.vmidHint( "server" ).openServer() );
+		server_instance = Intrepid.newBuilder()
+			.serverPort( 11751 )
+			.vmidHint( "server" )
+			.openServer()
+			.build();
 		server_instance.getLocalRegistry().bind( "server", new ServerImpl() );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),

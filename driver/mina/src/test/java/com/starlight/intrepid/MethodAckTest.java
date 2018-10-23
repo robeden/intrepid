@@ -65,8 +65,11 @@ public class MethodAckTest extends TestCase {
 			}
 		};
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer().unitTestHook( hook ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.unitTestHook( hook )
+			.build();
 
 		final AtomicBoolean run_called = new AtomicBoolean( false );
 		Runnable server_impl = new Runnable() {
@@ -77,7 +80,7 @@ public class MethodAckTest extends TestCase {
 		};
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -139,8 +142,11 @@ public class MethodAckTest extends TestCase {
 			}
 		};
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer().unitTestHook( hook ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.unitTestHook( hook )
+			.build();
 
 		Runnable server_impl = new Runnable() {
 			@Override
@@ -150,7 +156,7 @@ public class MethodAckTest extends TestCase {
 		};
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -182,8 +188,10 @@ public class MethodAckTest extends TestCase {
 	public void testAckedCall() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer() );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.build();
 
 		Runnable server_impl = new Runnable() {
 			@Override
@@ -193,7 +201,7 @@ public class MethodAckTest extends TestCase {
 		};
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -235,15 +243,17 @@ public class MethodAckTest extends TestCase {
 		};
 
 
-		server_instance = Intrepid.create(
-			new IntrepidSetup().vmidHint( "server" ).openServer().performanceListener(
-			perf_listener ) );
+		server_instance = Intrepid.newBuilder()
+			.vmidHint( "server" )
+			.openServer()
+			.performanceListener( perf_listener )
+			.build();
 
 		Runnable server_impl = () -> {};        // Return immediately
 
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
-		client_instance = Intrepid.create( new IntrepidSetup().vmidHint( "client" ) );
+		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
