@@ -973,9 +973,11 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		boolean send_close_updates = false;
 		if ( !locally_terminated.booleanValue() && vmid != null ) {
 			InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
-			connection_listener.connectionClosed(
-				address.getAddress(), address.getPort(), local_vmid, vmid, attachment,
-				reconnect, ( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
+			if ( address != null ) {
+				connection_listener.connectionClosed(
+					address.getAddress(), address.getPort(), local_vmid, vmid, attachment,
+					reconnect, ( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
+			}
 			send_close_updates = true;
 		}
 
