@@ -132,7 +132,10 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 					message_obj.getClass().getName() + " message without the " +
 					"session protocol version being known";
 				LOG.error( error_message );
-				throw new AssertionError( error_message );
+				// NOTE: This used to be an AssertionError, but that causes MINA to get into a state where the session
+				// is not correctly removed and causes the shutdown to hang waiting for session destroyed event that
+				// is never fired
+				throw new IllegalStateException( error_message );
 			}
 
 			MessageEncoder.encode( message, protocol_version,

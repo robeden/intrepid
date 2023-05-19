@@ -379,10 +379,28 @@ public class Intrepid {
 	/**
 	 * Connect to remote host, throwing an exception immediately if the host is not
 	 * reachable.
+	 * reachable using a default timeout.
+	 *
+	 * @see #connect(InetAddress, int, ConnectionArgs, Object, long, TimeUnit)
+	 */
+	public VMID connect( InetAddress host, int port, ConnectionArgs args,
+						 Object attachment ) throws IOException {
+
+		return connect( host, port, args, attachment, CONNECT_TIMEOUT,
+				TimeUnit.MILLISECONDS );
+	}
+
+	/**
+	 * Connect to remote host, throwing an exception immediately if the host is not
+	 * reachable. But allowing a caller provider connection timeout.
 	 *
 	 * @param host      	Host to connect to.
 	 * @param args      	(Optional) SPI-dependant connection args.
 	 * @param attachment	An object the caller can associate with the connection
+	 * @param timeout		Time to wait for the connection. Note that this is a soft
+	 * 						timeout, so it's guaranteed to try for at least the time given
+	 * 						and not start any long operations after the time has expired.
+	 * @param timeout_units Time unit for <tt>timeout</tt> argument.
 	 *
 	 * @return              The VMID of the remote host.
 	 *
@@ -394,10 +412,9 @@ public class Intrepid {
 	 * @see #tryConnect
 	 */
 	public VMID connect( InetAddress host, int port, ConnectionArgs args,
-		Object attachment ) throws IOException {
+		Object attachment, long timeout, TimeUnit timeout_units ) throws IOException {
 
-		return spi.connect( host, port, args, attachment, CONNECT_TIMEOUT,
-			TimeUnit.MILLISECONDS, false );
+		return spi.connect( host, port, args, attachment, timeout, timeout_units, false );
 	}
 
 

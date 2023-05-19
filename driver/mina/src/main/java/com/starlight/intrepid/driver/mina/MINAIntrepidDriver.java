@@ -46,6 +46,7 @@ import org.apache.mina.core.service.IoHandler;
 import org.apache.mina.core.session.IdleStatus;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.session.IoSessionInitializer;
+import org.apache.mina.filter.FilterEvent;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.filter.codec.ProtocolEncoderException;
 import org.apache.mina.filter.compression.CompressionFilter;
@@ -162,7 +163,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		new DelayQueue<>();
 	private final ConcurrentHashMap<HostAndPort,HostAndPort> active_reconnections =
 		new ConcurrentHashMap<>();
-	private final ReconnectManager reconnect_manager;
+
+	private ReconnectManager reconnect_manager;
 
 	private long reconnect_retry_interval = RECONNECT_RETRY_INTERVAL;
 
@@ -188,8 +190,6 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		this.enable_compression = enable_compression;
 		this.ssl_config = ssl_config;
 
-		reconnect_manager = new ReconnectManager();
-
 		if ( message_send_delay != null ) {
 			LOG.warn( "Message send delay is active: " + message_send_delay + " ms" );
 		}
@@ -206,6 +206,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		Objects.requireNonNull( message_handler );
 		Objects.requireNonNull( connection_listener );
+
+		this.reconnect_manager = new ReconnectManager();
 
 		this.message_handler = message_handler;
 		this.connection_listener = connection_listener;
@@ -238,7 +240,6 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		if ( ssl_config != null ) {
 			SslFilter ssl_filter = new SslFilter( ssl_config.getSSLContext() );
-			ssl_filter.setUseClientMode( ssl_config.isUseClientMode() );
 			ssl_filter.setWantClientAuth( ssl_config.isWantClientAuth() );
 			ssl_filter.setNeedClientAuth( ssl_config.isNeedClientAuth() );
 			ssl_filter.setEnabledCipherSuites( ssl_config.getEnabledCipherSuites() );
@@ -271,7 +272,6 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 			if ( ssl_config != null ) {
 				SslFilter ssl_filter = new SslFilter( ssl_config.getSSLContext() );
-				ssl_filter.setUseClientMode( ssl_config.isUseClientMode() );
 				ssl_filter.setWantClientAuth( ssl_config.isWantClientAuth() );
 				ssl_filter.setNeedClientAuth( ssl_config.isNeedClientAuth() );
 				ssl_filter.setEnabledCipherSuites( ssl_config.getEnabledCipherSuites() );
@@ -972,13 +972,28 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		// been done.
 		boolean send_close_updates = false;
 		if ( !locally_terminated.booleanValue() && vmid != null ) {
+			InetAddress host = null;
+			Integer port = null;
+
 			InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
 			if ( address != null ) {
-				connection_listener.connectionClosed(
-					address.getAddress(), address.getPort(), local_vmid, vmid, attachment,
-					reconnect, ( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
+				host = address.getAddress();
+				port = address.getPort();
 			}
-			send_close_updates = true;
+			else if ( container != null ) {
+				host = container.getHostAndPort().getHost();
+				port = container.getHostAndPort().getPort();
+			}
+
+			if ( host != null && port != null ) {
+				connection_listener.connectionClosed(host, port, local_vmid, vmid, attachment,
+						reconnect, (UserContextInfo) session.getAttribute(USER_CONTEXT_KEY));
+				send_close_updates = true;
+			}
+			else {
+				LOG.warn( "Unable to notify listeners that connection closed, remote address unknown: {}",
+						session.getAttribute( VMID_KEY ) );
+			}
 		}
 
 		if ( reconnect ) {
@@ -1011,13 +1026,25 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					return;
 				}
 				else if ( send_close_updates ) {
-					InetSocketAddress address =
-						( InetSocketAddress ) session.getRemoteAddress();
-					connection_listener.connectionClosed(
-						address.getAddress(), address.getPort(), local_vmid, vmid,
-						attachment, false,
-						( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
+					InetAddress host = null;
+					Integer port = null;
 
+					InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
+					if ( address != null ) {
+						host = address.getAddress();
+						port = address.getPort();
+					}
+					else if ( container != null ) {
+						host = container.getHostAndPort().getHost();
+						port = container.getHostAndPort().getPort();
+					}
+
+					if ( host != null && port != null ) {
+						connection_listener.connectionClosed(
+								host, port, local_vmid, vmid,
+								attachment, false,
+								(UserContextInfo) session.getAttribute(USER_CONTEXT_KEY));
+					}
 					// fall through...
 				}
 			}
@@ -1045,11 +1072,20 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			if ( locally_initiated.booleanValue() ) {
 				InetSocketAddress peer_address =
 					( ( InetSocketAddress ) session.getRemoteAddress() );
-				HostAndPort search_template = new HostAndPort(
-					peer_address.getAddress(), peer_address.getPort() );
-				test_container = outbound_session_map.get( search_template );
-				if ( test_container != null && test_container == container ) {
-					outbound_session_map.remove( search_template );
+				HostAndPort search_template = null;
+				if ( peer_address != null ) {
+					search_template = new HostAndPort(
+							peer_address.getAddress(), peer_address.getPort());
+				}
+				else if ( container != null ){
+					search_template = container.getHostAndPort();
+				}
+
+				if ( search_template != null ) {
+					test_container = outbound_session_map.get(search_template);
+					if (test_container != null && test_container == container) {
+						outbound_session_map.remove(search_template);
+					}
 				}
 			}
 		}
@@ -1506,5 +1542,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		old_session.setAttribute( MINAIntrepidDriver.LOCAL_TERMINATE_KEY, Boolean.TRUE );
 
 		CloseHandler.close( old_session, nice_close_time_ms );
+	}
+
+	@Override
+	public void event(IoSession session, FilterEvent event) throws Exception {
+		// NOTE: We provide no handling/support for FilterEvent
 	}
 }

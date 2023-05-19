@@ -41,7 +41,6 @@ public class EncryptedCommTest extends CommTest {
 		config.setNeedClientAuth( false );
 		config.setWantClientAuth( false );
 		config.setEnabledCipherSuites( new String[] { "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" } );
-		config.setUseClientMode( !server );
 		return new MINAIntrepidDriver( false, config );
 	}
 }

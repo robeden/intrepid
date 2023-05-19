@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.Assert.assertTrue;
+
 /**
  *
  */
@@ -161,7 +163,7 @@ public class SessionInitBypassTest {
 
 		Assume.assumeTrue( "Convert invocation didn't happen (bug #5 fixed, hopefully)",
 			method_invoked.get() );
-		Assert.assertTrue( "During call, IntrepidContext indicated we weren't in a call",
+		assertTrue( "During call, IntrepidContext indicated we weren't in a call",
 			indicated_in_call.get() );
 	}
 
@@ -195,7 +197,7 @@ public class SessionInitBypassTest {
 
 		ConnectFuture connect_future = connector.connect( new InetSocketAddress(
 			InetAddress.getLoopbackAddress(), server.getServerPort() ) );
-		connect_future.await();
+		assertTrue( connect_future.await( 30, TimeUnit.SECONDS ) );
 
 		SessionInfo mock_info = Mockito.mock( SessionInfo.class );
 		Mockito.when( mock_info.getProtocolVersion() )
@@ -209,10 +211,10 @@ public class SessionInitBypassTest {
 		session.setAttribute( MINAIntrepidDriver.SESSION_INFO_KEY, mock_info );
 
 		Assert.assertNotNull( session );
-		Assert.assertTrue( session.isConnected() );
+		assertTrue( session.isConnected() );
 
 		WriteFuture write_future = session.write( message );
-		write_future.await();
+		assertTrue( write_future.await( 30, TimeUnit.SECONDS ) );
 
 		return session;
 	}
