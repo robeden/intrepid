@@ -11,7 +11,7 @@ dependencies {
 	testCompile 'com.jakewharton.byteunits:byteunits:0.9.1'
     testCompile project( ':core' ).sourceSets.test.output
 
-	testRuntime 'org.slf4j:slf4j-simple:1.7.25'
+	testRuntime 'org.slf4j:slf4j-simple:2.0.9'
 }
 
 test {
