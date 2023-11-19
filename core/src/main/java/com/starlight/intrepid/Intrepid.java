@@ -43,6 +43,8 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.ByteChannel;
 import java.util.HashMap;
@@ -66,8 +68,7 @@ import static java.util.Objects.requireNonNull;
  */
 @SuppressWarnings( { "WeakerAccess", "unused" } )
 public class Intrepid {
-	private static final long CONNECT_TIMEOUT =
-		Long.getLong( "intrepid.connect.timeout", 10000 ).longValue();
+	private static final long CONNECT_TIMEOUT = Long.getLong("intrepid.connect.timeout", 10000);
 
 	private static final Lock LOCAL_INSTANCE_MAP_LOCK = new ReentrantLock();
 	private static final Map<VMID,Intrepid> LOCAL_INSTANCE_MAP = new HashMap<>();
@@ -386,8 +387,7 @@ public class Intrepid {
 	public VMID connect( InetAddress host, int port, ConnectionArgs args,
 						 Object attachment ) throws IOException {
 
-		return connect( host, port, args, attachment, CONNECT_TIMEOUT,
-				TimeUnit.MILLISECONDS );
+		return connect( new InetSocketAddress(host, port), args, attachment, CONNECT_TIMEOUT, TimeUnit.MILLISECONDS );
 	}
 
 	/**
@@ -414,7 +414,34 @@ public class Intrepid {
 	public VMID connect( InetAddress host, int port, ConnectionArgs args,
 		Object attachment, long timeout, TimeUnit timeout_units ) throws IOException {
 
-		return spi.connect( host, port, args, attachment, timeout, timeout_units, false );
+		return connect( new InetSocketAddress(host, port), args, attachment, timeout, timeout_units );
+	}
+
+	/**
+	 * Connect to remote host, throwing an exception immediately if the host is not
+	 * reachable. But allowing a caller provider connection timeout.
+	 *
+	 * @param destination   Destination for the connection.
+	 * @param args      	(Optional) SPI-dependant connection args.
+	 * @param attachment	An object the caller can associate with the connection
+	 * @param timeout		Time to wait for the connection. Note that this is a soft
+	 * 						timeout, so it's guaranteed to try for at least the time given
+	 * 						and not start any long operations after the time has expired.
+	 * @param timeout_units Time unit for <tt>timeout</tt> argument.
+	 *
+	 * @return              The VMID of the remote host.
+	 *
+	 * @throws IOException                  Thrown if an error occurs while trying to
+	 *                                      connect.
+	 * @throws ConnectionFailureException   If the connection failed due to an
+	 *                                      authentication/authorization failure.
+	 *
+	 * @see #tryConnect
+	 */
+	public VMID connect( SocketAddress destination, ConnectionArgs args,
+		Object attachment, long timeout, TimeUnit timeout_units ) throws IOException {
+
+		return spi.connect( destination, args, attachment, timeout, timeout_units, false );
 	}
 
 
@@ -438,11 +465,34 @@ public class Intrepid {
 		Object attachment, long timeout, TimeUnit timeout_units )
 		throws IOException, InterruptedException {
 
-		requireNonNull( host );
+		return tryConnect( new InetSocketAddress(host, port), args, attachment, timeout, timeout_units );
+	}
+
+	/**
+	 * Wait for a connection to the remote host.
+	 *
+	 * @param destination   Destination to connect to.
+	 * @param args      	(Optional) SPI-dependant connection args.
+	 * @param timeout		Time to wait for the connection. Note that this is a soft
+	 * 						timeout, so it's guaranteed to try for at least the time given
+	 * 						and not start any long operations after the time has expired.
+	 * @param timeout_units Time unit for <tt>timeout</tt> argument.
+	 *
+	 * @return          	The VMID of the remote host. This will always be non-null.
+	 * 						If the timeout is reached, an exception (indicating the most
+	 * 						recent failure cause) will be thrown.
+	 *
+	 * @throws IOException  Thrown if an error occurs while trying to connect.
+	 */
+	public VMID tryConnect( InetSocketAddress destination, ConnectionArgs args,
+		Object attachment, long timeout, TimeUnit timeout_units )
+		throws IOException, InterruptedException {
+
+		requireNonNull( destination );
 
 		if ( closed ) throw new IllegalStateException( "Closed" );
 
-		return spi.connect( host, port, args, attachment, timeout, timeout_units, true );
+		return spi.connect( destination, args, attachment, timeout, timeout_units, true );
 	}
 
 
@@ -718,7 +768,7 @@ public class Intrepid {
 		}
 
 		public Builder serverPort( int server_port ) {
-			this.server_port = Integer.valueOf( server_port );
+			this.server_port = server_port;
 			return this;
 		}
 
@@ -743,7 +793,7 @@ public class Intrepid {
 					"An AuthenticationHandler is already installed." );
 			}
 			this.auth_handler = new NoAuthenticationHandler();
-			if ( server_port == null ) server_port = Integer.valueOf( 0 );
+			if ( server_port == null ) server_port = 0;
 
 			return this;
 		}
@@ -874,7 +924,6 @@ public class Intrepid {
 			LocalCallHandler local_handler = new LocalCallHandler( vmid,
 				performance_listeners.dispatch(), this.validator,
 				this.proxy_class_filter );
-			//noinspection deprecation
 			RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
 				local_handler, vmid, thread_pool, performance_listeners,
 				this.channel_acceptor, this.channel_rx_window_size_function,

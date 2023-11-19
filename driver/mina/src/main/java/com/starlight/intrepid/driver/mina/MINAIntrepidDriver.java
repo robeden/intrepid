@@ -1195,12 +1195,12 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	@Override
 	public void sessionIdle( IoSession session, IdleStatus status ) throws Exception {
-        LOG.trace( "MINA.sessionIdle: {} status: ", session, status );
+        LOG.trace( "MINA.sessionIdle: {} status: {}", session, status );
 	}
 
 	@Override
 	public void messageSent( IoSession session, Object message ) throws Exception {
-		LOG.trace( "messageSent: {} message: {}", message );
+		LOG.trace( "messageSent: {} message: {}", session, message );
 	}
 
 	// Introduced in some 2.0.x maintenance patch... 'cuz MINA. We hates it...
