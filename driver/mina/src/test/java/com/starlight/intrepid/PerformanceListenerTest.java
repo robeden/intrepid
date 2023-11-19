@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.Arrays;
@@ -72,7 +73,7 @@ public class PerformanceListenerTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.performanceListener( server_listener )
 			.channelAcceptor( server_channel_acceptor )

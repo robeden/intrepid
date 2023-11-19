@@ -28,6 +28,8 @@ package com.starlight.intrepid.driver.mina;
 import com.starlight.intrepid.Intrepid;
 import junit.framework.TestCase;
 
+import java.net.InetSocketAddress;
+
 
 /**
  *
@@ -61,7 +63,7 @@ public class MINAIntrepidDriverTest extends TestCase {
 			instance = Intrepid.newBuilder()
 				.driver( spi )
 				.openServer()
-				.serverPort( 11751 )
+				.serverAddress( new InetSocketAddress( 11751 ) )
 				.build();
 
 			System.out.println( "Server address: " + spi.getServerAddress() );

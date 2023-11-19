@@ -5,6 +5,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +25,7 @@ public class ProxyInLocalVM {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.build();
 	}

@@ -6,6 +6,7 @@ import com.starlight.intrepid.auth.UserCredentialsConnectionArgs;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 
 /**
@@ -41,7 +42,7 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup head & connect to tail
 		Intrepid head_instance = Intrepid.newBuilder()
-			.serverPort( -1 )
+			.serverAddress( new InetSocketAddress( 0 ) )
 			.authHandler( ( connection_args, remote_address, session_source ) -> {
 				UserCredentialsConnectionArgs user_args =
 					( UserCredentialsConnectionArgs ) connection_args;
@@ -84,7 +85,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		// Setup tail
 		TailInstance tail_proxy_instance = new TailInstance();
 		tail_instance = Intrepid.newBuilder()
-			.serverPort( -1 )
+			.serverAddress( new InetSocketAddress( 0 ) )
 			.authHandler(
 				( connection_args, remote_address, session_source ) -> {
 					UserCredentialsConnectionArgs user_args =
@@ -96,7 +97,7 @@ public class ChainedCallUserContextTest extends TestCase {
 
 		// Setup head & connect to tail
 		head_instance = Intrepid.newBuilder()
-			.serverPort( -1 )
+			.serverAddress( new InetSocketAddress( 0 ) )
 			.authHandler( ( connection_args, remote_address, session_source ) -> {
 				UserCredentialsConnectionArgs user_args =
 					( UserCredentialsConnectionArgs ) connection_args;

@@ -41,6 +41,7 @@ import org.junit.Test;
 import java.io.*;
 import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
@@ -74,7 +75,7 @@ public class CommTest {
 	public void testPortReleaseOnShutdown() throws Exception {
 		for( int i = 0; i < 100; i++ ) {
 			Intrepid instance = Intrepid.newBuilder()
-				.serverPort( 11751 )
+				.serverAddress( new InetSocketAddress( 11751 ) )
 				.openServer()
 				.driver( createSPI( true ) )
 				.build();
@@ -91,7 +92,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.driver( createSPI( true ) )
 			.build();
@@ -110,7 +111,7 @@ public class CommTest {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+        assertNotEquals(client_instance.getLocalVMID(), server_vmid);
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -174,7 +175,7 @@ public class CommTest {
 		catch( ServerException ex ) {
 			// This is good
 			assertNotNull( ex.getCause() );
-			assertTrue( Error.class.equals( ex.getCause().getClass() ) );
+            assertEquals(Error.class, ex.getCause().getClass());
 			assertEquals( "Test Error", ex.getCause().getMessage() );
 		}
 		catch( Throwable t ) {
@@ -222,7 +223,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer().driver( createSPI( true ) )
 			.build();
 		ServerImpl original_instance =
@@ -240,7 +241,7 @@ public class CommTest {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+        assertNotEquals(client_instance.getLocalVMID(), server_vmid);
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -306,7 +307,7 @@ public class CommTest {
 		}
 		catch( Error ex ) {
 			// This is good
-			assertTrue( Error.class.equals( ex.getClass() ) );
+            assertEquals(Error.class, ex.getClass());
 			assertEquals( "Test Error", ex.getMessage() );
 		}
 		catch( Throwable t ) {
@@ -336,7 +337,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.driver( createSPI( true ) )
 			.build();
@@ -355,7 +356,7 @@ public class CommTest {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+        assertNotEquals(client_instance.getLocalVMID(), server_vmid);
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -446,7 +447,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.driver( createSPI( true ) )
 			.build();
@@ -465,7 +466,7 @@ public class CommTest {
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		Assert.assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+        assertNotEquals(client_instance.getLocalVMID(), server_vmid);
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -578,7 +579,7 @@ public class CommTest {
 			try {
 				server_instance = Intrepid.newBuilder()
 					.vmidHint( "server" )
-					.serverPort( 11751 )
+					.serverAddress( new InetSocketAddress( 11751 ) )
 					.openServer()
 					.driver( createSPI( true ) )
 					.build();
@@ -789,7 +790,7 @@ public class CommTest {
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
 			.openServer()
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.driver( createSPI( true ) )
 			.build();
 

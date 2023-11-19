@@ -7,6 +7,7 @@ import com.starlight.intrepid.exception.ServerException;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +32,7 @@ public class AbnormalMethodTerminationTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.build();
 		ServerImpl original_instance = new ServerImpl();

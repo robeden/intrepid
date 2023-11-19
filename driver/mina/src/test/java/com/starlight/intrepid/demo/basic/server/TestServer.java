@@ -34,6 +34,7 @@ import com.starlight.intrepid.demo.basic.ClientInterface;
 import com.starlight.intrepid.demo.basic.ServerInterface;
 
 import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
 
 
 /**
@@ -64,7 +65,7 @@ public class TestServer implements ServerInterface {
 
 		System.out.print( "Initializing..." );
 		Intrepid intrepid = Intrepid.newBuilder()
-			.serverPort( port )
+			.serverAddress( new InetSocketAddress( port ) )
 			.openServer()
 			.build();
 		intrepid.addPerformanceListener( new PerformanceListener() {

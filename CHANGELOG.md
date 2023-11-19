@@ -13,6 +13,8 @@ real history will start at 1.7.0.
 ### Changed
 - **Breaking change:** ConnectionListener replaces host (`InetAddress`) and port (`int`)
   with a single `SocketAddress`.
+- **Breaking change:** Builder method `serverPort` has been removed and the signature of
+  `serverAddress` has been changed to take a `SocketAddress` rather than an `InetAddress`.
 
 ## [1.8.0]
 ### Removed

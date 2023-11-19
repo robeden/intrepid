@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
@@ -97,7 +98,7 @@ public class ListenerRegistrationTest extends TestCase {
 			// Bring the server back
 			server = Intrepid.newBuilder()
 				.openServer()
-				.serverPort( server_port )
+				.serverAddress( new InetSocketAddress( server_port ) )
 				.build();
 			server.getLocalRegistry().bind( "server", server_mock );
 
@@ -197,7 +198,7 @@ public class ListenerRegistrationTest extends TestCase {
 			// Bring the server back
 			server = Intrepid.newBuilder()
 				.openServer()
-				.serverPort( server_port )
+				.serverAddress( new InetSocketAddress( server_port ) )
 				.build();
 			server.getLocalRegistry().bind( "server", server_mock );
 
@@ -294,7 +295,7 @@ public class ListenerRegistrationTest extends TestCase {
 
 		// Bring the server back... BUT DON'T SERVER BIND TO REGISTRY
 		temp_unbound_from_registry.set( true );
-		server = Intrepid.newBuilder().openServer().serverPort( server_port ).build();
+		server = Intrepid.newBuilder().openServer().serverAddress( new InetSocketAddress(server_port) ).build();
 
 		// Wait a while and make sure we're still not connected
 		for( int i = 0; i < 5; i++ ) {     // 5 seconds

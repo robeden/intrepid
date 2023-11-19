@@ -36,6 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 
@@ -64,7 +65,7 @@ public class AuthTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 0 )
+			.serverAddress( new InetSocketAddress( 0 ) )
 			.authHandler( new UserTestAuthenticationHandler() )
 			.build();
 		CommTest.ServerImpl original_instance =

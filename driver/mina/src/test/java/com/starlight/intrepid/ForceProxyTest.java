@@ -29,6 +29,7 @@ import junit.framework.TestCase;
 
 import java.io.Serializable;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 
 /**
@@ -49,7 +50,7 @@ public class ForceProxyTest extends TestCase {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 		server_instance = Intrepid.newBuilder()
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.vmidHint( "server" )
 			.openServer()
 			.build();

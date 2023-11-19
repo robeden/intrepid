@@ -7,6 +7,7 @@ import com.starlight.intrepid.auth.UserContextInfo;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +29,7 @@ public class TestReconnecting {
 
 		Intrepid instance = Intrepid.newBuilder()
 			.openServer()
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.build();
 
 		instance.addConnectionListener( new ConnectionListener() {

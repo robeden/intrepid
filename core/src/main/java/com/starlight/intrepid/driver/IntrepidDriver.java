@@ -83,7 +83,7 @@ public interface IntrepidDriver {
 	 *                                      and invoke return messages. See
 	 *          {@code ProxyInvocationHandler.DESERIALIZING_VMID}
 	 */
-	void init( InetAddress server_address, Integer server_port, String vmid_hint,
+	void init( SocketAddress server_address, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,

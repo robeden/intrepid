@@ -197,7 +197,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	}
 
 	@Override
-	public void init( InetAddress server_address, Integer server_port, String vmid_hint,
+	public void init( SocketAddress server_address, String vmid_hint,
 		InboundMessageHandler message_handler, ConnectionListener connection_listener,
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
@@ -266,9 +266,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		// Make sure sockets don't linger
 		connector.getSessionConfig().setSoLinger( 0 );
 
-		if ( server_address != null || server_port != null ) {
-			if ( server_port == null ) server_port = 0;
-
+		if ( server_address != null ) {
 			acceptor = new NioSocketAcceptor();
 
 			if ( ssl_config != null ) {
@@ -297,10 +295,11 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			// Make sure sockets don't linger
 			acceptor.getSessionConfig().setSoLinger( 0 );
 
-			if (server_port <= 0 ) acceptor.bind();
+			if (server_address instanceof InetSocketAddress && ((InetSocketAddress) server_address).getPort() <= 0) {
+				acceptor.bind();
+			}
 			else {
-				acceptor.bind(
-					new InetSocketAddress( server_address, server_port) );
+				acceptor.bind(server_address);
 			}
 		}
 

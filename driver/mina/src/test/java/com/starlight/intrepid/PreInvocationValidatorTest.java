@@ -5,6 +5,7 @@ import com.starlight.intrepid.auth.PreInvocationValidator;
 import junit.framework.TestCase;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 /**
  *
@@ -48,7 +49,7 @@ public class PreInvocationValidatorTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.preInvocationValidator( validator )
 			.build();

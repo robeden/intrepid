@@ -47,6 +47,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -735,8 +736,7 @@ public class Intrepid {
 
 	public static class Builder {
 		private IntrepidDriver driver;
-		private InetAddress server_address;
-		private Integer server_port;
+		private SocketAddress server_address;
 		private ScheduledExecutor thread_pool = SharedThreadPool.INSTANCE;
 		private AuthenticationHandler auth_handler;
 		private String vmid_hint;
@@ -762,13 +762,8 @@ public class Intrepid {
 			return this;
 		}
 
-		public Builder serverAddress( InetAddress server_address ) {
+		public Builder serverAddress( SocketAddress server_address ) {
 			this.server_address = server_address;
-			return this;
-		}
-
-		public Builder serverPort( int server_port ) {
-			this.server_port = server_port;
 			return this;
 		}
 
@@ -793,7 +788,7 @@ public class Intrepid {
 					"An AuthenticationHandler is already installed." );
 			}
 			this.auth_handler = new NoAuthenticationHandler();
-			if ( server_port == null ) server_port = 0;
+			if (this.server_address == null) this.server_address = new InetSocketAddress(0);
 
 			return this;
 		}
@@ -891,7 +886,7 @@ public class Intrepid {
 			}
 
 			if ( vmid_hint == null ) {
-				if ( server_address != null ) vmid_hint = server_address.getHostAddress();
+				if ( server_address != null ) vmid_hint = server_address.toString();
 				else {
 					try {
 						InetAddress local_host = InetAddress.getLocalHost();
@@ -930,7 +925,7 @@ public class Intrepid {
 				this.force_proto_2 );
 	
 			// Init SPI
-			driver.init( server_address, server_port, vmid_hint, remote_handler,
+			driver.init( server_address, vmid_hint, remote_handler,
 				connection_listeners.dispatch(), thread_pool, vmid,
 				ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch(),
 				this.unit_test_hook, VMID::new );

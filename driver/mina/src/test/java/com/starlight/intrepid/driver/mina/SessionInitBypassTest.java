@@ -98,7 +98,7 @@ public class SessionInitBypassTest {
 		server = null;
 
 		if ( session != null ) {
-			session.close( true );
+			session.closeNow();
 			session = null;
 		}
 	}

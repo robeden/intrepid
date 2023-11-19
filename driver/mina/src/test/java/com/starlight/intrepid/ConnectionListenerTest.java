@@ -70,7 +70,7 @@ public class ConnectionListenerTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.openServer()
 			.connectionListener( s_listener )
 			.build();
@@ -161,7 +161,7 @@ public class ConnectionListenerTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverPort( 11751 )
+			.serverAddress( new InetSocketAddress( 11751 ) )
 			.connectionListener( s_listener )
 			.authHandler(
 				( connection_args, remote_address, session_source ) -> user_context )

@@ -39,6 +39,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -105,7 +106,7 @@ public class ReconnectTest extends TestCase {
 		}
 
 		server_instance = Intrepid.newBuilder()
-			.serverPort( port.intValue() )
+			.serverAddress( new InetSocketAddress( port ) )
 			.openServer()
 			.build();
 		System.out.println( "Server instance recreated: " + port );
@@ -197,7 +198,7 @@ public class ReconnectTest extends TestCase {
 		}
 
 		server_instance = Intrepid.newBuilder()
-			.serverPort( port.intValue() )
+			.serverAddress( new InetSocketAddress( port ) )
 			.openServer()
 			.build();
 		System.out.println( "Server instance recreated: " + port );
@@ -368,7 +369,7 @@ public class ReconnectTest extends TestCase {
 
 		Intrepid.Builder setup = Intrepid.newBuilder();
 		setup.authHandler( mock_auth_handler );
-		setup.serverPort( 0 );
+		setup.serverAddress( new InetSocketAddress( 0 ) );
 		server_instance = setup.build();
 		Integer port = server_instance.getServerPort();
 		assertNotNull( port );
@@ -415,7 +416,7 @@ public class ReconnectTest extends TestCase {
 
 		ThreadKit.sleep( 1000 );
 
-		setup.serverPort( port.intValue() );
+		setup.serverAddress( new InetSocketAddress( port ) );
 		server_instance = setup.build();
 		System.out.println( "Server instance recreated: " + port );
 		server_instance.getLocalRegistry().bind( "server", server_impl );
