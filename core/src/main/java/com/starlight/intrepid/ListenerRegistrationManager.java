@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +46,7 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 	@Override
-	public void connectionOpened( @Nonnull InetAddress host, int port, Object attachment,
+	public void connectionOpened( @Nonnull SocketAddress socket_address, Object attachment,
 		@Nonnull VMID source_vmid, @Nonnull VMID vmid, UserContextInfo user_context,
 		VMID previous_vmid,
 		@Nonnull Object connection_type_description, byte ack_rate_sec ) {
@@ -83,7 +83,7 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 	@Override
-	public void connectionClosed( @Nonnull InetAddress host, int port,
+	public void connectionClosed( @Nonnull SocketAddress socket_address,
 		@Nonnull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
 		boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {
 
@@ -102,11 +102,11 @@ class ListenerRegistrationManager implements ConnectionListener {
 
 
 	@Override
-	public void connectionOpening( @Nonnull InetAddress host, int port, Object attachment,
+	public void connectionOpening( @Nonnull SocketAddress socket_address, Object attachment,
 		ConnectionArgs args, @Nonnull Object connection_type_description ) {}
 
 	@Override
-	public void connectionOpenFailed( @Nonnull InetAddress host, int port, Object attachment,
+	public void connectionOpenFailed( @Nonnull SocketAddress socket_address, Object attachment,
 		Exception error, boolean will_retry ) {}
 
 

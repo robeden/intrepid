@@ -33,6 +33,8 @@ import junit.framework.TestCase;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -63,8 +65,8 @@ public class ConnectionListenerTest extends TestCase {
 	}
 
 	public void testListener() throws Exception {
-		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
-		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
+		TestConnectionListener s_listener = new TestConnectionListener("Server");
+		TestConnectionListener c_listener = new TestConnectionListener("Client");
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
@@ -89,6 +91,8 @@ public class ConnectionListenerTest extends TestCase {
 			client_instance.connect( localhost, 11751, null, client_attachment );
 		assertNotNull( server_vmid );
 
+		SocketAddress expected_address = new InetSocketAddress(localhost, 11751);
+
 		// Make sure both listeners show a connection
 		ConnectionEventInfo info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
 		assertNotNull( info );
@@ -96,16 +100,14 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( client_instance.getLocalVMID(), info.vmid );
 		assertNull( info.attachment );
 		assertNull( info.user_context );
-		assertEquals( localhost, info.host );
 		assertEquals( 1, info.ack_rate_sec );               // specified in property
-		System.out.println( "client port: " + info.port );
+		System.out.println( "client address: " + info.socket_address );
 
 		// OPENING
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
 		assertNotNull( info );
 		assertEquals( EventType.OPENING, info.type );
-		assertEquals( localhost, info.host );
-		assertEquals( 11751, info.port );
+		assertEquals( expected_address, info.socket_address );
 
 		// OPENED
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
@@ -114,9 +116,8 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( server_instance.getLocalVMID(), info.vmid );
 		assertEquals( client_attachment, info.attachment );
 		assertNull( info.user_context );
-		assertEquals( localhost, info.host );
+		assertEquals( expected_address, info.socket_address );
 		assertEquals( 1, info.ack_rate_sec );
-		assertEquals( 11751, info.port );
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
@@ -134,8 +135,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( client_instance.getLocalVMID(), info.vmid );
 		assertNull( info.attachment );
 		assertNull( info.user_context );
-		assertEquals( localhost, info.host );
-		System.out.println( "client port: " + info.port );
+		System.out.println( "client address: " + info.socket_address );
 
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
 		assertNotNull( info );
@@ -143,8 +143,7 @@ public class ConnectionListenerTest extends TestCase {
 		assertEquals( server_instance.getLocalVMID(), info.vmid );
 		assertEquals( client_attachment, info.attachment );
 		assertNull( info.user_context );
-		assertEquals( localhost, info.host );
-		assertEquals( 11751, info.port );
+		assertEquals( expected_address, info.socket_address );
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
@@ -155,8 +154,8 @@ public class ConnectionListenerTest extends TestCase {
 
 
 	public void testListenerWithUserConnection() throws Exception {
-		TestConnectionListener s_listener = new TestConnectionListener( "Server" );
-		TestConnectionListener c_listener = new TestConnectionListener( "Client" );
+		TestConnectionListener s_listener = new TestConnectionListener("Server");
+		TestConnectionListener c_listener = new TestConnectionListener("Client");
 
 		UserContextInfo user_context = new SimpleUserContextInfo( "test_user" );
 
@@ -178,6 +177,8 @@ public class ConnectionListenerTest extends TestCase {
 
 		final InetAddress localhost = InetAddress.getByName( "127.0.0.1" );
 
+		SocketAddress expected_address = new InetSocketAddress(localhost, 11751);
+
 		// Connect to the server
 		String client_attachment = "My Client Attachment";
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
@@ -197,8 +198,7 @@ public class ConnectionListenerTest extends TestCase {
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
 		assertNotNull( info );
 		assertEquals( EventType.OPENING, info.type );
-		assertEquals( localhost, info.host );
-		assertEquals( 11751, info.port );
+		assertEquals( expected_address, info.socket_address );
 
 		// OPENED
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
@@ -240,7 +240,7 @@ public class ConnectionListenerTest extends TestCase {
 	}
 
 
-	private class TestConnectionListener implements ConnectionListener {
+	private static class TestConnectionListener implements ConnectionListener {
 		private final BlockingQueue<ConnectionEventInfo> event_queue =
 			new LinkedBlockingQueue<>();
 
@@ -251,45 +251,43 @@ public class ConnectionListenerTest extends TestCase {
 		}
 
 		@Override
-		public void connectionOpened( @Nonnull InetAddress host, int port,
+		public void connectionOpened( @Nonnull SocketAddress socket_address,
 			Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 			UserContextInfo user_context, VMID previous_vmid,
 			@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
 			System.out.println( id + " connection opened: " + vmid );
-			event_queue.add( new ConnectionEventInfo( EventType.OPENED, vmid, attachment,
-				false, user_context, host, port, ack_rate_sec ) );
+			event_queue.add(new ConnectionEventInfo(EventType.OPENED, vmid, attachment,
+				false, user_context, socket_address, ack_rate_sec));
 		}
 
 		@Override
-		public void connectionClosed( @Nonnull InetAddress host, int port,
+		public void connectionClosed( @Nonnull SocketAddress socket_address,
 			@Nonnull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
 			boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {
 
 			System.out.println( id + " connection closed: " + vmid );
-			event_queue.add( new ConnectionEventInfo( EventType.CLOSED, vmid, attachment,
-				will_attempt_reconnect, user_context, host, port, ( byte ) -1 ) );
+			event_queue.add(new ConnectionEventInfo(EventType.CLOSED, vmid, attachment,
+				will_attempt_reconnect, user_context, socket_address, (byte) -1));
 		}
 
 		@Override
-		public void connectionOpenFailed( @Nonnull InetAddress host, int port,
+		public void connectionOpenFailed( @Nonnull SocketAddress socket_address,
 			Object attachment, Exception error, boolean will_retry ) {
 
-			System.out.println( id + " connection open failed: " + host.getHostAddress() +
-				":" + port + " - " + error );
-			event_queue.add( new ConnectionEventInfo( EventType.OPEN_FAILED, null,
-				attachment, will_retry, null, host, port, ( byte ) -1 ) );
+			System.out.println( id + " connection open failed: " + socket_address + " - " + error );
+			event_queue.add(new ConnectionEventInfo(EventType.OPEN_FAILED, null,
+				attachment, will_retry, null, socket_address, (byte) -1));
 		}
 
 		@Override
-		public void connectionOpening( @Nonnull InetAddress host, int port,
+		public void connectionOpening( @Nonnull SocketAddress socket_address,
 			Object attachment, ConnectionArgs args,
 			@Nonnull Object connection_type_description ) {
 
-			System.out.println( id + " connection opening: " + host.getHostAddress() +
-				":" + port );
-			event_queue.add( new ConnectionEventInfo( EventType.OPENING, null,
-				attachment, false, null, host, port, ( byte ) -1 ) );
+			System.out.println( id + " connection opening: " + socket_address );
+			event_queue.add(new ConnectionEventInfo(EventType.OPENING, null,
+				attachment, false, null, socket_address, (byte) -1));
 		}
 	}
 
@@ -300,27 +298,25 @@ public class ConnectionListenerTest extends TestCase {
 		OPEN_FAILED
 	}
 
-	private class ConnectionEventInfo {
+	private static class ConnectionEventInfo {
 		private final EventType type;
 		private final VMID vmid;
 		private final Object attachment;
 		private final boolean will_reconnect;
 		private final UserContextInfo user_context;
-		private final InetAddress host;
-		private final int port;
+		private final SocketAddress socket_address;
 		private final byte ack_rate_sec;
 
 		ConnectionEventInfo( EventType type, VMID vmid, Object attachment,
-			boolean will_reconnect, UserContextInfo user_context, InetAddress host,
-			int port, byte ack_rate_sec ) {
+			boolean will_reconnect, UserContextInfo user_context, SocketAddress socket_address,
+			byte ack_rate_sec ) {
 
 			this.type = type;
 			this.vmid = vmid;
 			this.attachment = attachment;
 			this.will_reconnect = will_reconnect;
 			this.user_context = user_context;
-			this.host = host;
-			this.port = port;
+			this.socket_address = socket_address;
 			this.ack_rate_sec = ack_rate_sec;
 		}
 
@@ -328,7 +324,7 @@ public class ConnectionListenerTest extends TestCase {
 		public String toString() {
 			return "ConnectionEventInfo" + "{attachment=" + attachment + ", type=" +
 				type + ", vmid=" + vmid + ", will_reconnect=" + will_reconnect +
-				", user_context=" + user_context + ", host=" + host + ", port=" + port +
+				", user_context=" + user_context + ", socket_address=" + socket_address +
 				'}';
 		}
 	}

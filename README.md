@@ -20,19 +20,19 @@ and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intr
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
   <artifactId>intrepid-core</artifactId>
-  <version>1.7.3</version>
+  <version>1.9.0</version>
 </dependency>
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
   <artifactId>intrepid-driver-mina</artifactId>
-  <version>1.7.3</version>
+  <version>1.9.0</version>
   <scope>runtime</scope>  <!-- runtime only -->
 </dependency>
 ```
 or Gradle:
 ```groovy
-compile 'com.logicartisan.intrepid:intrepid-core:1.7.2'
-runtime 'com.logicartisan.intrepid:intrepid-driver-mina:1.7.2'  // runtime only
+compile 'com.logicartisan.intrepid:intrepid-core:1.9.0'
+runtime 'com.logicartisan.intrepid:intrepid-driver-mina:1.9.0'  // runtime only
 ```
 
 

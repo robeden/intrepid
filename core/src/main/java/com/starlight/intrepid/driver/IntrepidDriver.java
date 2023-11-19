@@ -37,6 +37,8 @@ import com.starlight.intrepid.message.IMessage;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -60,10 +62,31 @@ public interface IntrepidDriver {
 	 *
 	 * @return					The VMID of the host connected to.
 	 */
-	VMID connect( InetAddress address, int port, ConnectionArgs args,
+	default VMID connect( InetAddress address, int port, ConnectionArgs args,
+		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
+		throws IOException {
+
+		return connect(new InetSocketAddress(address, port), args, attachment, timeout, timeout_unit, keep_trying);
+	}
+
+	/**
+	 * Connect to the given host.
+	 *
+	 * @param timeout		Time to wait for the connection. Note that this is a soft
+	 * 						timeout, so it's guaranteed to try for at least the time given
+	 * 						and not start any long operations after the time has expired.
+	 * @param timeout_unit  Time unit for <tt>timeout</tt> argument.
+	 * @param keep_trying		If true, the implementation should keep trying to connect
+	 * 							even if problems occur such as the host being unreachable,
+	 * 							until the allotted timeout is reached.
+	 *
+	 * @return					The VMID of the host connected to.
+	 */
+	VMID connect(SocketAddress socket_address, ConnectionArgs args,
 		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
 		throws IOException;
-	
+
+
 	void disconnect( VMID vmid );
 
 

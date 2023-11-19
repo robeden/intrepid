@@ -74,7 +74,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 
 	private final IoSession session;
 	private final Map<VMID,SessionContainer> session_map;
-	private final Map<HostAndPort,SessionContainer> outbound_session_map;
+	private final Map<SocketAddress,SessionContainer> outbound_session_map;
 	private final Map<VMID,VMID> vmid_remap;
 	private final Lock map_lock;
 	private final ConnectionListener connection_listener;
@@ -82,7 +82,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 	private final VMID local_vmid;
 
 	IoSessionInfoWrapper( IoSession session, Map<VMID,SessionContainer> session_map,
-		Map<HostAndPort,SessionContainer> outbound_session_map,
+		Map<SocketAddress,SessionContainer> outbound_session_map,
 		Map<VMID,VMID> vmid_remap, Lock map_lock,
 		ConnectionListener connection_listener, String connection_type_description,
 		VMID local_vmid ) {
@@ -128,8 +128,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 		// Allowing null to be set would allow sessions to disappear from the session_map.
 		Objects.requireNonNull( vmid );
 
-		session.setAttribute( MINAIntrepidDriver.INVOKE_ACK_RATE,
-			Byte.valueOf( ack_rate_sec ) );
+		session.setAttribute( MINAIntrepidDriver.INVOKE_ACK_RATE, ack_rate_sec);
 
 		VMID old_vmid = ( VMID ) session.setAttribute( MINAIntrepidDriver.VMID_KEY, vmid );
 
@@ -176,7 +175,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 			if ( old_vmid != null ) {
 				SessionContainer old_container = session_map.remove( old_vmid );
 				if ( container != null ) {
-					outbound_session_map.remove( container.getHostAndPort() );
+					outbound_session_map.remove( container.getSocketAddress() );
 				}
 				vmid_remap.put( old_vmid, vmid );
 
@@ -209,7 +208,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 				InetSocketAddress address =
 					( InetSocketAddress ) session.getRemoteAddress();
 				connection_listener.connectionOpened(
-					address.getAddress(), address.getPort(),
+					address,
 					session.getAttribute( MINAIntrepidDriver.ATTACHMENT_KEY ), local_vmid,
 					vmid, getUserContext(), old_vmid, connection_type_description,
 					ack_rate_sec );
@@ -221,12 +220,12 @@ class IoSessionInfoWrapper implements SessionInfo {
 			// connection away and use this one.
 			Boolean locally_initiated =
 				( Boolean ) session.getAttribute( MINAIntrepidDriver.LOCAL_INITIATE_KEY );
-			if ( ( locally_initiated == null || !locally_initiated.booleanValue() ) &&
+			if ( ( locally_initiated == null || !locally_initiated) &&
 				getPeerServerPort() != null ) {
 
-				HostAndPort search_template = new HostAndPort(
+				SocketAddress search_template = new InetSocketAddress(
 					( ( InetSocketAddress ) session.getRemoteAddress() ).getAddress(),
-					getPeerServerPort().intValue() );
+                    getPeerServerPort());
 				SessionContainer current_ob_container =
 					outbound_session_map.get( search_template );
 				if ( current_ob_container != container ) {

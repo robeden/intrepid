@@ -9,6 +9,10 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
+## [1.9.0]
+### Changed
+- **Breaking change:** ConnectionListener replaces host (`InetAddress`) and port (`int`)
+  with a single `SocketAddress`.
 
 ## [1.8.0]
 ### Removed

@@ -239,7 +239,7 @@ public class ReconnectTest extends TestCase {
 		final AtomicBoolean new_connection_flag = new AtomicBoolean( false );
 		client_instance.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( @Nonnull InetAddress host, int port,
+			public void connectionOpened( @Nonnull SocketAddress socket_address,
 				Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
 				@Nonnull Object connection_type_description, byte ack_rate_sec ) {
@@ -248,17 +248,17 @@ public class ReconnectTest extends TestCase {
 			}
 
 			@Override
-			public void connectionClosed( @Nonnull InetAddress host, int port,
+			public void connectionClosed( @Nonnull SocketAddress socket_address,
 				@Nonnull VMID source_vmid, @Nullable VMID vmid,
 				@Nullable Object attachment, boolean will_attempt_reconnect,
 				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( @Nonnull InetAddress host, int port,
+			public void connectionOpenFailed( @Nonnull SocketAddress socket_address,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( @Nonnull InetAddress host, int port,
+			public void connectionOpening( @Nonnull SocketAddress socket_address,
 				Object attachment, ConnectionArgs args,
 				@Nonnull Object connection_type_description ) {}
 		} );
@@ -292,7 +292,7 @@ public class ReconnectTest extends TestCase {
 		final AtomicInteger connections = new AtomicInteger( 0 );
 		client_instance.addConnectionListener( new ConnectionListener() {
 			@Override
-			public void connectionOpened( @Nonnull InetAddress host, int port,
+			public void connectionOpened( @Nonnull SocketAddress socket_address,
 				Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
 				@Nonnull Object connection_type_description, byte ack_rate_sec ) {
@@ -301,17 +301,17 @@ public class ReconnectTest extends TestCase {
 			}
 
 			@Override
-			public void connectionClosed( @Nonnull InetAddress host, int port,
+			public void connectionClosed( @Nonnull SocketAddress socket_address,
 				@Nonnull VMID source_vmid, @Nullable VMID vmid,
 				@Nullable Object attachment, boolean will_attempt_reconnect,
 				@Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpenFailed( @Nonnull InetAddress host, int port,
+			public void connectionOpenFailed( @Nonnull SocketAddress socket_address,
 				Object attachment, Exception error, boolean will_retry ) {}
 
 			@Override
-			public void connectionOpening( @Nonnull InetAddress host, int port,
+			public void connectionOpening( @Nonnull SocketAddress socket_address,
 				Object attachment, ConnectionArgs args,
 				@Nonnull Object connection_type_description ) {}
 		} );

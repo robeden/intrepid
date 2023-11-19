@@ -187,7 +187,7 @@ public class AbnormalMethodTerminationTest extends TestCase {
 			List<byte[]> list_of_doom = new LinkedList<>();
 			//noinspection InfiniteLoopStatement
 			while( true ) {
-				list_of_doom.add( new byte[ 102400 ] );
+				list_of_doom.add( new byte[ 1024000 ] );
 			}
 		}
 

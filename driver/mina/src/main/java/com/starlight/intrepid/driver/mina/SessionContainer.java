@@ -29,6 +29,7 @@ import com.logicartisan.common.core.thread.ObjectSlot;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import org.apache.mina.core.session.IoSession;
 
+import java.net.SocketAddress;
 import java.util.Objects;
 
 
@@ -36,17 +37,17 @@ import java.util.Objects;
 *
 */
 class SessionContainer {
-	private final HostAndPort host_and_port;
+	private final SocketAddress socket_address;
 	private final ConnectionArgs connection_args;
 
 	private final ObjectSlot<IoSession> session_slot = new ObjectSlot<IoSession>();
 
 	private volatile boolean canceled = false;
 
-	SessionContainer( HostAndPort host_and_port, ConnectionArgs connection_args ) {
-		Objects.requireNonNull( host_and_port );
+	SessionContainer(SocketAddress socket_address, ConnectionArgs connection_args ) {
+		Objects.requireNonNull(socket_address);
 
-		this.host_and_port = host_and_port;
+		this.socket_address = socket_address;
 		this.connection_args = connection_args;
 	}
 
@@ -95,8 +96,8 @@ class SessionContainer {
 	}
 
 
-	public HostAndPort getHostAndPort() {
-		return host_and_port;
+	public SocketAddress getSocketAddress() {
+		return socket_address;
 	}
 
 	public ConnectionArgs getConnectionArgs() {
@@ -108,7 +109,7 @@ class SessionContainer {
 		final StringBuilder sb = new StringBuilder();
 		sb.append( "SessionContainer" );
 		sb.append( "{canceled=" ).append( canceled );
-		sb.append( ", host_and_port=" ).append( host_and_port );
+		sb.append( ", host_and_port=" ).append(socket_address);
 		sb.append( ", connection_args=" ).append( connection_args );
 		sb.append( ", session_slot=" ).append( session_slot );
 		sb.append( '}' );

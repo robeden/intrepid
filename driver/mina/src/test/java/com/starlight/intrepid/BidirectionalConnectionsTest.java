@@ -8,6 +8,7 @@ import junit.framework.TestCase;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.CountDownLatch;
 
 
@@ -44,27 +45,27 @@ public class BidirectionalConnectionsTest extends TestCase {
 		System.out.println();
 		ConnectionListener connection_listener = new ConnectionListener() {
 			@Override
-			public void connectionOpened( @Nonnull InetAddress host, int port,
+			public void connectionOpened( @Nonnull SocketAddress socket_address,
 				Object attachment, @Nonnull VMID source_vmid, @Nonnull VMID vmid,
 				UserContextInfo user_context, VMID previous_vmid,
 				@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
-				System.out.println( "Connection Opened (" + vmid + "): " + host + ":" + port );
+				System.out.println( "Connection Opened (" + vmid + "): " + socket_address );
 			}
 
 			@Override
-			public void connectionClosed( @Nonnull InetAddress host, int port,
+			public void connectionClosed( @Nonnull SocketAddress socket_address,
 				@Nonnull VMID source_vmid, @Nullable VMID vmid,
 				@Nullable Object attachment,
 				boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {}
 
 			@Override
-			public void connectionOpening( @Nonnull InetAddress host, int port,
+			public void connectionOpening( @Nonnull SocketAddress socket_address,
 				Object attachment, ConnectionArgs args,
 				@Nonnull Object connection_type_description ) {}
 
 			@Override
-			public void connectionOpenFailed( @Nonnull InetAddress host, int port,
+			public void connectionOpenFailed( @Nonnull SocketAddress socket_address,
 				Object attachment, Exception error, boolean will_retry ) {}
 		};
 
@@ -115,11 +116,11 @@ public class BidirectionalConnectionsTest extends TestCase {
 		assertEquals( b_proxy, b_instance.getLocalRegistry().lookup( "b" ) );
 
 		VMID a_vmid = b_instance.connect( InetAddress.getLoopbackAddress(),
-			a_instance.getServerPort().intValue(), null, null );
+            a_instance.getServerPort(), null, null );
 
 		A a = ( A ) b_instance.getRemoteRegistry( a_vmid ).lookup( "a" );
 
-		a.registerB( b_instance.getServerPort().intValue() );
+		a.registerB(b_instance.getServerPort());
 
 		System.out.println();
 		System.out.println();

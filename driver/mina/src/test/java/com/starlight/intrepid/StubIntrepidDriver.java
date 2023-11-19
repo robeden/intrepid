@@ -37,6 +37,7 @@ import com.starlight.intrepid.message.IMessage;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -48,11 +49,11 @@ import java.util.function.IntConsumer;
  */
 public class StubIntrepidDriver implements IntrepidDriver {
 	@Override
-	public VMID connect( InetAddress address, int port, ConnectionArgs args,
+	public VMID connect(SocketAddress socket_address, ConnectionArgs args,
 		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
 		throws IOException {
 
-		return new VMID( UUID.randomUUID(), "Stub: " + address.getHostAddress() );
+		return new VMID( UUID.randomUUID(), "Stub: " + socket_address );
 	}
 
 	@Override

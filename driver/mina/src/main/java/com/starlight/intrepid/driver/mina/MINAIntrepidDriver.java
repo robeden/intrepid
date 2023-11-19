@@ -67,6 +67,7 @@ import java.io.Serializable;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.*;
@@ -85,10 +86,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	private static final Logger LOG = LoggerFactory.getLogger( MINAIntrepidDriver.class );
 
 	private static final long SEND_MESSAGE_SESSION_CONNECT_TIMEOUT =
-		Long.getLong( "intrepid.driver.mina.send_message_connect_timeout", 11000 ).longValue();
+        Long.getLong("intrepid.driver.mina.send_message_connect_timeout", 11000);
 
 	private static final long RECONNECT_RETRY_INTERVAL =
-		Long.getLong( "intrepid.driver.mina.reconnect_retry", 5000 ).longValue();
+        Long.getLong("intrepid.driver.mina.reconnect_retry", 5000);
 
 
 	////////////////////////////////
@@ -152,7 +153,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	// Map containing information about outbound_session_map sessions (sessions opened
 	// locally). There session are managed for automatic reconnection.
-	private final Map<HostAndPort,SessionContainer> outbound_session_map =
+	private final Map<SocketAddress,SessionContainer> outbound_session_map =
 		new HashMap<>();
 
 	// When a connection changes VMID's (due to reconnection), the old and new ID's are
@@ -161,7 +162,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 	private final DelayQueue<ReconnectRunnable> reconnect_delay_queue =
 		new DelayQueue<>();
-	private final ConcurrentHashMap<HostAndPort,HostAndPort> active_reconnections =
+	private final ConcurrentHashMap<SocketAddress,SocketAddress> active_reconnections =
 		new ConcurrentHashMap<>();
 
 	private ReconnectManager reconnect_manager;
@@ -266,7 +267,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		connector.getSessionConfig().setSoLinger( 0 );
 
 		if ( server_address != null || server_port != null ) {
-			if ( server_port == null ) server_port = Integer.valueOf( 0 );
+			if ( server_port == null ) server_port = 0;
 
 			acceptor = new NioSocketAcceptor();
 
@@ -296,10 +297,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			// Make sure sockets don't linger
 			acceptor.getSessionConfig().setSoLinger( 0 );
 
-			if ( server_port.intValue() <= 0 ) acceptor.bind();
+			if (server_port <= 0 ) acceptor.bind();
 			else {
 				acceptor.bind(
-					new InetSocketAddress( server_address, server_port.intValue() ) );
+					new InetSocketAddress( server_address, server_port) );
 			}
 		}
 
@@ -350,14 +351,14 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					session.write( message );
 					performance_listener.messageSent(
 						info == null ? null : info.getVMID(), message );
-					futures.add( session.close( false ) );
+					futures.add( session.closeOnFlush() );
 				}
 			}
 
 			for( CloseFuture future : futures ) {
 				future.awaitUninterruptibly( 100 );
 				if ( !future.isClosed() ) {
-					CloseFuture immediate_future = future.getSession().close( true );
+					CloseFuture immediate_future = future.getSession().closeNow();
 					immediate_future.awaitUninterruptibly( 500 );
 				}
 			}
@@ -373,26 +374,20 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		}
 	}
 
-
 	@Override
-	public VMID connect( InetAddress address, int port, ConnectionArgs args,
+	public VMID connect( SocketAddress socket_address, ConnectionArgs args,
 		Object attachment, long timeout, TimeUnit timeout_unit, boolean keep_trying )
 		throws IOException {
 
-		if ( port <= 0 ) {
-			throw new IllegalArgumentException( "Invalid port: " + port );
-		}
-
 		if ( timeout_unit == null ) timeout_unit = TimeUnit.MILLISECONDS;
 
-		final HostAndPort host_and_port = new HostAndPort( address, port );
 		SessionContainer container;
 
 		// Make sure we don't already have a connection for that host/port
 		final boolean already_had_container;
 		map_lock.lock();
 		try {
-			container = outbound_session_map.get( host_and_port );
+			container = outbound_session_map.get( socket_address );
 
 			if ( container == null ) {
 				// If we didn't find a container, see if there is an existing connection
@@ -400,8 +395,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 				boolean found_container = false;
 				for( Map.Entry<VMID,SessionContainer> entry : session_map.entrySet() ) {
-					HostAndPort entry_hap = entry.getValue().getHostAndPort();
-					if ( entry_hap == null ) continue;
+					SocketAddress entry_address = entry.getValue().getSocketAddress();
+					if ( entry_address == null ) continue;
 
 					IoSession session = entry.getValue().getSession();
 					if ( session == null ) continue;
@@ -413,10 +408,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					Integer server_port = session_info.getPeerServerPort();
 					if ( server_port == null ) continue;
 
-					if ( host_and_port.equals( entry_hap.getHost(),
-						server_port.intValue() ) ) {
-
-						outbound_session_map.put( host_and_port, entry.getValue() );
+					if ( socket_address.equals( entry_address ) ) {
+						outbound_session_map.put( socket_address, entry.getValue() );
 						container = entry.getValue();
 						found_container = true;
 						break;
@@ -424,8 +417,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 				}
 
 				if ( !found_container ) {
-					container = new SessionContainer( host_and_port, args );
-					outbound_session_map.put( host_and_port, container );
+					container = new SessionContainer( socket_address, args );
+					outbound_session_map.put( socket_address, container );
 					already_had_container = false;
 				}
 				else already_had_container = true;
@@ -447,14 +440,14 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 				// next time through.
 				map_lock.lock();
 				try {
-					outbound_session_map.remove( host_and_port );
+					outbound_session_map.remove( socket_address );
 				}
 				finally {
 					map_lock.unlock();
 				}
 
 				throw new ConnectException( "Connect timed out (waiting for session): " +
-					host_and_port +
+					socket_address +
 					"  (timeout was " + timeout_unit.toMillis( timeout ) + ")" );
 			}
 
@@ -472,7 +465,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 			IOException exception = null;
 
-			connection_listener.connectionOpening( address, port, attachment, args,
+			connection_listener.connectionOpening( socket_address, attachment, args,
 				connection_type_description );
 
 			boolean first = true;
@@ -489,7 +482,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					}
 
 					try {
-						VMID vmid = inner_connect( address, port, args, null,
+						VMID vmid = inner_connect( socket_address, args, null,
 							attachment, remaining, container, null );
 						if ( vmid != null ) {
 							abend = false;
@@ -504,7 +497,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					remaining -= System.nanoTime() - start;
 
 					if ( abend ) {
-						connection_listener.connectionOpenFailed( address, port,
+						connection_listener.connectionOpenFailed( socket_address,
 							attachment, exception, remaining > 0 );
 					}
 				}
@@ -512,7 +505,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 			if ( exception == null ) {
 				exception = new ConnectException(
-					"Timed out while waiting for connection to " + host_and_port );
+					"Timed out while waiting for connection to " + socket_address );
 			}
 
 			throw exception;
@@ -528,7 +521,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 				map_lock.lock();
 				try {
 					SessionContainer pulled_container =
-						outbound_session_map.remove( host_and_port );
+						outbound_session_map.remove( socket_address );
 					if ( pulled_container != null && pulled_container == container ) {
 						// Make sure it doesn't have a VMID, and clean up if it does
 						IoSession session = pulled_container.getSession();
@@ -558,7 +551,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	}
 
 
-	private VMID inner_connect( InetAddress address, int port, ConnectionArgs args,
+	private VMID inner_connect( SocketAddress socket_address, ConnectionArgs args,
 		Serializable reconnect_token, Object attachment, long timeout_ns,
 		SessionContainer container, VMID original_vmid )
 		throws IOException, InterruptedException {
@@ -567,10 +560,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		long nano_time = System.nanoTime();
 		// NOTE: slot initializer ensures expected attributes are present
-        LOG.trace( "MINA.inner_connection: {}:{}", address, Integer.valueOf( port ) );
+        LOG.trace( "MINA.inner_connection: {}", socket_address );
 
 		ConnectFuture future = connector.connect(
-			new InetSocketAddress( address, port ),
+			socket_address,
 			new VMIDSlotInitializer<>( args, reconnect_token, container,
 				attachment, original_vmid ) );
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
@@ -649,7 +642,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			vmid_remap.values().removeIf( vmid1 -> vmid1.equals( vmid ) );
 
 			if ( container != null ) {
-				outbound_session_map.remove( container.getHostAndPort() );
+				outbound_session_map.remove( container.getSocketAddress() );
 			}
 		}
 		finally {
@@ -667,9 +660,9 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		session.setAttribute( LOCAL_TERMINATE_KEY, Boolean.TRUE );
 
 		// Notify listeners
-		InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
+		SocketAddress address = session.getRemoteAddress();
 		connection_listener.connectionClosed(
-			address.getAddress(), address.getPort(), local_vmid, vmid,
+			address, local_vmid, vmid,
 			session.getAttribute( ATTACHMENT_KEY ), false,
 			( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 
@@ -687,7 +680,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			boolean has_connection = session_map.containsKey( vmid );
 
             LOG.debug( "MINA.hasConnection({}): {}", vmid,
-                Boolean.valueOf( has_connection ) );
+                has_connection);
 
 			return has_connection;
 		}
@@ -703,8 +696,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		final Integer message_id;
 		if ( LOG.isTraceEnabled() ) {
-			message_id = Integer.valueOf( System.identityHashCode( message ) );
-			LOG.trace( "Send message (ID:{}): ", message_id, message );
+			message_id = System.identityHashCode(message);
+			LOG.trace( "Send message (ID:{}): {}", message_id, message );
 		}
 		else message_id = null;
 
@@ -713,7 +706,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		// If there's an artificial delay, sleep now
 		if ( message_send_delay != null ) {
-			ThreadKit.sleep( message_send_delay.longValue() );
+			ThreadKit.sleep(message_send_delay);
 		}
 
 		SessionContainer container;
@@ -803,7 +796,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		InetSocketAddress address = acceptor.getLocalAddress();
 		if ( address == null ) return null;
 
-		return Integer.valueOf( address.getPort() );
+		return address.getPort();
 	}
 
 	@Override
@@ -827,7 +820,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		if ( container == null ) {
 			InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
 			container = new SessionContainer(
-				new HostAndPort( address.getAddress(), address.getPort() ), null );
+				new InetSocketAddress( address.getAddress(), address.getPort() ), null );
 			session.setAttribute( CONTAINER_KEY, container );
 
 			// Can't be locally initiated
@@ -931,10 +924,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 
 		// Clean up the outbound session map
-		if ( container != null && container.getHostAndPort() != null ) {
+		if ( container != null && container.getSocketAddress() != null ) {
 			map_lock.lock();
 			try {
-				outbound_session_map.remove( container.getHostAndPort() );
+				outbound_session_map.remove( container.getSocketAddress() );
 			}
 			finally {
 				map_lock.unlock();
@@ -942,7 +935,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		}
 
 		// If it's locally initiated, make sure there isn't a caller waiting on it
-		if ( locally_initiated.booleanValue() ) {
+		if (locally_initiated) {
 			VMIDFuture vmid_future =
 				( VMIDFuture ) session.getAttribute( VMID_FUTURE_KEY );
 			if ( vmid_future != null && !vmid_future.isDone() ) {
@@ -957,36 +950,28 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		boolean reconnect = message_handler.sessionClosed(
 			( SessionInfo ) session.getAttribute( SESSION_INFO_KEY ),
-			locally_initiated.booleanValue(), locally_terminated.booleanValue(),
+            locally_initiated, locally_terminated,
 			container != null && vmid != null );
         if ( LOG.isDebugEnabled() ) {
             LOG.debug( "MINA.sessionClosed (stage 2): {} session_info: {} " +
                 "locally_initiated: {} locally_terminated: {} vmid: {} attachment: {} " +
                 "RECONNECT: {} container: {}", session,
 	            session.getAttribute( SESSION_INFO_KEY ), locally_initiated,
-	            locally_terminated, vmid, attachment, Boolean.valueOf( reconnect ),
+	            locally_terminated, vmid, attachment, reconnect,
 	            container );
         }
 
 		// If it was not locally terminated, notify listeners. Otherwise, this has already
 		// been done.
 		boolean send_close_updates = false;
-		if ( !locally_terminated.booleanValue() && vmid != null ) {
-			InetAddress host = null;
-			Integer port = null;
+		if ( !locally_terminated && vmid != null ) {
+			SocketAddress address = session.getRemoteAddress();
+			if ( address == null && container != null ) {
+				address = container.getSocketAddress();
+			}
 
-			InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
 			if ( address != null ) {
-				host = address.getAddress();
-				port = address.getPort();
-			}
-			else if ( container != null ) {
-				host = container.getHostAndPort().getHost();
-				port = container.getHostAndPort().getPort();
-			}
-
-			if ( host != null && port != null ) {
-				connection_listener.connectionClosed(host, port, local_vmid, vmid, attachment,
+				connection_listener.connectionClosed(address, local_vmid, vmid, attachment,
 						reconnect, (UserContextInfo) session.getAttribute(USER_CONTEXT_KEY));
 				send_close_updates = true;
 			}
@@ -1008,10 +993,10 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					should_really_reconnect = test_container == container;
 				}
 
-				HostAndPort host_and_port =
-					container == null ? null : container.getHostAndPort();
+				SocketAddress socket_address =
+					container == null ? null : container.getSocketAddress();
 				if ( should_really_reconnect && container != null &&
-					!container.isCanceled() && host_and_port != null ) {
+					!container.isCanceled() && socket_address != null ) {
 
 					// Reset the VMIDFuture since this is used to determine when a new
 					// connection is established (and the VMID might have changed).
@@ -1019,29 +1004,21 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 					// Schedule a retry (will pretty much run immediately)
 					ReconnectRunnable runnable = new ReconnectRunnable( container, vmid,
-						attachment, host_and_port,
+						attachment, socket_address,
 						( Serializable ) session.getAttribute( RECONNECT_TOKEN_KEY ) );
 					LOG.debug( "ReconnectRunnable added to delay queue: {}", runnable );
 					reconnect_delay_queue.add( runnable );
 					return;
 				}
 				else if ( send_close_updates ) {
-					InetAddress host = null;
-					Integer port = null;
+					SocketAddress address = session.getRemoteAddress();
+					if ( address == null && container != null ) {
+						address = container.getSocketAddress();
+					}
 
-					InetSocketAddress address = ( InetSocketAddress ) session.getRemoteAddress();
 					if ( address != null ) {
-						host = address.getAddress();
-						port = address.getPort();
-					}
-					else if ( container != null ) {
-						host = container.getHostAndPort().getHost();
-						port = container.getHostAndPort().getPort();
-					}
-
-					if ( host != null && port != null ) {
 						connection_listener.connectionClosed(
-								host, port, local_vmid, vmid,
+								address, local_vmid, vmid,
 								attachment, false,
 								(UserContextInfo) session.getAttribute(USER_CONTEXT_KEY));
 					}
@@ -1069,16 +1046,16 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 				}
 			}
 
-			if ( locally_initiated.booleanValue() ) {
+			if (locally_initiated) {
 				InetSocketAddress peer_address =
 					( ( InetSocketAddress ) session.getRemoteAddress() );
-				HostAndPort search_template = null;
+				SocketAddress search_template = null;
 				if ( peer_address != null ) {
-					search_template = new HostAndPort(
+					search_template = new InetSocketAddress(
 							peer_address.getAddress(), peer_address.getPort());
 				}
 				else if ( container != null ){
-					search_template = container.getHostAndPort();
+					search_template = container.getSocketAddress();
 				}
 
 				if ( search_template != null ) {
@@ -1107,9 +1084,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 
 		final boolean locally_initiated_session = Optional.ofNullable(
-			( Boolean ) session.getAttribute( LOCAL_INITIATE_KEY ) )
-			.orElse( Boolean.FALSE )
-			.booleanValue();
+                (Boolean) session.getAttribute(LOCAL_INITIATE_KEY))
+            .orElse(Boolean.FALSE);
 
 		final Consumer<CloseSessionIndicator> close_handler = close_indicator -> {
 			thread_pool.execute( () -> {
@@ -1214,7 +1190,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	public void sessionCreated( IoSession session ) throws Exception {
         LOG.trace( "MINA.sessionCreated: {}", session );
 
-		session.setAttribute( CREATED_TIME_KEY, Long.valueOf( System.nanoTime() ) );
+		session.setAttribute( CREATED_TIME_KEY, System.nanoTime());
 	}
 
 	@Override
@@ -1296,24 +1272,24 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		private final Object attachment;
 		private final Serializable reconnect_token;
 
-		private final HostAndPort host_and_port;
+		private final SocketAddress socket_address;
 
 		private volatile long next_run_time;
 
 //		private int attempts = 0;
 
 
-		ReconnectRunnable( SessionContainer container, VMID original_vmid,
-			Object attachment, HostAndPort host_and_port, Serializable reconnect_token ) {
+		ReconnectRunnable(SessionContainer container, VMID original_vmid,
+						  Object attachment, SocketAddress socket_address, Serializable reconnect_token ) {
 
 			Objects.requireNonNull( container );
-			Objects.requireNonNull( host_and_port );
+			Objects.requireNonNull(socket_address);
 
 			this.container = container;
 			this.original_vmid = original_vmid;
 			this.attachment = attachment;
 			this.reconnect_token = reconnect_token;
-			this.host_and_port = host_and_port;
+			this.socket_address = socket_address;
 
 			// Random delay between 100 ms and 4 seconds for initial firing. This works
 			// around "oscillation" problems with single connection negotiation where
@@ -1330,7 +1306,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			// Check to see if there's already a running ReconnectRunnable for this
 			// host and port. If there is, exit.
 			if ( active_reconnections.putIfAbsent(
-				host_and_port, host_and_port ) != null ) {
+				socket_address, socket_address) != null ) {
 
 				LOG.debug( "ReconnectRunnable ({}) exiting because one is already " +
 					"active: " + active_reconnections );
@@ -1343,7 +1319,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			try {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) running for {}",
-                        Integer.valueOf( System.identityHashCode( this ) ), host_and_port );
+                        System.identityHashCode(this), socket_address);
                 }
 
 				if ( container.isCanceled() ) {
@@ -1361,8 +1337,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					return;
 				}
 
-				VMID vmid = inner_connect( host_and_port.getHost(),
-					host_and_port.getPort(), container.getConnectionArgs(),
+				VMID vmid = inner_connect( socket_address, container.getConnectionArgs(),
 					reconnect_token, attachment, TimeUnit.SECONDS.toNanos( 30 ),
 					container, original_vmid );
 
@@ -1381,8 +1356,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					if ( original_vmid != null ) disconnect( original_vmid );
 
 					// Notify listeners that we're giving up
-					connection_listener.connectionClosed( host_and_port.getHost(),
-						host_and_port.getPort(), local_vmid, null, attachment, false,
+					connection_listener.connectionClosed( socket_address, local_vmid, null, attachment, false,
 						session == null ? null :
 							( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 					abend = false;
@@ -1395,14 +1369,13 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			catch( ClosedChannelException ex ) {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) - {} - CHANNEL CLOSED",
-	                    Integer.valueOf( System.identityHashCode( this ) ),
-	                    host_and_port, ex );
+                        System.identityHashCode(this),
+						socket_address, ex );
                 }
 				// If it's closed, exit!
 
 				// Notify listeners that we're giving up
-				connection_listener.connectionClosed( host_and_port.getHost(),
-					host_and_port.getPort(), local_vmid, null, attachment, false,
+				connection_listener.connectionClosed( socket_address, local_vmid, null, attachment, false,
 					session == null ? null :
 						( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 				abend = false;
@@ -1411,16 +1384,16 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) - {} - exception (will be " +
                         "rescheduled)",
-	                    Integer.valueOf( System.identityHashCode( this ) ),
-	                    host_and_port, ex );
+                        System.identityHashCode(this),
+						socket_address, ex );
                 }
 				if ( ex instanceof RuntimeException || ex instanceof Error ) {
 					LOG.warn( "Error while reconnecting to {}",
-						container.getHostAndPort(), ex );
+						container.getSocketAddress(), ex );
 				}
 				else {
 					LOG.debug( "Unable to reconnect to {}",
-						container.getHostAndPort(), ex );
+						container.getSocketAddress(), ex );
 				}
 
 				// Adjust the delay time
@@ -1433,16 +1406,15 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			finally {
                 if ( LOG.isDebugEnabled() ) {
                     LOG.debug( "MINA.ReconnectRunnable({}) exiting for {} (abend={})",
-	                    Integer.valueOf( System.identityHashCode( this ) ),
-	                    host_and_port, Boolean.valueOf( abend ) );
+                        System.identityHashCode(this),
+						socket_address, abend);
                 }
 
-				active_reconnections.remove( host_and_port );
+				active_reconnections.remove(socket_address);
 
 				if ( abend ) {
 					// Notify listeners that we're giving up
-					connection_listener.connectionClosed( host_and_port.getHost(),
-						host_and_port.getPort(), local_vmid, null, attachment, false,
+					connection_listener.connectionClosed( socket_address, local_vmid, null, attachment, false,
 						session == null ? null :
 							( UserContextInfo ) session.getAttribute( USER_CONTEXT_KEY ) );
 				}
@@ -1467,7 +1439,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
         @Override
         public String toString() {
-            return "ReconnectRunnable to " + host_and_port + " original vmid: " +
+            return "ReconnectRunnable to " + socket_address + " original vmid: " +
 	            original_vmid + " container: " + container;
         }
     }
@@ -1501,7 +1473,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 					ReconnectRunnable runnable = reconnect_delay_queue.take();
 					Thread reconnect_thread =
 						new Thread( runnable, "MINA Reconnect Thread: " +
-						runnable.host_and_port );
+						runnable.socket_address);
                     LOG.debug( "MINA.ReconnectManager starting reconnect thread: {}",
                         runnable );
 					reconnect_thread.start();
