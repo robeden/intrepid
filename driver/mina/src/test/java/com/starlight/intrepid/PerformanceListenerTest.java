@@ -4,7 +4,8 @@ import com.logicartisan.common.core.Pair;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.exception.ChannelRejectedException;
 import com.starlight.intrepid.message.*;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -20,24 +21,27 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class PerformanceListenerTest extends TestCase {
+public class PerformanceListenerTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
 		if ( client_instance != null ) client_instance.close();
 		if ( server_instance != null ) server_instance.close();
 	}
-	
+
+	@Test
 	public void testCalls() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -92,8 +96,8 @@ public class PerformanceListenerTest extends TestCase {
 			11751, null, null );
 
 		// Make sure queue is empty
-		assertTrue( server_listener.queue.toString(), server_listener.queue.isEmpty() );
-		assertTrue( client_listener.queue.toString(), client_listener.queue.isEmpty() );
+		assertTrue(server_listener.queue.isEmpty(), server_listener.queue.toString());
+		assertTrue(client_listener.queue.isEmpty(), client_listener.queue.toString());
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -108,66 +112,69 @@ public class PerformanceListenerTest extends TestCase {
 
 		// SERVER - started message
 		Pair<CallType,List<Object>> pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.INBOUND_REMOTE_CALL_STARTED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.INBOUND_REMOTE_CALL_STARTED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
 		long time  = ( ( Long ) pair.getTwo().get( 1 ) ).longValue();
-		assertTrue( "Time: " + time + " Before: " + before_call_time + " After: " +
-			after_call_time, time >= before_call_time && time <= after_call_time );
+		assertTrue(time >= before_call_time && time <= after_call_time,
+			"Time: " + time + " Before: " + before_call_time + " After: " +
+			after_call_time);
 		int server_call_id = ( ( Integer ) pair.getTwo().get( 2 ) ).intValue();
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 3 ) );
-		assertEquals( Integer.valueOf( 0 ), pair.getTwo().get( 4 ) );   // object 0
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 3 ));
+		assertEquals(0, pair.getTwo().get( 4 ));   // object 0
 		// 5 = method id
-		assertEquals( "lookup", ( ( Method ) pair.getTwo().get( 6 ) ).getName() );
-		assertEquals( 1, ( ( Object[] ) pair.getTwo().get( 7 ) ).length );   // args
-		assertEquals( "server", ( ( Object[] ) pair.getTwo().get( 7 ) )[ 0 ] );   // args
-		assertNull( pair.getTwo().get( 8 ) );   // user context
-		assertNull( pair.getTwo().get( 9 ) );   // persistent name
+		assertEquals("lookup", ( (Method) pair.getTwo().get( 6 ) ).getName());
+		assertEquals(1, ( ( Object[] ) pair.getTwo().get( 7 ) ).length);   // args
+		assertEquals("server", ( ( Object[] ) pair.getTwo().get( 7 ) )[ 0 ]);   // args
+		assertNull(pair.getTwo().get( 8 ));   // user context
+		assertNull(pair.getTwo().get( 9 ));   // persistent name
 
 		// SERVER - completed message
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.INBOUND_REMOTE_CALL_COMPLETED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( Integer.valueOf( server_call_id ), pair.getTwo().get( 2 ) );
-		assertEquals( server, pair.getTwo().get( 3 ) );
-		assertEquals( Boolean.FALSE, pair.getTwo().get( 4 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.INBOUND_REMOTE_CALL_COMPLETED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(server_call_id, pair.getTwo().get( 2 ));
+		assertEquals(server, pair.getTwo().get( 3 ));
+		assertEquals(Boolean.FALSE, pair.getTwo().get( 4 ));
 		
 		// CLIENT - started message
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.REMOTE_CALL_STARTED, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.REMOTE_CALL_STARTED, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
 		time  = ( ( Long ) pair.getTwo().get( 1 ) ).longValue();
-		assertTrue( "Time: " + time + " Before: " + before_call_time + " After: " +
-			after_call_time, time >= before_call_time && time <= after_call_time );
+		assertTrue(time >= before_call_time && time <= after_call_time,
+			"Time: " + time + " Before: " + before_call_time + " After: " +
+			after_call_time);
 		int client_call_id = ( ( Integer ) pair.getTwo().get( 2 ) ).intValue();
-		assertEquals( server_call_id, client_call_id );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 3 ) );
-		assertEquals( Integer.valueOf( 0 ), pair.getTwo().get( 4 ) );   // object 0
+		assertEquals(server_call_id, client_call_id);
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 3 ));
+		assertEquals(0, pair.getTwo().get( 4 ));   // object 0
 		// 5 = method id
-		assertEquals( "lookup", ( ( Method ) pair.getTwo().get( 6 ) ).getName() );
-		assertEquals( 1, ( ( Object[] ) pair.getTwo().get( 7 ) ).length );   // args
-		assertEquals( "server", ( ( Object[] ) pair.getTwo().get( 7 ) )[ 0 ] );   // args
-		assertNull( pair.getTwo().get( 8 ) );   // user context
-		assertNull( pair.getTwo().get( 9 ) );   // persistent name
+		assertEquals("lookup", ( (Method) pair.getTwo().get( 6 ) ).getName());
+		assertEquals(1, ( ( Object[] ) pair.getTwo().get( 7 ) ).length);   // args
+		assertEquals("server", ( ( Object[] ) pair.getTwo().get( 7 ) )[ 0 ]);   // args
+		assertNull(pair.getTwo().get( 8 ));   // user context
+		assertNull(pair.getTwo().get( 9 ));   // persistent name
 
 		// CLIENT - completed message
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.REMOTE_CALL_COMPLETED, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.REMOTE_CALL_COMPLETED, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
 		time  = ( ( Long ) pair.getTwo().get( 1 ) ).longValue();
-		assertTrue( "Time: " + time + " Before: " + before_call_time + " After: " +
-			after_call_time, time >= before_call_time && time <= after_call_time );
-		assertEquals( Integer.valueOf( client_call_id ), pair.getTwo().get( 2 ) );
-		assertEquals( server, pair.getTwo().get( 3 ) );
-		assertEquals( Boolean.FALSE, pair.getTwo().get( 4 ) );
+		assertTrue(time >= before_call_time && time <= after_call_time,
+			"Time: " + time + " Before: " + before_call_time + " After: " +
+			after_call_time);
+		assertEquals(client_call_id, pair.getTwo().get( 2 ));
+		assertEquals(server, pair.getTwo().get( 3 ));
+		assertEquals(Boolean.FALSE, pair.getTwo().get( 4 ));
 		Long server_time = ( Long ) pair.getTwo().get( 5 );
-		assertNotNull( server_time );
-		assertTrue( server_time.toString(),
-			TimeUnit.NANOSECONDS.toMillis( server_time.longValue() ) <=
-			( after_call_time - before_call_time ) );
+		assertNotNull(server_time);
+		assertTrue(TimeUnit.NANOSECONDS.toMillis( server_time.longValue() ) <=
+			( after_call_time - before_call_time ),
+			server_time.toString());
 
 
 		final int server_oid = ( ( Proxy ) server ).__intrepid__getObjectID();
@@ -181,63 +188,66 @@ public class PerformanceListenerTest extends TestCase {
 
 		// SERVER - started message
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.INBOUND_REMOTE_CALL_STARTED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.INBOUND_REMOTE_CALL_STARTED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
 		time  = ( ( Long ) pair.getTwo().get( 1 ) ).longValue();
-		assertTrue( "Time: " + time + " Before: " + before_call_time + " After: " +
-			after_call_time, time >= before_call_time && time <= after_call_time );
+		assertTrue(time >= before_call_time && time <= after_call_time,
+			"Time: " + time + " Before: " + before_call_time + " After: " +
+			after_call_time);
 		server_call_id = ( ( Integer ) pair.getTwo().get( 2 ) ).intValue();
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 3 ) );
-		assertEquals( Integer.valueOf( server_oid ), pair.getTwo().get( 4 ) );
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 3 ));
+		assertEquals(server_oid, pair.getTwo().get( 4 ));
 		// 5 = method id
-		assertEquals( "getMessage", ( ( Method ) pair.getTwo().get( 6 ) ).getName() );
-		assertNull( pair.getTwo().get( 7 ) );   // args
-		assertNull( pair.getTwo().get( 8 ) );   // user context
-		assertNull( pair.getTwo().get( 9 ) );   // persistent name
+		assertEquals("getMessage", ( (Method) pair.getTwo().get( 6 ) ).getName());
+		assertNull(pair.getTwo().get( 7 ));   // args
+		assertNull(pair.getTwo().get( 8 ));   // user context
+		assertNull(pair.getTwo().get( 9 ));   // persistent name
 
 		// SERVER - completed message
 		pair = getNextMessage( server_listener, 2000 );
-		assertEquals( CallType.INBOUND_REMOTE_CALL_COMPLETED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( Integer.valueOf( server_call_id ), pair.getTwo().get( 2 ) );
-		assertEquals( "Message from server", pair.getTwo().get( 3 ) );
-		assertEquals( Boolean.FALSE, pair.getTwo().get( 4 ) );
+		assertEquals(CallType.INBOUND_REMOTE_CALL_COMPLETED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(server_call_id, pair.getTwo().get( 2 ));
+		assertEquals("Message from server", pair.getTwo().get( 3 ));
+		assertEquals(Boolean.FALSE, pair.getTwo().get( 4 ));
 
 		// CLIENT - started message
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.REMOTE_CALL_STARTED, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.REMOTE_CALL_STARTED, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
 		time  = ( ( Long ) pair.getTwo().get( 1 ) ).longValue();
-		assertTrue( "Time: " + time + " Before: " + before_call_time + " After: " +
-			after_call_time, time >= before_call_time && time <= after_call_time );
+		assertTrue(time >= before_call_time && time <= after_call_time,
+			"Time: " + time + " Before: " + before_call_time + " After: " +
+			after_call_time);
 		client_call_id = ( ( Integer ) pair.getTwo().get( 2 ) ).intValue();
-		assertEquals( server_call_id, client_call_id );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 3 ) );
-		assertEquals( Integer.valueOf( server_oid ), pair.getTwo().get( 4 ) );
+		assertEquals(server_call_id, client_call_id);
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 3 ));
+		assertEquals(server_oid, pair.getTwo().get( 4 ));
 		// 5 = method id
-		assertEquals( "getMessage", ( ( Method ) pair.getTwo().get( 6 ) ).getName() );
-		assertNull( pair.getTwo().get( 7 ) );   // args
-		assertNull( pair.getTwo().get( 8 ) );   // user context
-		assertNull( pair.getTwo().get( 9 ) );   // persistent name
+		assertEquals("getMessage", ( (Method) pair.getTwo().get( 6 ) ).getName());
+		assertNull(pair.getTwo().get( 7 ));   // args
+		assertNull(pair.getTwo().get( 8 ));   // user context
+		assertNull(pair.getTwo().get( 9 ));   // persistent name
 
 		// CLIENT - completed message
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.REMOTE_CALL_COMPLETED, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.REMOTE_CALL_COMPLETED, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
 		time  = ( ( Long ) pair.getTwo().get( 1 ) ).longValue();
-		assertTrue( "Time: " + time + " Before: " + before_call_time + " After: " +
-			after_call_time, time >= before_call_time && time <= after_call_time );
-		assertEquals( Integer.valueOf( client_call_id ), pair.getTwo().get( 2 ) );
-		assertEquals( "Message from server", pair.getTwo().get( 3 ) );
-		assertEquals( Boolean.FALSE, pair.getTwo().get( 4 ) );
+		assertTrue(time >= before_call_time && time <= after_call_time,
+			"Time: " + time + " Before: " + before_call_time + " After: " +
+			after_call_time);
+		assertEquals(client_call_id, pair.getTwo().get( 2 ));
+		assertEquals("Message from server", pair.getTwo().get( 3 ));
+		assertEquals(Boolean.FALSE, pair.getTwo().get( 4 ));
 		server_time = ( Long ) pair.getTwo().get( 5 );
-		assertNotNull( server_time );
-		assertTrue( server_time.toString(),
-			TimeUnit.NANOSECONDS.toMillis( server_time.longValue() ) <=
-			( after_call_time - before_call_time ) );
+		assertNotNull(server_time);
+		assertTrue(TimeUnit.NANOSECONDS.toMillis( server_time.longValue() ) <=
+			( after_call_time - before_call_time ),
+			server_time.toString());
 
 
 		//////////////////////////////////////////////////////////////////////////////////
@@ -247,19 +257,19 @@ public class PerformanceListenerTest extends TestCase {
 
 		// CLIENT - channel opened
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.VIRTUAL_CHANNEL_OPENED, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 1 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.VIRTUAL_CHANNEL_OPENED, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 1 ));
 		short client_channel_id = ( ( Short ) pair.getTwo().get( 2 ) ).shortValue();
 
 		// SERVER - channel opened
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.VIRTUAL_CHANNEL_OPENED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 1 ) );
-		assertEquals( Short.valueOf( client_channel_id ), pair.getTwo().get( 2 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.VIRTUAL_CHANNEL_OPENED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 1 ));
+		assertEquals(client_channel_id, pair.getTwo().get( 2 ));
 
 		ByteBuffer buffer = ByteBuffer.allocate( 1024 );
 		byte[] to_write = new byte[ buffer.remaining() ];
@@ -270,42 +280,43 @@ public class PerformanceListenerTest extends TestCase {
 
 		// CLIENT - channel data sent
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.VIRTUAL_CHANNEL_DATA_SENT, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 1 ) );
-		assertEquals( Short.valueOf( client_channel_id ), pair.getTwo().get( 2 ) );
-		assertEquals( Integer.valueOf( to_write.length ), pair.getTwo().get( 3 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.VIRTUAL_CHANNEL_DATA_SENT, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 1 ));
+		assertEquals(client_channel_id, pair.getTwo().get( 2 ));
+		assertEquals(to_write.length, pair.getTwo().get( 3 ));
 
 		// SERVER - channel data received
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.VIRTUAL_CHANNEL_DATA_RECEIVED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 1 ) );
-		assertEquals( Short.valueOf( client_channel_id ), pair.getTwo().get( 2 ) );
-		assertEquals( Integer.valueOf( to_write.length ), pair.getTwo().get( 3 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.VIRTUAL_CHANNEL_DATA_RECEIVED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 1 ));
+		assertEquals(client_channel_id, pair.getTwo().get( 2 ));
+		assertEquals(to_write.length, pair.getTwo().get( 3 ));
 
 		channel.close();
 
 		// CLIENT - channel close
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.VIRTUAL_CHANNEL_CLOSED, pair.getOne() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 1 ) );
-		assertEquals( Short.valueOf( client_channel_id ), pair.getTwo().get( 2 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.VIRTUAL_CHANNEL_CLOSED, pair.getOne());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 1 ));
+		assertEquals(client_channel_id, pair.getTwo().get( 2 ));
 
 		// SERVER - channel close
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.VIRTUAL_CHANNEL_CLOSED, pair.getOne() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 1 ) );
-		assertEquals( Short.valueOf( client_channel_id ), pair.getTwo().get( 2 ) );
+		assertNotNull(pair);
+		assertEquals(CallType.VIRTUAL_CHANNEL_CLOSED, pair.getOne());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 1 ));
+		assertEquals(client_channel_id, pair.getTwo().get( 2 ));
 	}
 
 
+	@Test
 	public void testMessages() throws Exception {
 		// Disable inter-instance bridge so we see all messages
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
@@ -329,60 +340,57 @@ public class PerformanceListenerTest extends TestCase {
 		// Establish connection
 		VMID vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_instance.getServerPort().intValue(), null, null );
-		assertNotNull( vmid );
-		assertEquals( server_instance.getLocalVMID(), vmid );
+		assertNotNull(vmid);
+		assertEquals(server_instance.getLocalVMID(), vmid);
 
 
 		// Check for connection messages
 
 		// Client -> Server (SessionInit sent)
 		Pair<CallType,List<Object>> pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_SENT, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_SENT, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
 //		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof SessionInitIMessage );
+		assertTrue(pair.getTwo().get( 1 ) instanceof SessionInitIMessage);
 
 		// Client -> Server (SessionInit received)
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_RECEIVED, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_RECEIVED, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
 //		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof SessionInitIMessage );
+		assertTrue(pair.getTwo().get( 1 ) instanceof SessionInitIMessage);
 
 		// Server -> Client (SessionInitResponse sent)
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_SENT, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof SessionInitResponseIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_SENT, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof SessionInitResponseIMessage);
 
 		// Server -> Client (SessionInitResponse received)
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_RECEIVED, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_RECEIVED, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
 //		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof SessionInitResponseIMessage );
+		assertTrue(pair.getTwo().get( 1 ) instanceof SessionInitResponseIMessage);
 
 		// Make sure there are no more messages
 		pair = getNextMessage( client_listener, 500 );
-		assertNull( pair );
+		assertNull(pair);
 		pair = getNextMessage( server_listener, 500 );
-		assertNull( pair );
+		assertNull(pair);
 
 
 		// Make a method call
 
 		server_instance.getLocalRegistry().bind( "lib/test",
-			new Runnable() {
-				@Override
-				public void run() {
-					// nothing to see here
-				}
-			} );
+            (Runnable) () -> {
+                // nothing to see here
+            });
 
 		// NOTE: this doesn't generate 
 		Registry registry =
@@ -395,41 +403,41 @@ public class PerformanceListenerTest extends TestCase {
 
 		// Client -> Server (SessionInit sent)
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_SENT, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_SENT, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeIMessage);
 
 		// Client -> Server (SessionInit received)
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_RECEIVED, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_RECEIVED, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeIMessage);
 
 		// Server -> Client (SessionInitResponse sent)
 		pair = getNextMessage( server_listener, 2 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_SENT, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_SENT, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage);
 
 		// Server -> Client (SessionInitResponse received)
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_RECEIVED, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_RECEIVED, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage);
 
 		// Make sure there are no more messages
 		pair = getNextMessage( client_listener, 500 );
-		assertNull( pair );
+		assertNull(pair);
 		pair = getNextMessage( server_listener, 500 );
-		assertNull( pair );
+		assertNull(pair);
 
 
 		// Method call
@@ -440,44 +448,45 @@ public class PerformanceListenerTest extends TestCase {
 
 		// Client -> Server (SessionInit sent)
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_SENT, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_SENT, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeIMessage);
 
 		// Client -> Server (SessionInit received)
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_RECEIVED, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_RECEIVED, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeIMessage);
 
 		// Server -> Client (SessionInitResponse sent)
 		pair = getNextMessage( server_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_SENT, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( client_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_SENT, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(client_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage);
 
 		// Server -> Client (SessionInitResponse received)
 		pair = getNextMessage( client_listener, 2000 );
-		assertNotNull( pair );
-		assertEquals( CallType.MESSAGE_RECEIVED, pair.getOne() );
-		assertEquals( 2, pair.getTwo().size() );
-		assertEquals( server_instance.getLocalVMID(), pair.getTwo().get( 0 ) );
-		assertTrue( pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage );
+		assertNotNull(pair);
+		assertEquals(CallType.MESSAGE_RECEIVED, pair.getOne());
+		assertEquals(2, pair.getTwo().size());
+		assertEquals(server_instance.getLocalVMID(), pair.getTwo().get( 0 ));
+		assertTrue(pair.getTwo().get( 1 ) instanceof InvokeReturnIMessage);
 
 		// Make sure there are no more messages
 		pair = getNextMessage( client_listener, 500 );
-		assertNull( pair );
+		assertNull(pair);
 		pair = getNextMessage( server_listener, 500 );
-		assertNull( pair );
+		assertNull(pair);
 	}
 
 
+	@Test
 	public void testPerformanceControlArtificialDelay() throws Exception {
 		
 	}
@@ -525,7 +534,7 @@ public class PerformanceListenerTest extends TestCase {
 
 	private class TestPerformanceListener implements PerformanceListener {
 		public final BlockingQueue<Pair<CallType,List<Object>>> queue =
-			new LinkedBlockingQueue<Pair<CallType,List<Object>>>();
+            new LinkedBlockingQueue<>();
 
 		private final String id;
 		private final boolean want_messages;
@@ -548,9 +557,9 @@ public class PerformanceListenerTest extends TestCase {
 			if ( want_messages ) return;
 
 			queue.add( Pair.create( CallType.REMOTE_CALL_STARTED, Arrays.asList(
-				instance_vmid, Long.valueOf( time ), Integer.valueOf( call_id ),
-				destination_vmid, Integer.valueOf( object_id ),
-				Integer.valueOf( method_id ), method, args, user_context,
+				instance_vmid, time, call_id,
+				destination_vmid, object_id,
+                method_id, method, args, user_context,
 				persistent_name ) ) );
 		}
 
@@ -561,8 +570,8 @@ public class PerformanceListenerTest extends TestCase {
 			if ( want_messages ) return;
 
 			queue.add( Pair.create( CallType.REMOTE_CALL_COMPLETED, Arrays.asList(
-				instance_vmid, Long.valueOf( time ), Integer.valueOf( call_id ), result,
-				Boolean.valueOf( result_was_thrown ), server_time ) ) );
+				instance_vmid, time, call_id, result,
+                result_was_thrown, server_time ) ) );
 		}
 
 		@Override
@@ -573,8 +582,8 @@ public class PerformanceListenerTest extends TestCase {
 			if ( want_messages ) return;
 
 			queue.add( Pair.create( CallType.INBOUND_REMOTE_CALL_STARTED, Arrays.asList(
-				instance_vmid, Long.valueOf( time ), Integer.valueOf( call_id ),
-				source_vmid, Integer.valueOf( object_id ), Integer.valueOf( method_id ),
+				instance_vmid, time, call_id,
+				source_vmid, object_id, method_id,
 				method, args, user_context, persistent_name ) ) );
 		}
 
@@ -585,9 +594,9 @@ public class PerformanceListenerTest extends TestCase {
 			if ( want_messages ) return;
 
 			queue.add( Pair.create( CallType.INBOUND_REMOTE_CALL_COMPLETED, Arrays.asList(
-				instance_vmid, Long.valueOf( time ),
-				Integer.valueOf( call_id ), result,
-				Boolean.valueOf( result_was_thrown ) ) ) );
+				instance_vmid, time,
+                call_id, result,
+                result_was_thrown) ) );
 		}
 
 		@Override
@@ -598,7 +607,7 @@ public class PerformanceListenerTest extends TestCase {
 
 			queue.add( Pair.create( CallType.VIRTUAL_CHANNEL_OPENED,
 				Arrays.asList(
-				( Object ) instance_vmid, peer_vmid, Short.valueOf( channel_id ) ) ) );
+                    instance_vmid, peer_vmid, channel_id) ) );
 		}
 
 		@Override
@@ -609,7 +618,7 @@ public class PerformanceListenerTest extends TestCase {
 
 			queue.add( Pair.create( CallType.VIRTUAL_CHANNEL_CLOSED,
 				Arrays.asList(
-				( Object ) instance_vmid, peer_vmid, Short.valueOf( channel_id ) ) ) );
+                    instance_vmid, peer_vmid, channel_id) ) );
 		}
 
 		@Override
@@ -619,8 +628,8 @@ public class PerformanceListenerTest extends TestCase {
 			if ( want_messages ) return;
 
 			queue.add( Pair.create( CallType.VIRTUAL_CHANNEL_DATA_RECEIVED,
-				Arrays.asList( ( Object ) instance_vmid, peer_vmid,
-				Short.valueOf( channel_id ), Integer.valueOf( bytes ) ) ) );
+				Arrays.asList(instance_vmid, peer_vmid,
+                    channel_id, bytes) ) );
 		}
 
 
@@ -633,7 +642,7 @@ public class PerformanceListenerTest extends TestCase {
 
 			queue.add( Pair.create( CallType.VIRTUAL_CHANNEL_DATA_SENT,
 				Arrays.asList( instance_vmid, peer_vmid,
-				Short.valueOf( channel_id ), Integer.valueOf( bytes ) ) ) );
+                    channel_id, bytes) ) );
 		}
 
 		@Override
@@ -650,12 +659,5 @@ public class PerformanceListenerTest extends TestCase {
 				Arrays.asList( destination_vmid, message ) ) );
 		}
 
-		@Override
-		public void leasedObjectRemoved( VMID vmid, int object_id ) {}
-
-		@Override
-		public void leaseInfoUpdated( VMID vmid, int object_id, String delegate_tostring,
-			boolean holding_strong_reference, int leasing_vm_count, boolean renew,
-			boolean release ) {}
-	}
+    }
 }

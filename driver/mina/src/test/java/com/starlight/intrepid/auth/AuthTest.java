@@ -30,14 +30,16 @@ import com.starlight.intrepid.Intrepid;
 import com.starlight.intrepid.IntrepidTesting;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.exception.ConnectionFailureException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 /**
@@ -47,7 +49,7 @@ public class AuthTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
-	@After
+	@AfterEach
 	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
@@ -56,7 +58,7 @@ public class AuthTest {
 		if ( server_instance != null ) server_instance.close();
 	}
 
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -66,7 +68,7 @@ public class AuthTest {
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
 			.serverAddress( new InetSocketAddress( 0 ) )
-			.authHandler( new UserTestAuthenticationHandler() )
+			.authHandler(new UserTestAuthenticationHandler())
 			.build();
 		CommTest.ServerImpl original_instance =
 			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
@@ -76,25 +78,27 @@ public class AuthTest {
 	}
 
 
-
-	@Test( expected = ConnectionFailureException.class )
-	public void testUserAuth_noCredentials() throws Exception {
-		client_instance.connect( InetAddress.getLoopbackAddress(),
-			server_instance.getServerPort(), null, null );
+	@Test
+	public void testUserAuth_noCredentials() {
+		assertThrows(ConnectionFailureException.class,
+			() -> client_instance.connect(InetAddress.getLoopbackAddress(),
+				server_instance.getServerPort(), null, null));
 	}
 
-	@Test( expected = ConnectionFailureException.class )
+	@Test
 	public void testUserAuth_badUser() throws Exception {
-		client_instance.connect( InetAddress.getLoopbackAddress(),
-			server_instance.getServerPort(),
-			new UserCredentialsConnectionArgs( "baduser", "blah".toCharArray() ), null );
+		assertThrows(ConnectionFailureException.class,
+			() -> client_instance.connect( InetAddress.getLoopbackAddress(),
+				server_instance.getServerPort(),
+				new UserCredentialsConnectionArgs( "baduser", "blah".toCharArray() ), null ));
 	}
 
-	@Test( expected = ConnectionFailureException.class )
+	@Test
 	public void testUserAuth_badPassword() throws Exception {
-		client_instance.connect( InetAddress.getLoopbackAddress(),
-			server_instance.getServerPort(),
-			new UserCredentialsConnectionArgs( "reden", "badpass".toCharArray() ), null );
+		assertThrows(ConnectionFailureException.class,
+			() -> client_instance.connect( InetAddress.getLoopbackAddress(),
+				server_instance.getServerPort(),
+				new UserCredentialsConnectionArgs( "reden", "badpass".toCharArray() ), null ));
 	}
 
 	@Test
@@ -103,11 +107,11 @@ public class AuthTest {
 			InetAddress.getLoopbackAddress(), server_instance.getServerPort(),
 			new UserCredentialsConnectionArgs( "reden", "12345".toCharArray() ),
 			null );
-		Assert.assertEquals( server_instance.getLocalVMID(), server_vmid );
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
 	}
 
 
-	private class UserTestAuthenticationHandler implements AuthenticationHandler {
+	private static class UserTestAuthenticationHandler implements AuthenticationHandler {
 		@Override
 		public UserContextInfo checkConnection( ConnectionArgs connection_args,
 			SocketAddress remote_address, Object session_source )

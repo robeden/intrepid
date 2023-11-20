@@ -26,21 +26,26 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 
 /**
  *
  */
-public class ProxyCreationTest extends TestCase {
+public class ProxyCreationTest {
 	Intrepid instance;
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		if ( instance != null ) instance.close();
 	}
 
 
+	@Test
 	public void testDuplicateProxyCreation() throws Exception {
 		instance = Intrepid.newBuilder().build();
 
@@ -52,10 +57,11 @@ public class ProxyCreationTest extends TestCase {
 		// Another creation should return the same proxy
 		CommTest.Server proxy2 = ( CommTest.Server ) instance.createProxy( delegate );
 
-		assertSame( proxy, proxy2 );
+		assertSame(proxy, proxy2);
 	}
 
 
+	@Test
 	public void testIDsAndClose() throws Exception {
 		instance = Intrepid.newBuilder().build();
 
@@ -76,11 +82,11 @@ public class ProxyCreationTest extends TestCase {
 
 		int second_object_id = ( ( Proxy ) proxy ).__intrepid__getObjectID();
 
-		assertFalse( first_object_id + " == " + second_object_id,
-			first_object_id == second_object_id );
+        assertNotEquals(first_object_id, second_object_id, first_object_id + " == " + second_object_id);
 	}
 
 
+	@Test
 	public void testComplexInterface() throws Exception {
 		instance = Intrepid.newBuilder().build();
 
@@ -99,16 +105,16 @@ public class ProxyCreationTest extends TestCase {
 	}
 
 
-	public static interface IfcA {
-		public void a();
+	public interface IfcA {
+		void a();
 	}
 
-	public static interface IfcB {
-		public void b();
+	public interface IfcB {
+		void b();
 	}
 
-	public static interface IfcAB extends IfcA, IfcB {
-		public void ab();
+	public interface IfcAB extends IfcA, IfcB {
+		void ab();
 	}
 
 

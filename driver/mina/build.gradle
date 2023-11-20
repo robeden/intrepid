@@ -5,13 +5,17 @@ dependencies {
     compileOnly 'org.apache.mina:mina-filter-compression:2.2.3'
     testRuntime'org.apache.mina:mina-filter-compression:2.2.3'
 
-    testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:4.3.1'
     testCompile 'org.easymock:easymock:3.4'
 	testCompile 'com.jakewharton.byteunits:byteunits:0.9.1'
     testCompile project( ':core' ).sourceSets.test.output
 
+
+    testCompile("org.junit.jupiter:junit-jupiter:5.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
 	testRuntime 'org.slf4j:slf4j-simple:2.0.9'
+    testRuntime 'com.kohlschutter.junixsocket:junixsocket-core:2.8.3'
 }
 
 test {

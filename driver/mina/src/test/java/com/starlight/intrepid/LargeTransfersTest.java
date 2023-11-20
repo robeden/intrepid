@@ -2,11 +2,10 @@ package com.starlight.intrepid;
 
 import com.jakewharton.byteunits.BinaryByteUnit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -25,22 +24,19 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 
-/**
- *
- */
-@RunWith( Parameterized.class )
 public class LargeTransfersTest {
 	private static final NumberFormat FORMATTER = NumberFormat.getNumberInstance();
 
 
-	@Parameterized.Parameters( name="{0}" )
-	public static List<Args> args() throws NoSuchAlgorithmException {
-		List<Args> to_return = new ArrayList<>();
+	public static Stream<Arguments> args() throws NoSuchAlgorithmException {
+		List<Arguments> to_return = new ArrayList<>();
 
 		long[] sizes = {
 			             1,
@@ -84,16 +80,16 @@ public class LargeTransfersTest {
 						if ( buffer_size == 10 && size >= 10_000_000 ) continue;
 
 						to_return.add(
-							new Args( size, thread_count, digest, buffer_size ) );
+							arguments( size, thread_count, digest, buffer_size ) );
 					}
 				}
 			}
 		}
 
-		return to_return;
+		return to_return.stream();
 	}
 
-	private final Args args;
+//	private final Args args;
 
 	private byte[] data_block;
 	private @Nullable byte[] checksum;
@@ -102,34 +98,30 @@ public class LargeTransfersTest {
 	private Intrepid server_instance = null;
 
 
-	public LargeTransfersTest( Args args ) {
-		this.args = args;
-	}
 
-
-	@Before
-	public void setUp() throws Exception {
+	private void setUp(long data_size, @Nullable MessageDigest digest,
+					   int buffer_size) throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
 		// Data that will be sent (repeated as necessary)
-		data_block = new byte[ args.buffer_size ];
+		data_block = new byte[ buffer_size ];
 		new Random().nextBytes( data_block );
 
 		// Determine the data checksum if a digest will be used
-		if ( args.digest != null ) {
-			MessageDigest digest = ( MessageDigest ) args.digest.clone();
+		if ( digest != null ) {
+			MessageDigest d = ( MessageDigest ) digest.clone();
 
-			long remaining_bytes = args.data_size;
+			long remaining_bytes = data_size;
 			while( remaining_bytes > 0 ) {
 				int update_size = ( int ) Math.min( remaining_bytes, data_block.length );
-				digest.update( data_block, 0, update_size );
+				d.update( data_block, 0, update_size );
 				remaining_bytes -= update_size;
 			}
-			checksum = digest.digest();
+			checksum = d.digest();
 		}
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
@@ -139,22 +131,31 @@ public class LargeTransfersTest {
 	}
 
 
-	@Test( timeout = 1200000 )   // 20 min
-	public void viaDirectChannel() throws Exception {
-		runTest( true );
+	@Timeout(value = 20, unit = TimeUnit.MINUTES)
+	@ParameterizedTest
+	@MethodSource("args")
+	public void viaDirectChannel(long data_size, int threads, @Nullable MessageDigest digest,
+								 int buffer_size) throws Exception {
+		runTest( true, data_size, threads, digest, buffer_size );
 	}
 
 
-	@Test( timeout = 1200000 )   // 20 min
-	public void viaPullFromNormalMethodInvocation() throws Exception {
-		runTest( false );
+	@Timeout(value = 20, unit = TimeUnit.MINUTES)
+	@ParameterizedTest
+	@MethodSource("args")
+	public void viaPullFromNormalMethodInvocation(long data_size, int threads, @Nullable MessageDigest digest,
+												  int buffer_size) throws Exception {
+		runTest( false, data_size, threads, digest, buffer_size );
 	}
 
 
 
-	private void runTest( boolean acceptor_on_server ) throws Exception {
+	private void runTest( boolean acceptor_on_server, long data_size, int threads, @Nullable MessageDigest digest,
+						  int buffer_size ) throws Exception {
 
-		CountDownLatch reader_latch = new CountDownLatch( args.threads );
+		setUp(data_size, digest, buffer_size);
+
+		CountDownLatch reader_latch = new CountDownLatch( threads );
 
 		List<String> read_error_list = Collections.synchronizedList( new ArrayList<>() );
 		Consumer<String> error_consumer = message -> {
@@ -169,7 +170,7 @@ public class LargeTransfersTest {
 		};
 
 
-		CountDownLatch writer_latch = new CountDownLatch( args.threads );
+		CountDownLatch writer_latch = new CountDownLatch( threads );
 		List<Double> write_bps_list = Collections.synchronizedList( new ArrayList<>() );
 		List<String> write_error_list = Collections.synchronizedList( new ArrayList<>() );
 
@@ -183,15 +184,15 @@ public class LargeTransfersTest {
 		AtomicReference<LongSummaryStatistics> read_wait_stats =
 			new AtomicReference<>( new LongSummaryStatistics() );
 
-		final long total_data_to_write = args.data_size * args.threads;
+		final long total_data_to_write = data_size * threads;
 
 		final AtomicLong total_read = new AtomicLong( 0 );
 
 		Consumer<ByteChannel> read_consumer = channel -> {
 			try {
 				new ChannelReadThread( channel,
-					args.digest == null ? null : ( MessageDigest ) args.digest.clone(),
-					error_consumer, bps_consumer, total_read ).start();
+					digest == null ? null : ( MessageDigest ) digest.clone(),
+					error_consumer, bps_consumer, total_read, data_size ).start();
 			}
 			catch ( CloneNotSupportedException e ) {
 				error_consumer.accept( e.toString() );
@@ -205,7 +206,7 @@ public class LargeTransfersTest {
 
 				long start = System.nanoTime();
 				try {
-					long remaining_bytes = args.data_size;
+					long remaining_bytes = data_size;
 					while ( remaining_bytes > 0 ) {
 						write_buffer
 							.clear(); // NOTE: doesn't erase, resets for read, 'cuz... NIO
@@ -225,7 +226,7 @@ public class LargeTransfersTest {
 					long end = System.nanoTime();
 
 					double write_bps =
-						( ( double ) args.data_size / ( double ) ( end - start ) ) *
+						( ( double ) data_size / ( double ) ( end - start ) ) *
 						TimeUnit.SECONDS.toNanos( 1 );
 					write_bps_list.add( write_bps );
 				}
@@ -265,7 +266,7 @@ public class LargeTransfersTest {
 					}
 				} );
 			if ( acceptor_on_server ) {
-				setup.channelAcceptor( new SimpleAcceptor( read_consumer ) );
+				setup.channelAcceptor(new SimpleAcceptor(read_consumer));
 			}
 			server_instance = setup.build();
 
@@ -320,7 +321,7 @@ public class LargeTransfersTest {
 				} );
 			if ( !acceptor_on_server ) {
 				setup.channelAcceptor(
-					new SimpleAcceptor( write_consumer ) );
+					new SimpleAcceptor(write_consumer));
 			}
 			client_instance = setup.build();
 		}
@@ -347,7 +348,7 @@ public class LargeTransfersTest {
 				() -> read_wait_stats.getAndSet( new LongSummaryStatistics() ) );
 		timer.scheduleAtFixedRate( read_task, 10000, 5000 );
 
-		for( int i = 0; i < args.threads; i++ ) {
+		for( int i = 0; i < threads; i++ ) {
 			new Thread( () -> {
 				if ( acceptor_on_server ) {
 					try {
@@ -376,8 +377,8 @@ public class LargeTransfersTest {
 		read_task.cancel();
 		write_task.cancel();
 
-		assertTrue( write_error_list.toString(), write_error_list.isEmpty() );
-		assertTrue( read_error_list.toString(), read_error_list.isEmpty() );
+		assertTrue( write_error_list.isEmpty(), write_error_list.toString() );
+		assertTrue( read_error_list.isEmpty(), read_error_list.toString() );
 
 		DoubleSummaryStatistics write_stats = write_bps_list.stream()
 			.mapToDouble( Double::doubleValue )
@@ -387,8 +388,9 @@ public class LargeTransfersTest {
 			.mapToDouble( Double::doubleValue )
 			.summaryStatistics();
 
-		System.out.println( args + "  Write: " +
-			stats( write_stats ) + "   Read: " + stats( read_stats ) );
+		System.out.println(
+			data_size + "/" + threads + "/" + digest + "/" + buffer_size +
+			"  Write: " + stats( write_stats ) + "   Read: " + stats( read_stats ) );
 	}
 
 
@@ -407,7 +409,7 @@ public class LargeTransfersTest {
 	}
 
 
-	class SimpleAcceptor implements ChannelAcceptor {
+	static class SimpleAcceptor implements ChannelAcceptor {
 		private final Consumer<ByteChannel> consumer;
 
 		SimpleAcceptor( Consumer<ByteChannel> consumer ) {
@@ -429,13 +431,14 @@ public class LargeTransfersTest {
 		private final Consumer<String> error_message_consumer;
 		private final Consumer<Double> bps_consumer;
 		private final AtomicLong total_read;
+		private final long data_size;
 
 		private final byte[] read_buffer_array;
 		private final ByteBuffer read_buffer;
 
 		ChannelReadThread( ByteChannel channel, @Nullable MessageDigest digest,
 			Consumer<String> error_message_consumer, Consumer<Double> bps_consumer,
-			AtomicLong total_read ) {
+			AtomicLong total_read, long data_size ) {
 
 			super( "ChannelReadThread: " + channel );
 
@@ -444,6 +447,7 @@ public class LargeTransfersTest {
 			this.error_message_consumer= error_message_consumer;
 			this.bps_consumer = bps_consumer;
 			this.total_read = total_read;
+			this.data_size = data_size;
 
 			// NOTE TO SELF: Non-direct buffers seem to be faster
 //			if ( digest == null ) {
@@ -480,38 +484,13 @@ public class LargeTransfersTest {
 					}
 				}
 
-				double bps = ( ( double ) args.data_size / ( double ) ( end - start ) ) *
+				double bps = ( ( double ) data_size / ( double ) ( end - start ) ) *
 					TimeUnit.SECONDS.toNanos( 1 );
 				bps_consumer.accept( bps );
 			}
 			catch( Exception ex ) {
 				error_message_consumer.accept( "Error: " + ex );
 			}
-		}
-	}
-
-
-
-	public static class Args {
-		private final long data_size;
-		private final int threads;
-		private final @Nullable MessageDigest digest;
-		private final int buffer_size;
-
-		Args( long data_size, int threads, MessageDigest digest, int buffer_size ) {
-			this.data_size = data_size;
-			this.threads = threads;
-			this.digest = digest;
-			this.buffer_size = buffer_size;
-		}
-
-
-
-		@Override
-		public String toString() {
-			return data_size + " x " + threads + ", digester=" +
-				( digest == null ? "none" : digest.getAlgorithm() ) +
-				", buffer=" + buffer_size;
 		}
 	}
 

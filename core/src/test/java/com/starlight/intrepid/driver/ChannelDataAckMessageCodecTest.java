@@ -8,9 +8,9 @@ package com.starlight.intrepid.driver;
 import com.starlight.intrepid.OkioBufferData;
 import com.starlight.intrepid.message.ChannelDataAckIMessage;
 import okio.Buffer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 /**

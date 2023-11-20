@@ -2,21 +2,24 @@ package com.starlight.intrepid.tools;
 
 import com.starlight.intrepid.ChannelAcceptor;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import junit.framework.TestCase;
 import org.easymock.EasyMock;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.fail;
 
 
 /**
  *
  */
-public class PluggableChannelAcceptorTest extends TestCase {
+public class PluggableChannelAcceptorTest {
+	@Test
 	public void testNoAcceptors() {
 		PluggableChannelAcceptor main_acceptor = new PluggableChannelAcceptor();
 
 		// Test with nothing
 		try {
 			main_acceptor.newChannel( null, null, "Test" );
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch ( ChannelRejectedException e ) {
 			// This is expected
@@ -24,7 +27,8 @@ public class PluggableChannelAcceptorTest extends TestCase {
 	}
 
 
-	public void testClear() throws Exception {
+	@Test
+	public void testClear() {
 		PluggableChannelAcceptor main_acceptor = new PluggableChannelAcceptor();
 
 		// Add a single acceptor that takes anything
@@ -38,7 +42,7 @@ public class PluggableChannelAcceptorTest extends TestCase {
 		// Test with nothing
 		try {
 			main_acceptor.newChannel( null, null, "Test" );
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch ( ChannelRejectedException e ) {
 			// This is expected
@@ -48,6 +52,7 @@ public class PluggableChannelAcceptorTest extends TestCase {
 	}
 
 
+	@Test
 	public void testSingleAcceptor() throws Exception {
 		PluggableChannelAcceptor main_acceptor = new PluggableChannelAcceptor();
 
@@ -62,7 +67,7 @@ public class PluggableChannelAcceptorTest extends TestCase {
 		}
 		catch( ChannelRejectedException ex ) {
 			ex.printStackTrace();
-			fail( "Shouldn't have thrown exception" );
+			fail("Shouldn't have thrown exception");
 		}
 
 		EasyMock.verify( accepting_acceptor );
@@ -83,13 +88,14 @@ public class PluggableChannelAcceptorTest extends TestCase {
 		}
 		catch( ChannelRejectedException ex ) {
 			ex.printStackTrace();
-			fail( "Shouldn't have thrown exception" );
+			fail("Shouldn't have thrown exception");
 		}
 
 		EasyMock.verify( accepting_acceptor );
 	}
 
 
+	@Test
 	public void testMultipleAcceptors() throws Exception {
 		PluggableChannelAcceptor main_acceptor = new PluggableChannelAcceptor();
 
@@ -108,7 +114,7 @@ public class PluggableChannelAcceptorTest extends TestCase {
 
 		try {
 			main_acceptor.newChannel( null, null, "A" );
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch( ChannelRejectedException ex ) {
 			// Expected
@@ -134,7 +140,7 @@ public class PluggableChannelAcceptorTest extends TestCase {
 		}
 		catch( ChannelRejectedException ex ) {
 			ex.printStackTrace();
-			fail( "Should have worked" );
+			fail("Should have worked");
 		}
 
 		EasyMock.verify( acceptor1, acceptor2, acceptor3 );
@@ -154,7 +160,7 @@ public class PluggableChannelAcceptorTest extends TestCase {
 		}
 		catch( ChannelRejectedException ex ) {
 			ex.printStackTrace();
-			fail( "Should have worked" );
+			fail("Should have worked");
 		}
 
 		EasyMock.verify( acceptor1, acceptor2, acceptor3 );

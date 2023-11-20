@@ -32,8 +32,9 @@ import com.starlight.intrepid.auth.TokenReconnectAuthenticationHandler;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.starlight.intrepid.exception.NotConnectedException;
-import junit.framework.TestCase;
 import org.easymock.EasyMock;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -44,22 +45,25 @@ import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class ReconnectTest extends TestCase {
+public class ReconnectTest {
 	private Intrepid server_instance = null;
 	private Intrepid client_instance = null;
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
 		if ( server_instance != null ) server_instance.close();
 		if ( client_instance != null ) client_instance.close();
 	}
 
+	@Test
 	public void testReconnect() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -67,12 +71,12 @@ public class ReconnectTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
-		assertNotNull( port );
+		assertNotNull(port);
 
 		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
-		assertEquals( server_instance.getLocalVMID(), server_vmid );
+		assertEquals(server_instance.getLocalVMID(), server_vmid);
 
 
 		CommTest.ServerImpl server_impl =
@@ -95,14 +99,14 @@ public class ReconnectTest extends TestCase {
 		try {
 			// Make a call... should fail
 			proxy.getMessage();
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch ( NotConnectedException ex ) {
 			// This is good
 		}
 		catch ( IntrepidRuntimeException ex ) {
 			ex.printStackTrace();
-			fail( "Unexpected exception: " + ex );
+			fail("Unexpected exception: " + ex);
 		}
 
 		server_instance = Intrepid.newBuilder()
@@ -129,10 +133,11 @@ public class ReconnectTest extends TestCase {
 			}
 		}
 
-		assertTrue( reconnected );
+		assertTrue(reconnected);
 		System.out.println( "Reconnected!!" );
 	}
 
+	@Test
 	public void testReconnect2() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -140,12 +145,12 @@ public class ReconnectTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
-		assertNotNull( port );
+		assertNotNull(port);
 
 		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
-		assertEquals( server_instance.getLocalVMID(), server_vmid );
+		assertEquals(server_instance.getLocalVMID(), server_vmid);
 
 
 		CommTest.ServerImpl server_impl =
@@ -168,20 +173,20 @@ public class ReconnectTest extends TestCase {
 		try {
 			// Make a call... should fail
 			proxy.getMessage();
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch ( NotConnectedException ex ) {
 			// This is good
 		}
 		catch ( IntrepidRuntimeException ex ) {
 			ex.printStackTrace();
-			fail( "Unexpected exception: " + ex );
+			fail("Unexpected exception: " + ex);
 		}
 
 		try {
 			client_instance.connect(
 				InetAddress.getLoopbackAddress(), port.intValue(), null, null );
-			fail( "Shouldn't work" );
+			fail("Shouldn't work");
 		}
 		catch( ConnectException ex ) {
 			// this is good... timeout
@@ -191,7 +196,7 @@ public class ReconnectTest extends TestCase {
 
 		try {
 			r.lookup( "server" );
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch( NotConnectedException ex ) {
 			// This is good
@@ -221,11 +226,12 @@ public class ReconnectTest extends TestCase {
 			}
 		}
 
-		assertTrue( reconnected );
+		assertTrue(reconnected);
 		System.out.println( "Reconnected!!" );
 	}
 
 
+	@Test
 	public void testConnectTwice() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -233,7 +239,7 @@ public class ReconnectTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
-		assertNotNull( port );
+		assertNotNull(port);
 
 		client_instance = Intrepid.newBuilder().build();
 
@@ -267,18 +273,19 @@ public class ReconnectTest extends TestCase {
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
-		assertTrue( new_connection_flag.getAndSet( false ) );
+		assertTrue(new_connection_flag.getAndSet( false ));
 
 		// Now connect again and make sure we get the same VMID
 		VMID server_vmid2 = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
-		assertFalse( new_connection_flag.get() );
+		assertFalse(new_connection_flag.get());
 
-		assertEquals( server_vmid, server_vmid2 );
+		assertEquals(server_vmid, server_vmid2);
 	}
 
-	
+
+	@Test
 	public void testTwoQuickConnections() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -286,7 +293,7 @@ public class ReconnectTest extends TestCase {
 
 		server_instance = Intrepid.newBuilder().openServer().build();
 		Integer port = server_instance.getServerPort();
-		assertNotNull( port );
+		assertNotNull(port);
 
 		client_instance = Intrepid.newBuilder().build();
 
@@ -324,11 +331,12 @@ public class ReconnectTest extends TestCase {
 		VMID server_vmid2 = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
 
-		assertEquals( server_vmid, server_vmid2 );
-		assertEquals( 1, connections.get() );
+		assertEquals(server_vmid, server_vmid2);
+		assertEquals(1, connections.get());
 	}
 
 
+	@Test
 	public void testTokenReconnection() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -372,12 +380,12 @@ public class ReconnectTest extends TestCase {
 		setup.serverAddress( new InetSocketAddress( 0 ) );
 		server_instance = setup.build();
 		Integer port = server_instance.getServerPort();
-		assertNotNull( port );
+		assertNotNull(port);
 
 		client_instance = Intrepid.newBuilder().build();
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			port.intValue(), null, null );
-		assertEquals( server_instance.getLocalVMID(), server_vmid );
+		assertEquals(server_instance.getLocalVMID(), server_vmid);
 
 		CommTest.ServerImpl server_impl =
 			new CommTest.ServerImpl( true, server_instance.getLocalVMID() );
@@ -438,7 +446,7 @@ public class ReconnectTest extends TestCase {
 			}
 		}
 
-		assertTrue( reconnected );
+		assertTrue(reconnected);
 		System.out.println( "Reconnected!!" );
 
 

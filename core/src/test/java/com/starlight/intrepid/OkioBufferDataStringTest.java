@@ -1,91 +1,66 @@
 package com.starlight.intrepid;
 
 import okio.Buffer;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 
 /**
  *
  */
-@RunWith( Parameterized.class )
 public class OkioBufferDataStringTest {
-	@Parameterized.Parameters( name = "{0}" )
-	public static List<TestArgs> args() {
-		return Arrays.asList(
-			new TestArgs(
-				Arrays.asList( "It was the best of times, it was the worst of times." ),
-				Charset.forName( "UTF-16" ) ),
-			new TestArgs(
-				Arrays.asList( "It was the best of times, it was the worst of times." ),
-				Charset.forName( "UTF-8" ) ),
+	public static Stream<Arguments> args() {
+		return Stream.of(
+			arguments(
+				List.of("It was the best of times, it was the worst of times."),
+                StandardCharsets.UTF_16),
+			arguments(
+                List.of("It was the best of times, it was the worst of times."),
+                StandardCharsets.UTF_8),
 
-			new TestArgs(
+			arguments(
 				Arrays.asList( "A", "B", "C" ),
-				Charset.forName( "UTF-16" ) ),
-			new TestArgs(
+                StandardCharsets.UTF_16),
+			arguments(
 				Arrays.asList( "A", "B", "C" ),
-				Charset.forName( "UTF-8" ) )
+                StandardCharsets.UTF_8)
 		);
 	}
 
-
-	private final TestArgs args;
 
 	private final Buffer buffer = new Buffer();
 	private final OkioBufferData data = new OkioBufferData( buffer );
 
 
-	public OkioBufferDataStringTest( TestArgs args ) {
-		this.args = args;
-	}
 
-
-
-	@Test
-	public void readWrite() throws CharacterCodingException {
+	@ParameterizedTest
+	@MethodSource("args")
+	public void readWrite(List<String> strings, Charset charset) throws CharacterCodingException {
 		AtomicInteger total_written = new AtomicInteger( 0 );
-		for( String s : args.strings ) {
-			data.putString( s, args.charset.newEncoder(), total_written::addAndGet );
+		for( String s : strings ) {
+			data.putString( s, charset.newEncoder(), total_written::addAndGet );
 		}
 
 		System.out.println( "Data: " + data.hex() );
 
 		AtomicInteger total_read = new AtomicInteger( 0 );
-		for( String s : args.strings ) {
-			assertEquals( s, data.getString( args.charset.newDecoder(),
+		for( String s : strings ) {
+			assertEquals( s, data.getString( charset.newDecoder(),
 				total_read::addAndGet ) );
 		}
 
 		assertEquals( total_written.get(), total_read.get() );
-	}
-
-
-	private static class TestArgs {
-		private final List<String> strings;
-		private final Charset charset;
-
-		TestArgs( List<String> strings, Charset charset ) {
-			this.strings = strings;
-			this.charset = charset;
-		}
-
-
-
-		@Override public String toString() {
-			return "TestArgs{" +
-				"strings=" + strings +
-				", charset=" + charset +
-				'}';
-		}
 	}
 }

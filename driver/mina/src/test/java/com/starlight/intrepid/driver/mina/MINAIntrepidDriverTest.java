@@ -26,15 +26,18 @@
 package com.starlight.intrepid.driver.mina;
 
 import com.starlight.intrepid.Intrepid;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  *
  */
-public class MINAIntrepidDriverTest extends TestCase {
+public class MINAIntrepidDriverTest {
+	@Test
 	public void testAnonymousPortServer() {
 		Intrepid instance = null;
 		try {
@@ -45,17 +48,18 @@ public class MINAIntrepidDriverTest extends TestCase {
 				.build();
 
 			System.out.println( "Server address: " + spi.getServerAddress() );
-			assertNotNull( spi.getServerAddress() );
+			assertNotNull(spi.getServerAddress());
 		}
 		catch( Exception ex ) {
 			ex.printStackTrace();
-			fail( "Unexpected error received: " + ex );
+			fail("Unexpected error received: " + ex);
 		}
 		finally {
 			if ( instance != null ) instance.close();
 		}
 	}
 
+	@Test
 	public void testSpecificPortServer() {
 		Intrepid instance = null;
 		try {
@@ -67,12 +71,12 @@ public class MINAIntrepidDriverTest extends TestCase {
 				.build();
 
 			System.out.println( "Server address: " + spi.getServerAddress() );
-			assertNotNull( spi.getServerAddress() );
-			assertEquals( 11751, spi.getServerAddress().getPort() );
+			assertNotNull(spi.getServerAddress());
+			assertEquals(11751, spi.getServerAddress().getPort());
 		}
 		catch( Exception ex ) {
 			ex.printStackTrace();
-			fail( "Unexpected error received: " + ex );
+			fail("Unexpected error received: " + ex);
 		}
 		finally {
 			if ( instance != null ) instance.close();

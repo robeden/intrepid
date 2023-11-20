@@ -30,7 +30,8 @@ import com.logicartisan.common.core.Triple;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -43,22 +44,24 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class ChannelTest extends TestCase {
+public class ChannelTest {
 	Intrepid server;
 	Intrepid client;
 
-	@Override
-	protected void tearDown() throws Exception {
-		super.tearDown();
+	@AfterEach
+	public void tearDown() throws Exception {
 
 		if ( server != null ) server.close();
 		if ( client != null ) client.close();
 	}
 
+	@Test
 	public void testNoAcceptor() throws Exception {
 		server = Intrepid.newBuilder().openServer().build();
 		client = Intrepid.newBuilder().build();
@@ -68,7 +71,7 @@ public class ChannelTest extends TestCase {
 
 		try {
 			client.createChannel( server_vmid, "testing" );
-			fail( "Should have rejected the channel" );
+			fail("Should have rejected the channel");
 		}
 		catch( ChannelRejectedException ex ) {
 			// This is good
@@ -76,6 +79,7 @@ public class ChannelTest extends TestCase {
 	}
 
 
+	@Test
 	public void testChannelReject() throws IOException {
 		ChannelAcceptor acceptor = new TestAcceptor( "Test reject" );
 
@@ -87,16 +91,17 @@ public class ChannelTest extends TestCase {
 
 		try {
 			client.createChannel( server_vmid, "testing" );
-			fail( "Should have rejected the channel" );
+			fail("Should have rejected the channel");
 		}
 		catch( ChannelRejectedException ex ) {
 			// This is good
-			assertNotNull( ex.getMessage() );
-			assertEquals( "Test reject", ex.getMessage() );
+			assertNotNull(ex.getMessage());
+			assertEquals("Test reject", ex.getMessage());
 		}
 	}
 
 
+	@Test
 	public void testBasic() throws Exception {
 		TestAcceptor acceptor = new TestAcceptor( null );
 
@@ -119,7 +124,7 @@ public class ChannelTest extends TestCase {
 		buffer.flip();
 
 		int written = client_channel.write( buffer );
-		assertEquals( 2, written );
+		assertEquals(2, written);
 		buffer.clear();
 
 		buffer.put( ( byte ) 0xBA );
@@ -127,16 +132,16 @@ public class ChannelTest extends TestCase {
 		buffer.flip();
 
 		written = client_channel.write( buffer );
-		assertEquals( 2, written );
+		assertEquals(2, written);
 		buffer.clear();
 
 		// Server read
 		Triple<ByteChannel,VMID,Serializable> channel_info =
 			acceptor.queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( channel_info );
+		assertNotNull(channel_info);
 
-		assertEquals( "testing", channel_info.getThree() );
-		assertEquals( client.getLocalVMID(), channel_info.getTwo() );
+		assertEquals("testing", channel_info.getThree());
+		assertEquals(client.getLocalVMID(), channel_info.getTwo());
 
 		ByteChannel server_channel = channel_info.getOne();
 
@@ -144,15 +149,15 @@ public class ChannelTest extends TestCase {
 		int read = 0;
 		while( read < 4 ) {
 			int sweep_read = server_channel.read( buffer );
-			assertTrue( String.valueOf( read ), sweep_read > 1 );
+			assertTrue(sweep_read > 1, String.valueOf( read ));
 			read += sweep_read;
 		}
 		buffer.flip();
 
-		assertEquals( ( byte ) 0xCA, buffer.get() );
-		assertEquals( ( byte ) 0xFE, buffer.get() );
-		assertEquals( ( byte ) 0xBA, buffer.get() );
-		assertEquals( ( byte ) 0xBE, buffer.get() );
+		assertEquals(( byte ) 0xCA, buffer.get());
+		assertEquals(( byte ) 0xFE, buffer.get());
+		assertEquals(( byte ) 0xBA, buffer.get());
+		assertEquals(( byte ) 0xBE, buffer.get());
 
 		buffer.clear();
 
@@ -165,7 +170,7 @@ public class ChannelTest extends TestCase {
 
 		written = server_channel.write( buffer );
 		buffer.clear();
-		assertEquals( 4, written );
+		assertEquals(4, written);
 
 		// Server close
 		server_channel.close();
@@ -173,35 +178,35 @@ public class ChannelTest extends TestCase {
 		// Client read
 		buffer.limit( 1 );
 		read = client_channel.read( buffer );
-		assertEquals( 1, read );
+		assertEquals(1, read);
 		buffer.flip();
-		assertEquals( ( byte ) 0xDE, buffer.get() );
+		assertEquals(( byte ) 0xDE, buffer.get());
 		buffer.clear();
 
 		buffer.limit( 1 );
 		read = client_channel.read( buffer );
-		assertEquals( 1, read );
+		assertEquals(1, read);
 		buffer.flip();
-		assertEquals( ( byte ) 0xAD, buffer.get() );
+		assertEquals(( byte ) 0xAD, buffer.get());
 		buffer.clear();
 
 		buffer.limit( 1 );
 		read = client_channel.read( buffer );
-		assertEquals( 1, read );
+		assertEquals(1, read);
 		buffer.flip();
-		assertEquals( ( byte ) 0xBE, buffer.get() );
+		assertEquals(( byte ) 0xBE, buffer.get());
 		buffer.clear();
 
 		buffer.limit( 1 );
 		read = client_channel.read( buffer );
-		assertEquals( 1, read );
+		assertEquals(1, read);
 		buffer.flip();
-		assertEquals( ( byte ) 0xEF, buffer.get() );
+		assertEquals(( byte ) 0xEF, buffer.get());
 		buffer.clear();
 
 		// Make sure we see a close
 		read = client_channel.read( buffer );
-		assertEquals( -1, read );
+		assertEquals(-1, read);
 	}
 
 
@@ -209,6 +214,7 @@ public class ChannelTest extends TestCase {
 	 * Write more data than should fit in a single message to ensure it's broken up in
 	 * multiple messages for sending.
 	 */
+	@Test
 	public void testLargeDataBreakup() throws Exception {
 		TestAcceptor acceptor = new TestAcceptor( null );
 
@@ -261,10 +267,11 @@ public class ChannelTest extends TestCase {
 		client.disconnect( server_vmid );
 
 		System.out.println( "Data messages: " + data_message_count );
-		assertTrue( data_message_count.get() > 1 );
+		assertTrue(data_message_count.get() > 1);
 	}
 
 
+	@Test
 	public void testQuickServerWrite() throws Exception {
 		ByteBuffer to_write = ByteBuffer.allocate( 4 );
 		to_write.put( ( byte ) 0xDE );
@@ -295,10 +302,10 @@ public class ChannelTest extends TestCase {
 
 		read_buffer.flip();
 
-		assertEquals( ( byte ) 0xDE, read_buffer.get() );
-		assertEquals( ( byte ) 0xAD, read_buffer.get() );
-		assertEquals( ( byte ) 0xBE, read_buffer.get() );
-		assertEquals( ( byte ) 0xEF, read_buffer.get() );
+		assertEquals(( byte ) 0xDE, read_buffer.get());
+		assertEquals(( byte ) 0xAD, read_buffer.get());
+		assertEquals(( byte ) 0xBE, read_buffer.get());
+		assertEquals(( byte ) 0xEF, read_buffer.get());
 	}
 
 	

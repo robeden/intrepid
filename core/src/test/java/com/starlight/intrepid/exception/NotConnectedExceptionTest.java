@@ -27,30 +27,33 @@ package com.starlight.intrepid.exception;
 
 import com.logicartisan.common.core.IOKit;
 import com.starlight.intrepid.IntrepidTesting;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  *
  */
-public class NotConnectedExceptionTest extends TestCase {
-	
+public class NotConnectedExceptionTest {
+
+	@Test
 	public void testSerialization() throws Exception {
 		NotConnectedException original =
 			new NotConnectedException( IntrepidTesting.createVMID() );
 
 		NotConnectedException clone = ( NotConnectedException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNull(clone.getCause());
 
 
 		original = new NotConnectedException( "Test: ", IntrepidTesting.createVMID() );
-		assertTrue( original.getMessage().startsWith( "Test: " ) );
+		assertTrue(original.getMessage().startsWith( "Test: " ));
 
 		clone = ( NotConnectedException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNull(clone.getCause());
 	}
 }

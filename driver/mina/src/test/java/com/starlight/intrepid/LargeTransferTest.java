@@ -25,14 +25,15 @@
 
 package com.starlight.intrepid;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
 import java.text.NumberFormat;
-import java.util.Arrays;
 import java.util.Random;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 
 /**
@@ -43,7 +44,7 @@ public class LargeTransferTest {
 	private Intrepid server_instance = null;
 
 
-	@After
+	@AfterEach
 	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
@@ -65,7 +66,7 @@ public class LargeTransferTest {
 			.openServer()
 			.build();
 		Integer server_port = server_instance.getServerPort();
-		Assert.assertNotNull( server_port );
+		assertNotNull(server_port);
 		ServerImpl original_instance = new ServerImpl();
 		server_instance.getLocalRegistry().bind( "server", original_instance );
 
@@ -74,7 +75,7 @@ public class LargeTransferTest {
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_port.intValue(), null, null );
-		Assert.assertNotNull( server_vmid );
+		assertNotNull(server_vmid);
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
@@ -90,7 +91,7 @@ public class LargeTransferTest {
 			System.out.println( "Method round-trip time: " + transfer_time +
 				"  - " + NumberFormat.getNumberInstance().format( bps ) + " Bps" );
 
-			Assert.assertTrue( Arrays.equals( data, data_copy ) );
+            assertArrayEquals(data, data_copy);
 		}
 		System.out.println( "Average Bps: " +
 			NumberFormat.getNumberInstance().format( total_bps / 5.0 ) );

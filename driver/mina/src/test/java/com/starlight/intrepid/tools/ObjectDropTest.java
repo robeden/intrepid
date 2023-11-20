@@ -5,26 +5,29 @@ import com.starlight.intrepid.Intrepid;
 import com.starlight.intrepid.IntrepidTesting;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class ObjectDropTest extends TestCase {
+public class ObjectDropTest {
 	private static final int MAP_SIZE = 500000;
 
 	private Intrepid server = null;
 	private Intrepid client = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
 		if ( client != null ) client.close();
@@ -32,13 +35,14 @@ public class ObjectDropTest extends TestCase {
 	}
 
 
+	@Test
 	public void testMemoryRequirements() {
 		long max_mem = Runtime.getRuntime().maxMemory();
-		assertTrue( "Max memory should be set >= 256M",
-			max_mem >= 256L * 1000L * 1000L );
+		assertTrue(max_mem >= 256L * 1000L * 1000L, "Max memory should be set >= 256M");
 	}
 
 
+	@Test
 	public void testWithoutBridgeUncompressedToCaller() throws Exception {
 		// Disable inter-instance bridge
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
@@ -46,10 +50,12 @@ public class ObjectDropTest extends TestCase {
 		doBasicTest( false, true );
 	}
 
+	@Test
 	public void testWithBridgeUncompressedToCaller() throws Exception {
 		doBasicTest( false, true );
 	}
 
+	@Test
 	public void testWithoutBridgeCompressedToCaller() throws Exception {
 		// Disable inter-instance bridge
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
@@ -57,11 +63,13 @@ public class ObjectDropTest extends TestCase {
 		doBasicTest( true, true );
 	}
 
+	@Test
 	public void testWithBridgeCompressedToCaller() throws Exception {
 		doBasicTest( true, true );
 	}
 
 
+	@Test
 	public void testWithoutBridgeUncompressedExplicitDestination() throws Exception {
 		// Disable inter-instance bridge
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
@@ -69,10 +77,12 @@ public class ObjectDropTest extends TestCase {
 		doBasicTest( false, false );
 	}
 
+	@Test
 	public void testWithBridgeUncompressedExplicitDestination() throws Exception {
 		doBasicTest( false, false );
 	}
 
+	@Test
 	public void testWithoutBridgeCompressedExplicitDestination() throws Exception {
 		// Disable inter-instance bridge
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
@@ -80,6 +90,7 @@ public class ObjectDropTest extends TestCase {
 		doBasicTest( true, false );
 	}
 
+	@Test
 	public void testWithBridgeCompressedExplicitDestination() throws Exception {
 		doBasicTest( true, false );
 	}
@@ -102,14 +113,13 @@ public class ObjectDropTest extends TestCase {
 		proxy.setData( client.getLocalVMID(), id, drop_to_caller );
 		System.out.println( "post setData" );
 
-		@SuppressWarnings( { "unchecked" } )
 		Map<Integer,String> result = client_drop.retrieve( id );
 		System.out.println( "retrieve complete" );
-		assertNotNull( result );
-		assertEquals( MAP_SIZE, result.size() );
+		assertNotNull(result);
+		assertEquals(MAP_SIZE, result.size());
 		for( int i = 0; i < MAP_SIZE; i++ ) {
-			Integer key = Integer.valueOf( i );
-			assertEquals( String.valueOf( i ), result.get( key ) );
+			Integer key = i;
+			assertEquals(String.valueOf( i ), result.get( key ));
 		}
 	}
 
@@ -134,7 +144,7 @@ public class ObjectDropTest extends TestCase {
 
 			Map<Integer,String> map = new HashMap<Integer, String>();
 			for( int i = 0; i < MAP_SIZE; i++ ) {
-				map.put( Integer.valueOf( i ), String.valueOf( i ) );
+				map.put(i, String.valueOf( i ) );
 			}
 
 			int size = IOKit.serialize( map ).length;

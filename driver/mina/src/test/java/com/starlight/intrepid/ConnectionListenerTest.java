@@ -28,7 +28,8 @@ package com.starlight.intrepid;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.SimpleUserContextInfo;
 import com.starlight.intrepid.auth.UserContextInfo;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -39,17 +40,19 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class ConnectionListenerTest extends TestCase {
+public class ConnectionListenerTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -58,12 +61,14 @@ public class ConnectionListenerTest extends TestCase {
 	}
 
 
+	@Test
 	public void testSystemProperty() {
-		assertEquals( "System property 'intrepid.req_invoke_ack_rate_sec' must be set " +
-			"to '1' when running unit tests.", "1",
-			System.getProperty( "intrepid.req_invoke_ack_rate_sec" ) );
+		assertEquals("1", System.getProperty( "intrepid.req_invoke_ack_rate_sec" ),
+			"System property 'intrepid.req_invoke_ack_rate_sec' must be set " +
+			"to '1' when running unit tests.");
 	}
 
+	@Test
 	public void testListener() throws Exception {
 		TestConnectionListener s_listener = new TestConnectionListener("Server");
 		TestConnectionListener c_listener = new TestConnectionListener("Client");
@@ -80,8 +85,8 @@ public class ConnectionListenerTest extends TestCase {
 			.connectionListener( c_listener )
 			.build();
 
-		assertTrue( s_listener.event_queue.isEmpty() );
-		assertTrue( c_listener.event_queue.isEmpty() );
+		assertTrue(s_listener.event_queue.isEmpty());
+		assertTrue(c_listener.event_queue.isEmpty());
 
 		final InetAddress localhost = InetAddress.getByName( "127.0.0.1" );
 
@@ -89,70 +94,71 @@ public class ConnectionListenerTest extends TestCase {
 		String client_attachment = "My Client Attachment";
 		VMID server_vmid =
 			client_instance.connect( localhost, 11751, null, client_attachment );
-		assertNotNull( server_vmid );
+		assertNotNull(server_vmid);
 
 		SocketAddress expected_address = new InetSocketAddress(localhost, 11751);
 
 		// Make sure both listeners show a connection
 		ConnectionEventInfo info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.OPENED, info.type );
-		assertEquals( client_instance.getLocalVMID(), info.vmid );
-		assertNull( info.attachment );
-		assertNull( info.user_context );
-		assertEquals( 1, info.ack_rate_sec );               // specified in property
+		assertNotNull(info);
+		assertEquals(EventType.OPENED, info.type);
+		assertEquals(client_instance.getLocalVMID(), info.vmid);
+		assertNull(info.attachment);
+		assertNull(info.user_context);
+		assertEquals(1, info.ack_rate_sec);               // specified in property
 		System.out.println( "client address: " + info.socket_address );
 
 		// OPENING
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.OPENING, info.type );
-		assertEquals( expected_address, info.socket_address );
+		assertNotNull(info);
+		assertEquals(EventType.OPENING, info.type);
+		assertEquals(expected_address, info.socket_address);
 
 		// OPENED
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.OPENED, info.type );
-		assertEquals( server_instance.getLocalVMID(), info.vmid );
-		assertEquals( client_attachment, info.attachment );
-		assertNull( info.user_context );
-		assertEquals( expected_address, info.socket_address );
-		assertEquals( 1, info.ack_rate_sec );
+		assertNotNull(info);
+		assertEquals(EventType.OPENED, info.type);
+		assertEquals(server_instance.getLocalVMID(), info.vmid);
+		assertEquals(client_attachment, info.attachment);
+		assertNull(info.user_context);
+		assertEquals(expected_address, info.socket_address);
+		assertEquals(1, info.ack_rate_sec);
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 		info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 
 		// Disconnect from server
 		client_instance.disconnect( server_vmid );
 
 		// Make sure both listeners show the disconnect
 		info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.CLOSED, info.type );
-		assertEquals( client_instance.getLocalVMID(), info.vmid );
-		assertNull( info.attachment );
-		assertNull( info.user_context );
+		assertNotNull(info);
+		assertEquals(EventType.CLOSED, info.type);
+		assertEquals(client_instance.getLocalVMID(), info.vmid);
+		assertNull(info.attachment);
+		assertNull(info.user_context);
 		System.out.println( "client address: " + info.socket_address );
 
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.CLOSED, info.type );
-		assertEquals( server_instance.getLocalVMID(), info.vmid );
-		assertEquals( client_attachment, info.attachment );
-		assertNull( info.user_context );
-		assertEquals( expected_address, info.socket_address );
+		assertNotNull(info);
+		assertEquals(EventType.CLOSED, info.type);
+		assertEquals(server_instance.getLocalVMID(), info.vmid);
+		assertEquals(client_attachment, info.attachment);
+		assertNull(info.user_context);
+		assertEquals(expected_address, info.socket_address);
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 		info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 	}
 
 
+	@Test
 	public void testListenerWithUserConnection() throws Exception {
 		TestConnectionListener s_listener = new TestConnectionListener("Server");
 		TestConnectionListener c_listener = new TestConnectionListener("Client");
@@ -172,8 +178,8 @@ public class ConnectionListenerTest extends TestCase {
 			.connectionListener( c_listener )
 			.build();
 
-		assertTrue( s_listener.event_queue.isEmpty() );
-		assertTrue( c_listener.event_queue.isEmpty() );
+		assertTrue(s_listener.event_queue.isEmpty());
+		assertTrue(c_listener.event_queue.isEmpty());
 
 		final InetAddress localhost = InetAddress.getByName( "127.0.0.1" );
 
@@ -183,60 +189,60 @@ public class ConnectionListenerTest extends TestCase {
 		String client_attachment = "My Client Attachment";
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			11751, null, client_attachment );
-		assertNotNull( server_vmid );
+		assertNotNull(server_vmid);
 
 		// Make sure both listeners show a connection
 
 		ConnectionEventInfo info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.OPENED, info.type );
-		assertEquals( client_instance.getLocalVMID(), info.vmid );
-		assertNull( info.attachment );
-		assertEquals( user_context, info.user_context );    // server will have context
+		assertNotNull(info);
+		assertEquals(EventType.OPENED, info.type);
+		assertEquals(client_instance.getLocalVMID(), info.vmid);
+		assertNull(info.attachment);
+		assertEquals(user_context, info.user_context);    // server will have context
 
 		// OPENING
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.OPENING, info.type );
-		assertEquals( expected_address, info.socket_address );
+		assertNotNull(info);
+		assertEquals(EventType.OPENING, info.type);
+		assertEquals(expected_address, info.socket_address);
 
 		// OPENED
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.OPENED, info.type );
-		assertEquals( server_instance.getLocalVMID(), info.vmid );
-		assertEquals( client_attachment, info.attachment );
-		assertNull( info.user_context );    // client will not have user context
+		assertNotNull(info);
+		assertEquals(EventType.OPENED, info.type);
+		assertEquals(server_instance.getLocalVMID(), info.vmid);
+		assertEquals(client_attachment, info.attachment);
+		assertNull(info.user_context);    // client will not have user context
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 		info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 
 		// Disconnect from server
 		client_instance.disconnect( server_vmid );
 
 		// Make sure both listeners show the disconnect
 		info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.CLOSED, info.type );
-		assertEquals( client_instance.getLocalVMID(), info.vmid );
-		assertNull( info.attachment );
-		assertEquals( user_context, info.user_context );    // server will have context
+		assertNotNull(info);
+		assertEquals(EventType.CLOSED, info.type);
+		assertEquals(client_instance.getLocalVMID(), info.vmid);
+		assertNull(info.attachment);
+		assertEquals(user_context, info.user_context);    // server will have context
 
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNotNull( info );
-		assertEquals( EventType.CLOSED, info.type );
-		assertEquals( server_instance.getLocalVMID(), info.vmid );
-		assertEquals( client_attachment, info.attachment );
-		assertNull( info.user_context );    // client will not have user context
+		assertNotNull(info);
+		assertEquals(EventType.CLOSED, info.type);
+		assertEquals(server_instance.getLocalVMID(), info.vmid);
+		assertEquals(client_attachment, info.attachment);
+		assertNull(info.user_context);    // client will not have user context
 
 		// Make sure there are no more events
 		info = c_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 		info = s_listener.event_queue.poll( 2, TimeUnit.SECONDS );
-		assertNull( info );
+		assertNull(info);
 	}
 
 

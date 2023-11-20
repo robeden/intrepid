@@ -26,38 +26,41 @@
 package com.starlight.intrepid.exception;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  *
  */
-public class IllegalProxyDelegateExceptionTest extends TestCase {
+public class IllegalProxyDelegateExceptionTest {
+	@Test
 	public void testSerialization() throws Exception {
 		IllegalProxyDelegateException original =
 			new IllegalProxyDelegateException( "Test" );
 
 		IllegalProxyDelegateException clone = ( IllegalProxyDelegateException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNull(clone.getCause());
 
 
 		original = new IllegalProxyDelegateException( "Test", new NullPointerException() );
 
 		clone = ( IllegalProxyDelegateException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNotNull( clone.getCause() );
-		assertTrue( clone.getCause() instanceof NullPointerException );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNotNull(clone.getCause());
+		assertTrue(clone.getCause() instanceof NullPointerException);
 
 
 		original = new IllegalProxyDelegateException( new NullPointerException() );
 
 		clone = ( IllegalProxyDelegateException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNotNull( clone.getCause() );
-		assertTrue( clone.getCause() instanceof NullPointerException );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNotNull(clone.getCause());
+		assertTrue(clone.getCause() instanceof NullPointerException);
 	}
 }

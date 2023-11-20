@@ -3,22 +3,26 @@ package com.starlight.intrepid;
 import com.starlight.intrepid.auth.SimpleUserContextInfo;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.auth.UserCredentialsConnectionArgs;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 
 /**
  *
  */
-public class ChainedCallUserContextTest extends TestCase {
+public class ChainedCallUserContextTest {
 	Intrepid tail_instance;
 	Intrepid head_instance;
 	Intrepid client_instance;
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
 		if ( tail_instance != null ) tail_instance.close();
@@ -32,6 +36,7 @@ public class ChainedCallUserContextTest extends TestCase {
 	//
 	// The UserContextInfo should come from the Client->Head connection since the
 	// Head->Tail connection is a server connection.
+	@Test
 	public void testChainedCall() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -51,7 +56,7 @@ public class ChainedCallUserContextTest extends TestCase {
 			.build();
 		VMID vmid = head_instance.connect( InetAddress.getLoopbackAddress(),
 			tail_instance.getServerPort().intValue(), null, null );
-		assertEquals( tail_instance.getLocalVMID(), vmid );
+		assertEquals(tail_instance.getLocalVMID(), vmid);
 		HeadInstance head_proxy_instance = new HeadInstance(
 			( Runnable ) head_instance.getRemoteRegistry(
 			tail_instance.getLocalVMID() ).lookup( "lib/test" ) );
@@ -62,7 +67,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );
-		assertEquals( head_instance.getLocalVMID(), vmid );
+		assertEquals(head_instance.getLocalVMID(), vmid);
 
 		Runnable head_proxy =
 			( Runnable ) client_instance.getRemoteRegistry( vmid ).lookup( "lib/test" );
@@ -71,14 +76,15 @@ public class ChainedCallUserContextTest extends TestCase {
 		head_proxy.run();
 
 		// Verify the tail had our credentials
-		assertNotNull( tail_proxy_instance.context );
-		assertEquals( "reden", tail_proxy_instance.context.getUserName() );
+		assertNotNull(tail_proxy_instance.context);
+		assertEquals("reden", tail_proxy_instance.context.getUserName());
 	}
 
 
 	// Same as testChainedCall in setup, except the Head->Tail connection is a user
 	// authenticated connection. This means that the UserContextInfo should come from
 	// that connection rather than the Client->Head connection.
+	@Test
 	public void testChainedCallOverUserAuthConnection() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -108,7 +114,7 @@ public class ChainedCallUserContextTest extends TestCase {
 			tail_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "**NOT**reden", "blah".toCharArray() ),
 			null );
-		assertEquals( tail_instance.getLocalVMID(), vmid );
+		assertEquals(tail_instance.getLocalVMID(), vmid);
 		HeadInstance head_proxy_instance = new HeadInstance(
 			( Runnable ) head_instance.getRemoteRegistry(
 			tail_instance.getLocalVMID() ).lookup( "lib/test" ) );
@@ -119,7 +125,7 @@ public class ChainedCallUserContextTest extends TestCase {
 		vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			head_instance.getServerPort().intValue(),
 			new UserCredentialsConnectionArgs( "reden", "hello".toCharArray() ), null );
-		assertEquals( head_instance.getLocalVMID(), vmid );
+		assertEquals(head_instance.getLocalVMID(), vmid);
 
 		Runnable head_proxy =
 			( Runnable ) client_instance.getRemoteRegistry( vmid ).lookup( "lib/test" );
@@ -128,8 +134,8 @@ public class ChainedCallUserContextTest extends TestCase {
 		head_proxy.run();
 
 		// Verify the tail had our credentials
-		assertNotNull( tail_proxy_instance.context );
-		assertEquals( "**NOT**reden", tail_proxy_instance.context.getUserName() );
+		assertNotNull(tail_proxy_instance.context);
+		assertEquals("**NOT**reden", tail_proxy_instance.context.getUserName());
 	}
 
 

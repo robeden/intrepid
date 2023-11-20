@@ -1,15 +1,15 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.IOKit;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 /**
@@ -19,7 +19,7 @@ public class ProxyInLocalVM {
 	private Intrepid server_instance = null;
 
 
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -30,7 +30,7 @@ public class ProxyInLocalVM {
 			.build();
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() {
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 

@@ -13,7 +13,10 @@ import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
-import org.junit.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
@@ -24,7 +27,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 /**
  *
@@ -44,7 +48,7 @@ public class SessionInitBypassTest {
 	private IoSession session;
 
 
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		received_message = new AtomicReference<>();
 
@@ -82,14 +86,14 @@ public class SessionInitBypassTest {
 
 		final TIntObjectMap<Method> method_map =
 			IntrepidTestProxyAccess.generateMethodMap( Runnable.class );
-		Assert.assertEquals( 1, method_map.size() );
+		assertEquals( 1, method_map.size() );
 		method_id = method_map.keys()[ 0 ];
 
 		System.out.println( "Object ID: " + object_id );
 		System.out.println( "Method ID: " + method_id );
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() {
 		received_message = null;
 		method_invoked = null;
@@ -114,8 +118,8 @@ public class SessionInitBypassTest {
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
-		Assert.assertNull( "Received message", received_message.get() );
-		Assert.assertFalse( "Still connected", session.isConnected() );
+		assertNull( received_message.get() );
+		assertFalse( session.isConnected() );
 	}
 
 	// Test to see if a message is received at all
@@ -127,8 +131,8 @@ public class SessionInitBypassTest {
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
-		Assert.assertNull( "Received message", received_message.get() );
-		Assert.assertFalse( "Still connected", session.isConnected() );
+		assertNull( received_message.get() );
+		assertFalse( session.isConnected() );
 	}
 
 
@@ -142,7 +146,7 @@ public class SessionInitBypassTest {
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
-		Assert.assertFalse( "Method invoked", method_invoked.get() );
+		assertFalse( method_invoked.get() );
 	}
 
 
@@ -151,8 +155,8 @@ public class SessionInitBypassTest {
 	//       with assertions enabled.
 	@Test
 	public void testCovertInvokeIndicateInCall() throws Exception {
-		Assume.assumeFalse( "Assertions need to be disabled",
-			SessionInitBypassTest.class.desiredAssertionStatus() );
+		assumeFalse( SessionInitBypassTest.class.desiredAssertionStatus(),
+			"Assertions need to be disabled");
 
 		InvokeIMessage invoke_message = new InvokeIMessage(
 			0, object_id, null, method_id, new Object[] {}, null, false );
@@ -161,10 +165,10 @@ public class SessionInitBypassTest {
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
-		Assume.assumeTrue( "Convert invocation didn't happen (bug #5 fixed, hopefully)",
-			method_invoked.get() );
-		assertTrue( "During call, IntrepidContext indicated we weren't in a call",
-			indicated_in_call.get() );
+		Assumptions.assumeTrue(method_invoked.get(),
+			"Convert invocation didn't happen (bug #5 fixed, hopefully)");
+		assertTrue( indicated_in_call.get(),
+			"During call, IntrepidContext indicated we weren't in a call" );
 	}
 
 
@@ -210,7 +214,7 @@ public class SessionInitBypassTest {
 		// due to version checks.
 		session.setAttribute( MINAIntrepidDriver.SESSION_INFO_KEY, mock_info );
 
-		Assert.assertNotNull( session );
+		assertNotNull( session );
 		assertTrue( session.isConnected() );
 
 		WriteFuture write_future = session.write( message );

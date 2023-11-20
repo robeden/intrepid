@@ -1,88 +1,54 @@
 package com.starlight.intrepid.driver;
 
-import org.junit.Assume;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.OptionalInt;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 
 /**
  *
  */
-@RunWith( Parameterized.class )
 public class ProtocolVersionsNegotiationTest {
 
-	@Parameterized.Parameters( name = "{0}" )
-	public static List<Args> args() {
-		return Arrays.asList(
+	public static Stream<Arguments> args() {
+		return Stream.of(
 			// Exact
-			new Args( 0, 0, 0, 0, OptionalInt.of( 0 ) ),
-			new Args( 3, 3, 3, 3, OptionalInt.of( 3 ) ),
+			arguments( 0, 0, 0, 0, OptionalInt.of( 0 ) ),
+			arguments( 3, 3, 3, 3, OptionalInt.of( 3 ) ),
 
 			// Same range
-			new Args( 0, 2, 0, 2, OptionalInt.of( 2 ) ),
+			arguments( 0, 2, 0, 2, OptionalInt.of( 2 ) ),
 
 			// Subset
-			new Args( 0, 2, 0, 1, OptionalInt.of( 1 ) ),
-			new Args( 0, 2, 0, 0, OptionalInt.of( 0 ) ),
-			new Args( 0, 1, 0, 2, OptionalInt.of( 1 ) ),
-			new Args( 0, 0, 0, 2, OptionalInt.of( 0 ) ),
+			arguments( 0, 2, 0, 1, OptionalInt.of( 1 ) ),
+			arguments( 0, 2, 0, 0, OptionalInt.of( 0 ) ),
+			arguments( 0, 1, 0, 2, OptionalInt.of( 1 ) ),
+			arguments( 0, 0, 0, 2, OptionalInt.of( 0 ) ),
 
 			// Discontiguous
-			new Args( 0, 2, 3, 3, OptionalInt.empty() ),
-			new Args( 0, 2, 3, 4, OptionalInt.empty() ),
-			new Args( 3, 3, 0, 2, OptionalInt.empty() ),
-			new Args( 3, 4, 0, 2, OptionalInt.empty() )
+			arguments( 0, 2, 3, 3, OptionalInt.empty() ),
+			arguments( 0, 2, 3, 4, OptionalInt.empty() ),
+			arguments( 3, 3, 0, 2, OptionalInt.empty() ),
+			arguments( 3, 4, 0, 2, OptionalInt.empty() )
 		);
 	}
 
 
-	private final Args args;
 
-	public ProtocolVersionsNegotiationTest( Args args ) {
-		this.args = args;
-	}
-
-
-	@Test
-	public void testNegotiation() {
-		assertEquals( args.expect,
+	@ParameterizedTest
+	@MethodSource("args")
+	public void testNegotiation(int peer_min, int peer_pref, int our_min, int our_pref,
+								OptionalInt expect) {
+		assertEquals( expect,
 			ProtocolVersions.negotiateProtocolVersion(
-				(byte) args.peer_min, (byte) args.peer_pref,
-				(byte) args.our_min, (byte) args.our_pref ) );
+				(byte) peer_min, (byte) peer_pref,
+				(byte) our_min, (byte) our_pref ) );
 
-	}
-
-
-	@SuppressWarnings( "OptionalUsedAsFieldOrParameterType" )
-	private static class Args {
-		final int peer_min, peer_pref;
-		final int our_min, our_pref;
-		final OptionalInt expect;
-
-
-
-		public Args( int peer_min, int peer_pref, int our_min, int our_pref,
-			OptionalInt expect ) {
-
-			this.peer_min = peer_min;
-			this.peer_pref = peer_pref;
-			this.our_min = our_min;
-			this.our_pref = our_pref;
-			this.expect = expect;
-		}
-
-
-
-		@Override
-		public String toString() {
-			return peer_min + "-" + peer_pref + " => " + our_min + "-" + our_pref;
-		}
 	}
 }

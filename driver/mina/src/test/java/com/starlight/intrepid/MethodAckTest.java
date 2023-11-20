@@ -6,22 +6,25 @@ import com.starlight.intrepid.exception.MethodInvocationFailedException;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.InvokeAckIMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class MethodAckTest extends TestCase {
+public class MethodAckTest {
+	@Test
 	public void testSystemProperty() {
-		assertEquals( "System property 'intrepid.req_invoke_ack_rate_sec' must be set " +
-			"to '1' when running unit tests.", "1",
-			System.getProperty( "intrepid.req_invoke_ack_rate_sec" ) );
+		assertEquals("1", System.getProperty( "intrepid.req_invoke_ack_rate_sec" ), "System property 'intrepid.req_invoke_ack_rate_sec' must be set " +
+			"to '1' when running unit tests.");
 	}
 
 
@@ -29,8 +32,8 @@ public class MethodAckTest extends TestCase {
 	private Intrepid server_instance = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -41,6 +44,7 @@ public class MethodAckTest extends TestCase {
 
 	// This test will drop incoming Invoke messages to the server, so calls should hang
 	// on the client. Since an ack is not sent, the call should blow out.
+	@Test
 	public void testDroppedInitialAck() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -96,22 +100,20 @@ public class MethodAckTest extends TestCase {
 		}
 		catch( MethodInvocationFailedException ex ) {
 			// Never received any acks
-			assertEquals( "Initial message acknowledgement timeout exceeded",
-				ex.getMessage() );
+			assertEquals("Initial message acknowledgement timeout exceeded", ex.getMessage());
 		}
 
 		long duration = System.currentTimeMillis() - start;
 		System.out.println( "Ack abort duration: " + duration );
 
-		assertFalse( "Server method was invoked (should have been dropped)",
-			run_called.get() );
-		assertTrue( "Duration < 2500 or > 5000: " + duration,
-			duration >= 2500 && duration < 5000 );
+		assertFalse(run_called.get(), "Server method was invoked (should have been dropped)");
+		assertTrue(duration >= 2500 && duration < 5000, "Duration < 2500 or > 5000: " + duration);
 	}
 
 
 	// This test will only send the FIRST ACK message from the server. So, the method call
 	// should blow out after the second missing ack
+	@Test
 	public void testDroppedSecondAck() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -172,19 +174,19 @@ public class MethodAckTest extends TestCase {
 		}
 		catch( MethodInvocationFailedException ex ) {
 			// Never received any acks
-			assertEquals( "Message acknowledgement timeout exceeded", ex.getMessage() );
+			assertEquals("Message acknowledgement timeout exceeded", ex.getMessage());
 		}
 
 		long duration = System.currentTimeMillis() - start;
 		System.out.println( "Ack abort duration: " + duration );
 
-		assertTrue( "Duration < 3500 or > 6000: " + duration,
-			duration >= 3500 && duration < 6000 );
+		assertTrue(duration >= 3500 && duration < 6000, "Duration < 3500 or > 6000: " + duration);
 	}
 
 
 	// Test a normal method call that blocks long enough that it will be aborted by
 	// an ack timeout if ack receives aren't being handled properly
+	@Test
 	public void testAckedCall() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -217,18 +219,17 @@ public class MethodAckTest extends TestCase {
 		}
 		catch( MethodInvocationFailedException ex ) {
 			// Never received any acks
-			assertEquals( "Initial message acknowledgement timeout exceeded",
-				ex.getMessage() );
+			assertEquals("Initial message acknowledgement timeout exceeded", ex.getMessage());
 		}
 
 		long duration = System.currentTimeMillis() - start;
 
-		assertTrue( "Duration < 5000 or > 6000: " + duration,
-			duration >= 5000 && duration < 6000 );
+		assertTrue(duration >= 5000 && duration < 6000, "Duration < 5000 or > 6000: " + duration);
 	}
 
 
 	// Test a fast-returning method call to ensure no ack message is sent.
+	@Test
 	public void testFastReturn() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -268,9 +269,9 @@ public class MethodAckTest extends TestCase {
 
 		long duration = System.currentTimeMillis() - start;
 
-		assertTrue( "Duration > 1000: " + duration, duration < 1000 );
+		assertTrue(duration < 1000, "Duration > 1000: " + duration);
 		ThreadKit.sleep( 1, TimeUnit.SECONDS );    // give time for the message to be sent
 
-		assertEquals( false, sent_ack.get() );
+        assertFalse(sent_ack.get());
 	}
 }

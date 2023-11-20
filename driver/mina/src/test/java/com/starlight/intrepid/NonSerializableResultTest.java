@@ -4,22 +4,26 @@ import com.logicartisan.common.core.IOKit;
 import com.logicartisan.common.core.thread.ObjectSlot;
 import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.starlight.intrepid.exception.IntrepidRuntimeException;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.NotSerializableException;
 import java.io.Serializable;
 import java.net.InetAddress;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
+
 
 /**
  *
  */
-public class NonSerializableResultTest extends TestCase {
+public class NonSerializableResultTest {
 	private Intrepid client = null;
 	private Intrepid server = null;
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
 		if ( client != null ) client.close();
@@ -27,16 +31,18 @@ public class NonSerializableResultTest extends TestCase {
 	}
 
 
+	@Test
 	public void testKillerClass() throws Exception {
 		try {
 			IOKit.serialize( new SerializationKiller() );
-			fail( "Shouldn't get here" );
+			fail("Shouldn't get here");
 		}
 		catch( NotSerializableException ex ) {
 			// this is good
 		}
 	}
 
+	@Test
 	public void testReturnValue() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -60,7 +66,7 @@ public class NonSerializableResultTest extends TestCase {
 		final MyIfc callable =
 			( MyIfc ) client.getRemoteRegistry( server_vmid ).lookup( "server" );
 
-		final ObjectSlot<Throwable> result_slot = new ObjectSlot<Throwable>();
+		final ObjectSlot<Throwable> result_slot = new ObjectSlot<>();
 
 		SharedThreadPool.INSTANCE.execute( new Runnable() {
 			@Override
@@ -79,7 +85,7 @@ public class NonSerializableResultTest extends TestCase {
 
 		@SuppressWarnings( "ThrowableResultOfMethodCallIgnored" )
 		Throwable t = result_slot.waitForValue( 10000 );
-        assertNotNull( "Timed out while waiting for value!", t );
+        assertNotNull(t, "Timed out while waiting for value!");
 		System.out.println( "Got this exception (possibly expected): " + t );
 
 		t.printStackTrace( System.out );
@@ -87,10 +93,11 @@ public class NonSerializableResultTest extends TestCase {
 			// this is good
 		}
 		else {
-			fail( "Unexpected exception type: " + t );
+			fail("Unexpected exception type: " + t);
 		}
 	}
 
+	@Test
 	public void testThrow() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -114,7 +121,7 @@ public class NonSerializableResultTest extends TestCase {
 		final MyIfc callable =
 			( MyIfc ) client.getRemoteRegistry( server_vmid ).lookup( "server" );
 
-		final ObjectSlot<Throwable> result_slot = new ObjectSlot<Throwable>();
+		final ObjectSlot<Throwable> result_slot = new ObjectSlot<>();
 
 		SharedThreadPool.INSTANCE.execute( new Runnable() {
 			@Override
@@ -131,7 +138,7 @@ public class NonSerializableResultTest extends TestCase {
 
         //noinspection ThrowableResultOfMethodCallIgnored
 		Throwable t = result_slot.waitForValue( 10000 );
-        assertNotNull( "Timed out while waiting for value!", t );
+        assertNotNull(t, "Timed out while waiting for value!");
 		System.out.println( "Got this exception (possibly expected): " + t );
 
 		t.printStackTrace( System.out );
@@ -139,7 +146,7 @@ public class NonSerializableResultTest extends TestCase {
 			// this is good
 		}
 		else {
-			fail( "Unexpected exception type: " + t );
+			fail("Unexpected exception type: " + t);
 		}
 	}
 
@@ -153,11 +160,11 @@ public class NonSerializableResultTest extends TestCase {
     }
     
 
-	public static interface MyIfc {
+	public interface MyIfc {
 		// Not using Callable because I don't want it to be able to throw
 		// NotSerializableException.
-		public Object call();
+        Object call();
         
-        public void throwException() throws ExceptionOfDeath;
+        void throwException() throws ExceptionOfDeath;
 	}
 }

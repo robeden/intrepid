@@ -2,21 +2,24 @@ package com.starlight.intrepid;
 
 import com.starlight.intrepid.auth.MethodInvocationRefusedException;
 import com.starlight.intrepid.auth.PreInvocationValidator;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 /**
  *
  */
-public class PreInvocationValidatorTest extends TestCase {
+public class PreInvocationValidatorTest {
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -25,6 +28,7 @@ public class PreInvocationValidatorTest extends TestCase {
 	}
 
 
+	@Test
 	public void testRejectedCall() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 
@@ -35,8 +39,8 @@ public class PreInvocationValidatorTest extends TestCase {
 		PreInvocationValidator validator =
 			( instance, calling_vmid, calling_host, user_context, method, target, args ) -> {
 
-			assertEquals( client_instance.getLocalVMID(), calling_vmid );
-			assertEquals( localhost, calling_host );
+			assertEquals(client_instance.getLocalVMID(), calling_vmid);
+			assertEquals(localhost, calling_host);
 
 			if ( !method.getName().equals( "doForLove" ) ) return;
 
@@ -59,21 +63,21 @@ public class PreInvocationValidatorTest extends TestCase {
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( localhost,
 			11751, null, null );
-		assertNotNull( server_vmid );
+		assertNotNull(server_vmid);
 
-		assertEquals( server_instance.getLocalVMID(), server_vmid );
-		assertFalse( client_instance.getLocalVMID().equals( server_vmid ) );
+		assertEquals(server_instance.getLocalVMID(), server_vmid);
+        assertNotEquals(client_instance.getLocalVMID(), server_vmid);
 
 		// Lookup the server object
 		Registry server_registry = client_instance.getRemoteRegistry( server_vmid );
 		Server server = ( Server ) server_registry.lookup( "server" );
-		assertNotNull( server );
+		assertNotNull(server);
 
 		server.doForLove( "Bar" );
 
 		try {
 			server.doForLove( "Foo" );
-			fail( "Shouldn't have worked" );
+			fail("Shouldn't have worked");
 		}
 		catch( MethodInvocationRefusedException ex ) {
 			// this is good

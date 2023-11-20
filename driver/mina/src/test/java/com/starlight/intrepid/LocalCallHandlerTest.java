@@ -27,7 +27,8 @@ package com.starlight.intrepid;
 
 import com.logicartisan.common.core.IOKit;
 import com.starlight.intrepid.exception.IllegalProxyDelegateException;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -37,28 +38,29 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class LocalCallHandlerTest extends TestCase {
+public class LocalCallHandlerTest {
 	private Intrepid intrepid;
 
 
-
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		if ( intrepid != null ) intrepid.close();
 	}
 
 
-
+	@Test
 	public void testFindProxyInterfaces() {
 		ProxyClassFilter filter = ( o, i ) -> true;
 
 		try {
 			Class[] c = LocalCallHandler.findProxyInterfaces( new Object(), filter );
-			fail( "Shouldn't have found interfaces: " + Arrays.toString( c ) );
+			fail("Shouldn't have found interfaces: " + Arrays.toString( c ));
 		}
 		catch( IllegalProxyDelegateException ex ) {
 			// this is good
@@ -66,30 +68,31 @@ public class LocalCallHandlerTest extends TestCase {
 
 		try {
 			Class[] c = LocalCallHandler.findProxyInterfaces( "A test string", filter );
-			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+			Set<Class> class_set = new HashSet<>(Arrays.asList(c));
 
-			assertTrue( class_set.contains( Serializable.class ) );
-			assertTrue( class_set.contains( Comparable.class ) );
-			assertTrue( class_set.contains( CharSequence.class ) );
+			assertTrue(class_set.contains( Serializable.class ));
+			assertTrue(class_set.contains( Comparable.class ));
+			assertTrue(class_set.contains( CharSequence.class ));
 		}
 		catch( IllegalProxyDelegateException ex ) {
-			fail( "Should be a valid proxy: " + ex );
+			fail("Should be a valid proxy: " + ex);
 		}
 
 		try {
 			Class[] c = LocalCallHandler.findProxyInterfaces(
 				new ConcurrentHashMap<>(), filter );
-			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+			Set<Class> class_set = new HashSet<>(Arrays.asList(c));
 
-			assertTrue( class_set.contains( Serializable.class ) );
-			assertTrue( class_set.contains( Map.class ) );
-			assertTrue( class_set.contains( ConcurrentMap.class ) );
+			assertTrue(class_set.contains( Serializable.class ));
+			assertTrue(class_set.contains( Map.class ));
+			assertTrue(class_set.contains( ConcurrentMap.class ));
 		}
 		catch( IllegalProxyDelegateException ex ) {
-			fail( "Should be a valid proxy: " + ex );
+			fail("Should be a valid proxy: " + ex);
 		}
 	}
 
+	@Test
 	public void testFindProxyInterfacesWithFilter() {
 		ProxyClassFilter filter = ( o, i ) -> {
 			// Disallow Map, ConcurrentMap and Comparable
@@ -100,33 +103,34 @@ public class LocalCallHandlerTest extends TestCase {
 
 		try {
 			Class[] c = LocalCallHandler.findProxyInterfaces( "A test string", filter );
-			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+			Set<Class> class_set = new HashSet<>(Arrays.asList(c));
 
-			assertTrue( class_set.contains( Serializable.class ) );
-			assertTrue( class_set.contains( CharSequence.class ) );
+			assertTrue(class_set.contains( Serializable.class ));
+			assertTrue(class_set.contains( CharSequence.class ));
 
-			assertFalse( class_set.contains( Comparable.class ) );
+			assertFalse(class_set.contains( Comparable.class ));
 		}
 		catch( IllegalProxyDelegateException ex ) {
-			fail( "Should be a valid proxy: " + ex );
+			fail("Should be a valid proxy: " + ex);
 		}
 
 		try {
 			Class[] c = LocalCallHandler.findProxyInterfaces(
 				new ConcurrentHashMap<>(), filter );
-			Set<Class> class_set = new HashSet<Class>( Arrays.asList( c ) );
+			Set<Class> class_set = new HashSet<>(Arrays.asList(c));
 
-			assertTrue( class_set.contains( Serializable.class ) );
+			assertTrue(class_set.contains( Serializable.class ));
 
-			assertFalse( class_set.contains( Map.class ) );
-			assertFalse( class_set.contains( ConcurrentMap.class ) );
+			assertFalse(class_set.contains( Map.class ));
+			assertFalse(class_set.contains( ConcurrentMap.class ));
 		}
 		catch( IllegalProxyDelegateException ex ) {
-			fail( "Should be a valid proxy: " + ex );
+			fail("Should be a valid proxy: " + ex);
 		}
 	}
 
 
+	@Test
 	public void testStringProxy() throws Exception {
 		intrepid = Intrepid.newBuilder().driver( new StubIntrepidDriver() ).build();
 		try {
@@ -134,15 +138,15 @@ public class LocalCallHandlerTest extends TestCase {
 			CharSequence proxy = ( CharSequence ) intrepid.createProxy( source );
 
 			// Make sure we got back a different object
-			assertNotSame( source, proxy );
+			assertNotSame(source, proxy);
 
 			// Make sure it's actually a proxy
-			assertTrue( proxy instanceof Proxy );
+			assertTrue(proxy instanceof Proxy);
 
 			// Test method calls...
-			assertEquals( source.length(), proxy.length() );
+			assertEquals(source.length(), proxy.length());
 			for( int i = 0; i < source.length(); i++ ) {
-				assertEquals( source.charAt( i ), proxy.charAt( i ) );
+				assertEquals(source.charAt( i ), proxy.charAt( i ));
 			}
 		}
 		finally {
@@ -151,6 +155,7 @@ public class LocalCallHandlerTest extends TestCase {
 	}
 
 
+	@Test
 	public void testSerializedStringProxy() throws Exception {
 		intrepid = Intrepid.newBuilder().driver( new StubIntrepidDriver() ).build();
 		try {
@@ -160,15 +165,15 @@ public class LocalCallHandlerTest extends TestCase {
 			proxy = ( CharSequence ) IOKit.deserialize( IOKit.serialize( proxy ) );
 
 			// Make sure we got back a different object
-			assertNotSame( source, proxy );
+			assertNotSame(source, proxy);
 
 			// Make sure it's actually a proxy
-			assertTrue( proxy instanceof Proxy );
+			assertTrue(proxy instanceof Proxy);
 
 			// Test method calls...
-			assertEquals( source.length(), proxy.length() );
+			assertEquals(source.length(), proxy.length());
 			for( int i = 0; i < source.length(); i++ ) {
-				assertEquals( source.charAt( i ), proxy.charAt( i ) );
+				assertEquals(source.charAt( i ), proxy.charAt( i ));
 			}
 		}
 		finally {

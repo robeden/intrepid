@@ -4,9 +4,8 @@ import com.logicartisan.common.core.thread.SharedThreadPool;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
 import com.starlight.intrepid.exception.InterruptedCallException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -14,6 +13,8 @@ import java.nio.channels.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
@@ -24,7 +25,8 @@ public class DisconnectDuringCallTest {
 	private Intrepid client_instance = null;
 
 
-	@After public void tearDown() throws Exception {
+	@AfterEach
+    public void tearDown() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
 		if ( server_instance != null ) server_instance.close();
@@ -43,7 +45,7 @@ public class DisconnectDuringCallTest {
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			server_instance.getServerPort().intValue(), null, null );
 
-		Assert.assertEquals( server_instance.getLocalVMID(), server_vmid );
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
 
 		Runnable runnable = ( Runnable ) client_instance.getRemoteRegistry(
@@ -52,7 +54,7 @@ public class DisconnectDuringCallTest {
 		for( int i = 0; i < 5; i++ ) {
 			try {
 				runnable.run();
-				Assert.fail( "Shouldn't have worked" );
+				fail( "Shouldn't have worked" );
 			}
 			catch( InterruptedCallException ex ) {
 				// This is good
@@ -82,13 +84,13 @@ public class DisconnectDuringCallTest {
 		VMID server_vmid = client_instance.connect( InetAddress.getLoopbackAddress(),
 			server_instance.getServerPort().intValue(), null, null );
 
-		Assert.assertEquals( server_instance.getLocalVMID(), server_vmid );
+		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
 		// Open a virtual channel to the server
 		ByteChannel channel = client_instance.createChannel( server_vmid, null );
 
 		// Wait for the reader to start, should be quick
-		Assert.assertTrue( read_start_latch.await( 1, TimeUnit.SECONDS ) );
+		assertTrue( read_start_latch.await( 1, TimeUnit.SECONDS ) );
 
 		CountDownLatch write_exit_latch = new CountDownLatch( 1 );
 
@@ -96,28 +98,28 @@ public class DisconnectDuringCallTest {
 		SharedThreadPool.INSTANCE.execute( writer );
 
 		// Things should plug merrily along for a bit
-		Assert.assertFalse( read_exit_latch.await( 2, TimeUnit.SECONDS ) );
-		Assert.assertFalse( write_exit_latch.await( 1, TimeUnit.MILLISECONDS ) );
+		assertFalse( read_exit_latch.await( 2, TimeUnit.SECONDS ) );
+		assertFalse( write_exit_latch.await( 1, TimeUnit.MILLISECONDS ) );
 
 		// Now close the main connection
 		client_instance.disconnect( server_vmid );
 
 		// Make sure both sides exit
-		Assert.assertTrue( write_exit_latch.await( 1, TimeUnit.SECONDS ) );
-		Assert.assertTrue( read_exit_latch.await( 1, TimeUnit.SECONDS ) );
+		assertTrue( write_exit_latch.await( 1, TimeUnit.SECONDS ) );
+		assertTrue( read_exit_latch.await( 1, TimeUnit.SECONDS ) );
 
 		FakeChannelReader reader = reader_slot.get();
-		Assert.assertNotNull( reader );
-		Assert.assertNotNull( reader.getException() );
+		assertNotNull( reader );
+		assertNotNull( reader.getException() );
 		//noinspection ThrowableResultOfMethodCallIgnored
-		Assert.assertTrue( "Reader exception was: " + reader.getException(),
-			reader.getException() instanceof ClosedChannelException ||
-			reader.getException() instanceof EOFException );
+		assertTrue( reader.getException() instanceof ClosedChannelException ||
+			reader.getException() instanceof EOFException,
+			"Reader exception was: " + reader.getException() );
 
-		Assert.assertNotNull( writer.getException() );
+		assertNotNull( writer.getException() );
 		//noinspection ThrowableResultOfMethodCallIgnored
-		Assert.assertTrue( "Writer exception was: " + writer.getException(),
-			writer.getException() instanceof ClosedChannelException );
+		assertTrue( writer.getException() instanceof ClosedChannelException,
+			"Writer exception was: " + writer.getException() );
 	}
 
 

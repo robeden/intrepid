@@ -27,85 +27,65 @@ package com.starlight.intrepid.driver;
 
 import com.starlight.intrepid.OkioBufferData;
 import okio.Buffer;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.junit.Assert.assertEquals;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 
 /**
  * Test encoding/decoding length using the dual short method.
  */
-@RunWith( Parameterized.class )
 public class LengthCodecTest {
-	@Parameterized.Parameters( name="{0}" )
-	public static TestArgs[] values() {
-		return new TestArgs[] {
-			new TestArgs( 0x7FFE, false ),
-			new TestArgs( 0x7FFF, false ),
-			new TestArgs( 0x8000, true ),
-			new TestArgs( 0x8001, true ),
-			new TestArgs( Integer.MAX_VALUE, true ),
-			new TestArgs( Integer.MAX_VALUE - 1, true ),
-			new TestArgs( 1000000000, true ),
-			new TestArgs( 100000000, true ),
-			new TestArgs( 10000000, true ),
-			new TestArgs( 1000000, true ),
-			new TestArgs( 100000, true ),
-			new TestArgs( 10000, false ),
-			new TestArgs( 1000, false ),
-			new TestArgs( 100, false ),
-			new TestArgs( 10, false ),
-			new TestArgs( 9, false ),
-			new TestArgs( 8, false ),
-			new TestArgs( 7, false ),
-			new TestArgs( 6, false ),
-			new TestArgs( 5, false ),
-			new TestArgs( 4, false ),
-			new TestArgs( 3, false ),
-			new TestArgs( 2, false ),
-			new TestArgs( 1, false ),
-			new TestArgs( 0, false )
-		};
+	public static Stream<Arguments> values() {
+		return Stream.of(
+			arguments( 0x7FFE, false ),
+			arguments( 0x7FFF, false ),
+			arguments( 0x8000, true ),
+			arguments( 0x8001, true ),
+			arguments( Integer.MAX_VALUE, true ),
+			arguments( Integer.MAX_VALUE - 1, true ),
+			arguments( 1000000000, true ),
+			arguments( 100000000, true ),
+			arguments( 10000000, true ),
+			arguments( 1000000, true ),
+			arguments( 100000, true ),
+			arguments( 10000, false ),
+			arguments( 1000, false ),
+			arguments( 100, false ),
+			arguments( 10, false ),
+			arguments( 9, false ),
+			arguments( 8, false ),
+			arguments( 7, false ),
+			arguments( 6, false ),
+			arguments( 5, false ),
+			arguments( 4, false ),
+			arguments( 3, false ),
+			arguments( 2, false ),
+			arguments( 1, false ),
+			arguments( 0, false )
+		);
 	}
 
 
-	private final TestArgs args;
-
-	public LengthCodecTest( TestArgs args ) {
-		this.args = args;
-	}
-
-
-	@Test
-	public void testDualShortEncoding() throws Exception {
+	@ParameterizedTest
+	@MethodSource("values")
+	public void testDualShortEncoding(int expect_value, boolean expect_full_int) {
 		Buffer buffer = new Buffer();
 
 		OkioBufferData data = new OkioBufferData( buffer );
 
 
-		boolean used_full_int = MessageEncoder.putDualShortLength( data, args.value );
-		assertEquals( args.expect_full_int, used_full_int );
+		boolean used_full_int = MessageEncoder.putDualShortLength( data, expect_value );
+		assertEquals( expect_full_int, used_full_int );
 
 
 		int value = MessageDecoder.getDualShortLength( data );
 
-		assertEquals( value, args.value );
-	}
-
-
-	private static class TestArgs {
-		private final int value;
-		private final boolean expect_full_int;
-
-		TestArgs( int value, boolean expect_full_int ) {
-			this.value = value;
-			this.expect_full_int = expect_full_int;
-		}
-
-		@Override public String toString() {
-			return Integer.toHexString( value );
-		}
+		assertEquals( value, value );
 	}
 }

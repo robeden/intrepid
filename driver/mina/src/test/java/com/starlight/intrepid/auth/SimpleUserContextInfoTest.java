@@ -26,19 +26,22 @@
 package com.starlight.intrepid.auth;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 /**
  *
  */
-public class SimpleUserContextInfoTest extends TestCase {
+public class SimpleUserContextInfoTest {
+	@Test
 	public void testSerialization() throws Exception {
 		SimpleUserContextInfo original = new SimpleUserContextInfo( "reden" );
 
 		SimpleUserContextInfo clone = ( SimpleUserContextInfo )
 			IOKit.deserialize( IOKit.serialize( original ) );
 
-		assertEquals( original.getUserName(), clone.getUserName() );
+		assertEquals(original.getUserName(), clone.getUserName());
 	}
 }

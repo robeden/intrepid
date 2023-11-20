@@ -26,24 +26,27 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  *
  */
-public class ProxyTest extends TestCase {
+public class ProxyTest {
 	private Intrepid intrepid;
 
 
-
-	@Override
-	protected void setUp() throws Exception {
+	@BeforeEach
+	public void setUp() throws Exception {
 		intrepid = Intrepid.newBuilder().build();
 	}
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		if ( intrepid != null ) {
 			intrepid.close();
 			intrepid = null;
@@ -57,6 +60,7 @@ public class ProxyTest extends TestCase {
 	 * pulled from the implementation class rather than the interfaces. So, final methods
 	 * in parent classes were not known by the proxy.
 	 */
+	@Test
 	public void testFinalAbstractMethod() throws Exception {
 		TestClass original = new TestClass();
 
@@ -69,44 +73,46 @@ public class ProxyTest extends TestCase {
 	}
 
 
+	@Test
 	public void testEquals() throws Exception {
 		TestClass original = new TestClass();
 
 		TestInterface proxy = ( TestInterface ) intrepid.createProxy( original );
-		assertEquals( proxy, proxy );
-		assertEquals( proxy.hashCode(), proxy.hashCode() );
+		assertEquals(proxy, proxy);
+		assertEquals(proxy.hashCode(), proxy.hashCode());
 
 		TestInterface proxy2 =
 			( TestInterface ) IOKit.deserialize( IOKit.serialize( proxy ) );
-		assertEquals( proxy, proxy2 );
-		assertEquals( proxy.hashCode(), proxy2.hashCode() );
+		assertEquals(proxy, proxy2);
+		assertEquals(proxy.hashCode(), proxy2.hashCode());
 	}
 
 
+	@Test
 	public void testMultipleCreate() throws Exception {
 		TestClass original = new TestClass();
 
 		TestInterface proxy1 = ( TestInterface ) intrepid.createProxy( original );
 		TestInterface proxy2 = ( TestInterface ) intrepid.createProxy( original );
 
-		assertNotNull( proxy1 );
-		assertNotNull( proxy2 );
-		assertSame( proxy1, proxy2 );
+		assertNotNull(proxy1);
+		assertNotNull(proxy2);
+		assertSame(proxy1, proxy2);
 
-		assertEquals( proxy1, proxy2 );
+		assertEquals(proxy1, proxy2);
 
 		TestInterface proxy3 =
 			( TestInterface ) IOKit.deserialize( IOKit.serialize( proxy1 ) );
-		assertNotSame( proxy1, proxy3 );
-		assertNotSame( proxy2, proxy3 );
-		assertEquals( proxy1, proxy3 );
-		assertEquals( proxy2, proxy3 );
+		assertNotSame(proxy1, proxy3);
+		assertNotSame(proxy2, proxy3);
+		assertEquals(proxy1, proxy3);
+		assertEquals(proxy2, proxy3);
 	}
 
 
-	public static interface TestInterface {
-		public void finalInAbstract();
-		public void notFinalInAbstract();
+	public interface TestInterface {
+		void finalInAbstract();
+		void notFinalInAbstract();
 	}
 
 

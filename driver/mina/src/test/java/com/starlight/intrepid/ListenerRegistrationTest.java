@@ -1,7 +1,9 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.thread.ThreadKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
@@ -12,11 +14,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
 
 /**
  *
  */
-public class ListenerRegistrationTest extends TestCase {
+public class ListenerRegistrationTest {
 	private Intrepid server;
 	private Intrepid client;
 
@@ -24,18 +29,16 @@ public class ListenerRegistrationTest extends TestCase {
 
 	private boolean inter_instance_bridge_state;
 
-	@Override
-	protected void setUp() throws Exception {
-		super.setUp();
+	@BeforeEach
+	public void setUp() throws Exception {
 
 		inter_instance_bridge_state = Intrepid.disable_inter_instance_bridge;
 		IntrepidTesting.setInterInstanceBridgeDisabled( true );
 	}
 
 
-
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		IntrepidTesting.setInterInstanceBridgeDisabled( inter_instance_bridge_state );
 
 		if ( server != null ) server.close();
@@ -43,7 +46,7 @@ public class ListenerRegistrationTest extends TestCase {
 	}
 
 
-
+	@Test
 	public void testKeepListenerRegistered() throws Exception {
 		server = Intrepid.newBuilder().openServer().build();
 		int server_port = server.getServerPort().intValue();
@@ -56,7 +59,7 @@ public class ListenerRegistrationTest extends TestCase {
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
-		assertEquals( server.getLocalVMID(), server_vmid );
+		assertEquals(server.getLocalVMID(), server_vmid);
 
 		Server server_proxy =
 			( Server ) client.getRemoteRegistry( server_vmid ).lookup( "server" );
@@ -67,7 +70,7 @@ public class ListenerRegistrationTest extends TestCase {
 		try {
 			client.keepListenerRegistered( listener, server_mock, Server::addListener,
 				Server::removeListener );
-			fail( "Shouldn't have been able to use non-proxy" );
+			fail("Shouldn't have been able to use non-proxy");
 		}
 		catch( IllegalArgumentException ex ) {
 			// expected
@@ -136,6 +139,7 @@ public class ListenerRegistrationTest extends TestCase {
 	}
 
 
+	@Test
 	@SuppressWarnings( "AutoBoxing" )
 	public void testKeepListenerRegisteredWithReturn() throws Exception {
 		server = Intrepid.newBuilder().openServer().build();
@@ -154,7 +158,7 @@ public class ListenerRegistrationTest extends TestCase {
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
-		assertEquals( server.getLocalVMID(), server_vmid );
+		assertEquals(server.getLocalVMID(), server_vmid);
 
 		Server server_proxy =
 			( Server ) client.getRemoteRegistry( server_vmid ).lookup( "server" );
@@ -165,7 +169,7 @@ public class ListenerRegistrationTest extends TestCase {
 		try {
 			client.keepListenerRegistered( listener, server_mock,
 				Server::addListenerWithReturn, Server::removeListener );
-			fail( "Shouldn't have been able to use non-proxy" );
+			fail("Shouldn't have been able to use non-proxy");
 		}
 		catch( IllegalArgumentException ex ) {
 			// expected
@@ -237,7 +241,7 @@ public class ListenerRegistrationTest extends TestCase {
 	}
 
 
-
+	@Test
 	public void testKeepListenerRegistered_exceptionRetry() throws Exception {
 		server = Intrepid.newBuilder().openServer().build();
 		int server_port = server.getServerPort().intValue();
@@ -249,7 +253,7 @@ public class ListenerRegistrationTest extends TestCase {
 		AtomicInteger unsuccessful_add_count = new AtomicInteger( 0 );
 		Server server_impl = listener -> {
 			if ( temp_unbound_from_registry.get() ) {
-				fail( "Shouldn't have been able to call this" );
+				fail("Shouldn't have been able to call this");
 			}
 
 			if ( throw_error_on_add_flag.get() ) {
@@ -265,7 +269,7 @@ public class ListenerRegistrationTest extends TestCase {
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
-		assertEquals( server.getLocalVMID(), server_vmid );
+		assertEquals(server.getLocalVMID(), server_vmid);
 
 		Server server_proxy =
 			( Server ) client.getRemoteRegistry( server_vmid ).lookup( "server" );
@@ -277,8 +281,8 @@ public class ListenerRegistrationTest extends TestCase {
 			server_proxy, Server::addListener, Server::removeListener );
 
 		// Should immediately be added
-		assertEquals( 1, successful_add_count.getAndSet( 0 ) );
-		assertEquals( 0, unsuccessful_add_count.get() );
+		assertEquals(1, successful_add_count.getAndSet( 0 ));
+		assertEquals(0, unsuccessful_add_count.get());
 
 		// Close the server
 		server.close();
@@ -289,8 +293,8 @@ public class ListenerRegistrationTest extends TestCase {
 		// Wait a bit
 		// Should indicate we're NOT connected
 		assertNotConnected( listener_reg );
-		assertEquals( 0, successful_add_count.get() );
-		assertEquals( 0, unsuccessful_add_count.get() );
+		assertEquals(0, successful_add_count.get());
+		assertEquals(0, unsuccessful_add_count.get());
 
 
 		// Bring the server back... BUT DON'T SERVER BIND TO REGISTRY
@@ -300,8 +304,8 @@ public class ListenerRegistrationTest extends TestCase {
 		// Wait a while and make sure we're still not connected
 		for( int i = 0; i < 5; i++ ) {     // 5 seconds
 			assertNotConnected( listener_reg );
-			assertEquals( 0, successful_add_count.get() );
-			assertEquals( 0, unsuccessful_add_count.get() );
+			assertEquals(0, successful_add_count.get());
+			assertEquals(0, unsuccessful_add_count.get());
 
 			ThreadKit.sleep( 1000 );
 		}
@@ -323,8 +327,8 @@ public class ListenerRegistrationTest extends TestCase {
 		unsuccessful_add_count.set( 0 );    // may be more than 2 (last check), don't care
 
 		ThreadKit.sleep( 2000 );
-		assertEquals( 1, successful_add_count.getAndSet( 0 ) ); // should still be 1
-		assertEquals( 0, unsuccessful_add_count.get() );        // should still be 0
+		assertEquals(1, successful_add_count.getAndSet( 0 )); // should still be 1
+		assertEquals(0, unsuccessful_add_count.get());        // should still be 0
 	}
 
 
@@ -339,7 +343,7 @@ public class ListenerRegistrationTest extends TestCase {
 			duration += 100;
 		}
 
-		fail( "Desired value (" + desired_value + ") was not received: " + counter.get() );
+		fail("Desired value (" + desired_value + ") was not received: " + counter.get());
 	}
 
 
@@ -352,7 +356,7 @@ public class ListenerRegistrationTest extends TestCase {
 			duration += 100;
 		}
 
-		fail( "Desired value (true) was not received" );
+		fail("Desired value (true) was not received");
 	}
 
 
@@ -364,7 +368,7 @@ public class ListenerRegistrationTest extends TestCase {
 			else ThreadKit.sleep( 200 );
 		}
 
-		fail( "ListenerRegistration still indicates connection" );
+		fail("ListenerRegistration still indicates connection");
 	}
 
 

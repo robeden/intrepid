@@ -1,8 +1,7 @@
 package com.starlight.intrepid;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -17,7 +16,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 
 /**
@@ -28,7 +28,7 @@ public class SmallTransferTest {
 	private Intrepid server_instance = null;
 
 
-	@After
+	@AfterEach
 	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
@@ -77,14 +77,14 @@ public class SmallTransferTest {
 			.channelAcceptor( acceptor )
 			.build();
 		Integer server_port = server_instance.getServerPort();
-		Assert.assertNotNull( server_port );
+		assertNotNull( server_port );
 
 		client_instance = Intrepid.newBuilder().vmidHint( "client" ).build();
 
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			server_port.intValue(), null, null );
-		Assert.assertNotNull( server_vmid );
+		assertNotNull( server_vmid );
 
 		List<Long> written_times = new ArrayList<>();
 		try( ByteChannel channel = client_instance.createChannel( server_vmid, null );

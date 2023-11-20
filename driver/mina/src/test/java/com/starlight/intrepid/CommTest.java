@@ -33,10 +33,9 @@ import com.starlight.intrepid.exception.InterruptedCallException;
 import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.exception.ServerException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.*;
 import java.net.ConnectException;
@@ -44,7 +43,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
@@ -61,7 +60,7 @@ public class CommTest {
 	}
 
 
-	@After
+	@AfterEach
 	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
@@ -120,12 +119,12 @@ public class CommTest {
 
 		// NOTE: Local delegate isn't available here (because it was serialized in the
 		//       lookup from the registry since we have the inter-instance bridge disabled)
-		Assert.assertNull( server_instance.getLocalProxyDelegate( server ) );
+		assertNull( server_instance.getLocalProxyDelegate( server ) );
 
 		assertTrue( Intrepid.isProxy( server ) );
-		Assert.assertFalse( client_instance.isProxyLocal( server ) );
-		Assert.assertNull( client_instance.getLocalProxyDelegate( server ) );
-		Assert.assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
+		assertFalse( client_instance.isProxyLocal( server ) );
+		assertNull( client_instance.getLocalProxyDelegate( server ) );
+		assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
 		assertEquals( server_instance.getLocalVMID(),
 			client_instance.getRemoteProxyVMID( server ) );
 
@@ -134,7 +133,7 @@ public class CommTest {
 
 		// NOTE: local won't be able to get local delegate because the instance has been
 		//       serialized and the inter-instance bridge is disabled.
-		Assert.assertNull( server_instance.getLocalProxyDelegate( server ) );
+		assertNull( server_instance.getLocalProxyDelegate( server ) );
 
 
 		// Simple call
@@ -186,14 +185,14 @@ public class CommTest {
 		// Callback
 		ClientImpl original_client = new ClientImpl( true );
 		// Should auto-wrap
-		Assert.assertNull( original_client.input_message );
+		assertNull( original_client.input_message );
 		Server server_copy =
 			server.testCallback( original_client, client_instance.getLocalVMID() );
 		assertEquals( "Callback message from server",
 			original_client.input_message );
 
 		assertTrue( Intrepid.isProxy( server_copy ) );
-		Assert.assertFalse( client_instance.isProxyLocal( server_copy ) );
+		assertFalse( client_instance.isProxyLocal( server_copy ) );
 		assertTrue( server_instance.isProxyLocal( server_copy ) );
 
 
@@ -248,16 +247,16 @@ public class CommTest {
 		Server server = ( Server ) server_registry.lookup( "server" );
 		assertNotNull( server );
 
-		Assert.assertSame( original_instance,
+		assertSame( original_instance,
 			server_instance.getLocalProxyDelegate( server ) );
 
 		// NOTE: Serialize the proxy. We're doing this to ensure that it doesn't have a
 		//       local delegate (since this is all being done in the same VM.
 		server = ( Server ) IOKit.deserialize( IOKit.serialize( server ) );
 		assertTrue( Intrepid.isProxy( server ) );
-		Assert.assertFalse( client_instance.isProxyLocal( server ) );
-		Assert.assertNull( client_instance.getLocalProxyDelegate( server ) );
-		Assert.assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
+		assertFalse( client_instance.isProxyLocal( server ) );
+		assertNull( client_instance.getLocalProxyDelegate( server ) );
+		assertNull( client_instance.getLocalProxyDelegate( "Junk" ) );
 		assertEquals( server_instance.getLocalVMID(),
 			client_instance.getRemoteProxyVMID( server ) );
 
@@ -265,7 +264,7 @@ public class CommTest {
 		assertTrue( server_instance.isProxyLocal( server ) );
 		// NOTE: should be able to get local delegate here (since the inter-instance
 		//       bridge is enabled).
-		Assert.assertSame( original_instance,
+		assertSame( original_instance,
 			server_instance.getLocalProxyDelegate( server ) );
 
 
@@ -318,7 +317,7 @@ public class CommTest {
 		// Callback
 		ClientImpl original_client = new ClientImpl( false );
 		// Should auto-wrap
-		Assert.assertNull( original_client.input_message );
+		assertNull( original_client.input_message );
 		Server server_copy =
 			server.testCallback( original_client, client_instance.getLocalVMID() );
 		assertEquals( "Callback message from server",
@@ -326,7 +325,7 @@ public class CommTest {
 		assertNotNull( server_copy );
 
 		// Won't be a proxy since the bridge is active
-		Assert.assertFalse( Intrepid.isProxy( server_copy ) );
+		assertFalse( Intrepid.isProxy( server_copy ) );
 	}
 
 	@Test
@@ -439,7 +438,8 @@ public class CommTest {
 		}
 	}
 
-	@Test( timeout = 5000 )
+	@Timeout(5)
+	@Test
 	public void testNoClassDefOnDeserialize() throws Exception {
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -514,35 +514,6 @@ public class CommTest {
 	}
 
 
-	@Ignore( value = "this test is proving to be problematic" )
-	@Test
-	public void testConnectInterrupt() throws Exception {
-		Intrepid client = Intrepid.newBuilder().driver( createSPI( false ) ).build();
-		try {
-			final Thread test_thread = Thread.currentThread();
-			new Thread( () -> {
-				ThreadKit.sleep( 2000 );
-
-				test_thread.interrupt();
-			} ).start();
-
-			// Should time out
-			// This is a server known to drop packets on this port
-			client.connect( InetAddress.getByName( "europa-house.starlight-systems.com" ),
-				11751, null, null );
-			fail( "Shouldn't have worked" );
-		}
-		catch( InterruptedIOException ex ) {
-			// This is good
-			System.out.println( "Exception was: " + ex );
-		}
-		catch( IOException ex ) {
-			ex.printStackTrace();
-			fail( "Should have been an InterruptedIOException" + ex );
-		}
-	}
-
-
 	@Test
 	public void testTryConnect() throws Exception {
 		client_instance = Intrepid.newBuilder()
@@ -571,8 +542,8 @@ public class CommTest {
 			time = System.currentTimeMillis() - time;
 		}
 
-		assertTrue( time + " < 3000", time >= 3000 );
-		assertTrue( time + " > 5000", time <= 5000 );
+		assertTrue( time >= 3000, time + " < 3000" );
+		assertTrue( time <= 5000, time + " > 5000" );
 
 		// Start the server in 3 seconds
 		SharedThreadPool.INSTANCE.schedule( () -> {
@@ -605,8 +576,8 @@ public class CommTest {
 			time = System.currentTimeMillis() - time;
 		}
 
-		assertTrue( time + " <= 3000", time > 3000 );
-		assertTrue( time + " > 5000", time <= 5000 );
+		assertTrue( time > 3000, time + " <= 3000" );
+		assertTrue( time <= 5000, time + " > 5000" );
 
 		assertNotNull( server_vmid );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );

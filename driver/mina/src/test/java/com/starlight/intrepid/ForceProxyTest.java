@@ -25,25 +25,29 @@
 
 package com.starlight.intrepid;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 
 /**
  *
  */
-public class ForceProxyTest extends TestCase {
+public class ForceProxyTest {
 	private Intrepid server_instance;
 	private Intrepid client_instance;
 
 	private Server server;
 
 
-	@Override
-	protected void setUp() throws Exception {
+	@BeforeEach
+	public void setUp() throws Exception {
 
 		// Make sure we test the full stack. See comment on
 		// "Intrepid.disable_inter_instance_bridge" for more info.
@@ -61,14 +65,14 @@ public class ForceProxyTest extends TestCase {
 		// Connect to the server
 		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
 			11751, null, null );
-		assertNotNull( server_vmid );
+		assertNotNull(server_vmid);
 
 		Registry registry = client_instance.getRemoteRegistry( server_vmid );
 		server = ( Server ) registry.lookup( "server" );
 	}
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -76,63 +80,70 @@ public class ForceProxyTest extends TestCase {
 		if ( server_instance != null ) server_instance.close();
 	}
 
+	@Test
 	public void testChildNoForce() {
 		Object object = new ChildNoForceImpl();
-		assertFalse( object instanceof ForceProxy );
+		assertFalse(object instanceof ForceProxy);
 		server.checkProxy( object, false );
 	}
 
+	@Test
 	public void testChildForce() {
 		Object object = new ChildForceImpl();
-		assertTrue( object instanceof ForceProxy );
+		assertTrue(object instanceof ForceProxy);
 		server.checkProxy( object, true );
 	}
 
+	@Test
 	public void testParentForceChildNoForce() {
 		Object object = new ParentForceChildNoForceImpl();
-		assertTrue( object instanceof ForceProxy );
+		assertTrue(object instanceof ForceProxy);
 		server.checkProxy( object, true );
 	}
 
+	@Test
 	public void testParentForceChildForce() {
 		Object object = new ParentForceChildForceImpl();
-		assertTrue( object instanceof ForceProxy );
+		assertTrue(object instanceof ForceProxy);
 		server.checkProxy( object, true );
 	}
 
+	@Test
 	public void testParentNoForceChildForce() {
 		Object object = new ParentNoForceChildForceImpl();
-		assertTrue( object instanceof ForceProxy );
+		assertTrue(object instanceof ForceProxy);
 		server.checkProxy( object, true );
 	}
 
+	@Test
 	public void testParentNoForceChildNoForce() {
 		Object object = new ParentNoForceChildNoForceImpl();
-		assertFalse( object instanceof ForceProxy );
+		assertFalse(object instanceof ForceProxy);
 		server.checkProxy( object, false );
 	}
 
+	@Test
 	public void testForceParentNoForceChildNoForce() {
 		Object object = new ForceParentNoForceChildNoForceImpl();
-		assertTrue( object instanceof ForceProxy );
+		assertTrue(object instanceof ForceProxy);
 		server.checkProxy( object, true );
 	}
 
 
 
-	public static interface ChildNoForce extends Serializable {}
+	public interface ChildNoForce extends Serializable {}
 
-	public static interface ChildForce extends Serializable, ForceProxy {}
+	public interface ChildForce extends Serializable, ForceProxy {}
 
-	public static interface ParentForceChildNoForce
+	public interface ParentForceChildNoForce
 		extends ChildNoForce, Serializable, ForceProxy {}
 
-	public static interface ParentForceChildForce
+	public interface ParentForceChildForce
 		extends ChildForce, Serializable, ForceProxy {}
 
-	public static interface ParentNoForceChildForce extends ChildForce, Serializable {}
+	public interface ParentNoForceChildForce extends ChildForce, Serializable {}
 
-	public static interface ParentNoForceChildNoForce extends ChildNoForce, Serializable {}
+	public interface ParentNoForceChildNoForce extends ChildNoForce, Serializable {}
 
 
 	public static class ChildNoForceImpl implements ChildNoForce {}
@@ -152,15 +163,15 @@ public class ForceProxyTest extends TestCase {
 		implements ParentNoForceChildNoForce, ForceProxy {}
 
 
-	public static interface Server {
-		public void checkProxy( Object proxy, boolean expect_proxy );
+	public interface Server {
+		void checkProxy(Object proxy, boolean expect_proxy);
 	}
 
 	public class ServerImpl implements Server {
 		@Override
 		public void checkProxy( Object proxy, boolean expect_proxy ) {
-			assertEquals( expect_proxy + " != " + Intrepid.isProxy( proxy ) + ": " +
-				proxy.getClass(), expect_proxy, Intrepid.isProxy( proxy ) );
+			assertEquals( expect_proxy, Intrepid.isProxy( proxy ),
+				expect_proxy + " != " + Intrepid.isProxy( proxy ) + ": " + proxy.getClass() );
 		}
 	}
 }

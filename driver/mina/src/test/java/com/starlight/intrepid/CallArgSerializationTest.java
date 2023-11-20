@@ -1,15 +1,20 @@
 package com.starlight.intrepid;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
 import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  * Test serialization of various types of data
  */
-public class CallArgSerializationTest extends TestCase {
+public class CallArgSerializationTest {
 
 	private Intrepid client_instance = null;
 	private Intrepid server_instance = null;
@@ -17,8 +22,8 @@ public class CallArgSerializationTest extends TestCase {
 	private CopyServer copy_server = null;
 
 
-	@Override
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		// Re-enable
 		IntrepidTesting.setInterInstanceBridgeDisabled( false );
 
@@ -27,8 +32,8 @@ public class CallArgSerializationTest extends TestCase {
 	}
 
 
-	@Override
-	protected void setUp() throws Exception {
+	@BeforeEach
+	public void setUp() throws Exception {
 		server_instance = Intrepid.newBuilder().openServer().build();
 		server_instance.getLocalRegistry().bind( "copy", new BasicCopyServer() );
 
@@ -40,62 +45,60 @@ public class CallArgSerializationTest extends TestCase {
 	}
 
 
+	@Test
 	public void testPrimitives() {
 		// boolean
-		assertEquals( false, copy_server.copy( false ) );
-		assertEquals( true, copy_server.copy( true ) );
+        assertFalse(copy_server.copy(false));
+        assertTrue(copy_server.copy(true));
 
 		// byte
-		assertEquals( ( byte ) 0, copy_server.copy( ( byte ) 0 ) );
-		assertEquals( Byte.MIN_VALUE, copy_server.copy( Byte.MIN_VALUE ) );
-		assertEquals( Byte.MAX_VALUE, copy_server.copy( Byte.MAX_VALUE ) );
+		assertEquals(( byte ) 0, copy_server.copy( ( byte ) 0 ));
+		assertEquals(Byte.MIN_VALUE, copy_server.copy( Byte.MIN_VALUE ));
+		assertEquals(Byte.MAX_VALUE, copy_server.copy( Byte.MAX_VALUE ));
 
 		// short
-		assertEquals( ( short ) 0, copy_server.copy( ( short ) 0 ) );
-		assertEquals( Short.MIN_VALUE, copy_server.copy( Short.MIN_VALUE ) );
-		assertEquals( Short.MAX_VALUE, copy_server.copy( Short.MAX_VALUE ) );
+		assertEquals(( short ) 0, copy_server.copy( ( short ) 0 ));
+		assertEquals(Short.MIN_VALUE, copy_server.copy( Short.MIN_VALUE ));
+		assertEquals(Short.MAX_VALUE, copy_server.copy( Short.MAX_VALUE ));
 
 		// int
-		assertEquals( 0, copy_server.copy( 0 ) );
-		assertEquals( Integer.MIN_VALUE, copy_server.copy( Integer.MIN_VALUE ) );
-		assertEquals( Integer.MAX_VALUE, copy_server.copy( Integer.MAX_VALUE ) );
+		assertEquals(0, copy_server.copy( 0 ));
+		assertEquals(Integer.MIN_VALUE, copy_server.copy( Integer.MIN_VALUE ));
+		assertEquals(Integer.MAX_VALUE, copy_server.copy( Integer.MAX_VALUE ));
 
 		// long
-		assertEquals( 0L, copy_server.copy( 0L ) );
-		assertEquals( Long.MIN_VALUE, copy_server.copy( Long.MIN_VALUE ) );
-		assertEquals( Long.MAX_VALUE, copy_server.copy( Long.MAX_VALUE ) );
+		assertEquals(0L, copy_server.copy( 0L ));
+		assertEquals(Long.MIN_VALUE, copy_server.copy( Long.MIN_VALUE ));
+		assertEquals(Long.MAX_VALUE, copy_server.copy( Long.MAX_VALUE ));
 
 		// float
-		assertEquals( 0.0F, copy_server.copy( 0.0 ), 0 );
-		assertEquals( Float.MIN_VALUE, copy_server.copy( Float.MIN_VALUE ), 0 );
-		assertEquals( Float.MAX_VALUE, copy_server.copy( Float.MAX_VALUE ), 0 );
-		assertEquals( Float.NEGATIVE_INFINITY,
-			copy_server.copy( Float.NEGATIVE_INFINITY ), 0 );
-		assertEquals( Float.POSITIVE_INFINITY,
-			copy_server.copy( Float.POSITIVE_INFINITY ), 0 );
-		assertTrue( Float.isNaN( copy_server.copy( Float.NaN ) ) );
+		assertEquals(0.0F, copy_server.copy( 0.0 ), 0);
+		assertEquals(Float.MIN_VALUE, copy_server.copy( Float.MIN_VALUE ), 0);
+		assertEquals(Float.MAX_VALUE, copy_server.copy( Float.MAX_VALUE ), 0);
+		assertEquals(Float.NEGATIVE_INFINITY, copy_server.copy( Float.NEGATIVE_INFINITY ), 0);
+		assertEquals(Float.POSITIVE_INFINITY, copy_server.copy( Float.POSITIVE_INFINITY ), 0);
+		assertTrue(Float.isNaN( copy_server.copy( Float.NaN ) ));
 
 		// double
-		assertEquals( 0.0, copy_server.copy( 0.0 ), 0 );
-		assertEquals( Double.MIN_VALUE, copy_server.copy( Double.MIN_VALUE ), 0 );
-		assertEquals( Double.MAX_VALUE, copy_server.copy( Double.MAX_VALUE ), 0 );
-		assertEquals( Double.NEGATIVE_INFINITY,
-			copy_server.copy( Double.NEGATIVE_INFINITY ), 0 );
-		assertEquals( Double.POSITIVE_INFINITY,
-			copy_server.copy( Double.POSITIVE_INFINITY ), 0 );
-		assertTrue( Double.isNaN( copy_server.copy( Double.NaN ) ) );
+		assertEquals(0.0, copy_server.copy( 0.0 ), 0);
+		assertEquals(Double.MIN_VALUE, copy_server.copy( Double.MIN_VALUE ), 0);
+		assertEquals(Double.MAX_VALUE, copy_server.copy( Double.MAX_VALUE ), 0);
+		assertEquals(Double.NEGATIVE_INFINITY, copy_server.copy( Double.NEGATIVE_INFINITY ), 0);
+		assertEquals(Double.POSITIVE_INFINITY, copy_server.copy( Double.POSITIVE_INFINITY ), 0);
+		assertTrue(Double.isNaN( copy_server.copy( Double.NaN ) ));
 	}
 
 
+	@Test
 	public void testBasicObjects() {
 		// Primitives (in object form)
-		doCopyTest( Boolean.valueOf( true ), copy_server );
-		doCopyTest( Byte.valueOf( ( byte ) 1 ), copy_server );
-		doCopyTest( Short.valueOf( Short.MIN_VALUE ), copy_server );
-		doCopyTest( Integer.valueOf( 10 ), copy_server );
-		doCopyTest( Long.valueOf( Long.MAX_VALUE ), copy_server );
-		doCopyTest( Float.valueOf( Float.NaN ), copy_server );
-		doCopyTest( Double.valueOf( Double.NEGATIVE_INFINITY ), copy_server );
+		doCopyTest(Boolean.TRUE, copy_server );
+		doCopyTest((byte) 1, copy_server );
+		doCopyTest(Short.MIN_VALUE, copy_server );
+		doCopyTest(10, copy_server );
+		doCopyTest(Long.MAX_VALUE, copy_server );
+		doCopyTest(Float.NaN, copy_server );
+		doCopyTest(Double.NEGATIVE_INFINITY, copy_server );
 
 		// String
 		doCopyTest( "This is a test this is only a test", copy_server );
@@ -114,21 +117,21 @@ public class CallArgSerializationTest extends TestCase {
 
 
 	private void doCopyTest( Object value, CopyServer server ) {
-		assertEquals( value, server.copy( value ) );
+		assertEquals(value, server.copy( value ));
 	}
 
 
 
 	public interface CopyServer {
-		public Object copy( Object obj );
+		Object copy(Object obj);
 
-		public boolean copy( boolean obj );
-		public byte copy( byte obj );
-		public short copy( short obj );
-		public int copy( int obj );
-		public long copy( long obj );
-		public float copy( float obj );
-		public double copy( double obj );
+		boolean copy(boolean obj);
+		byte copy(byte obj);
+		short copy(short obj);
+		int copy(int obj);
+		long copy(long obj);
+		float copy(float obj);
+		double copy(double obj);
 	}
 
 	private class BasicCopyServer implements CopyServer {

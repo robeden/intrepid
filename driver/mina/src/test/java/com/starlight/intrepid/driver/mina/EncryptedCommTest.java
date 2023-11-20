@@ -27,6 +27,7 @@ package com.starlight.intrepid.driver.mina;
 
 import com.starlight.intrepid.CommTest;
 import com.starlight.intrepid.driver.IntrepidDriver;
+import org.junit.jupiter.api.Disabled;
 
 import javax.net.ssl.SSLContext;
 
@@ -34,6 +35,7 @@ import javax.net.ssl.SSLContext;
 /**
  *
  */
+@Disabled("Anon protocols are no longer supported :-(")
 public class EncryptedCommTest extends CommTest {
 	@Override
 	protected IntrepidDriver createSPI( boolean server ) throws Exception {

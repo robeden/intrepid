@@ -26,46 +26,49 @@
 package com.starlight.intrepid.exception;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  *
  */
-public class InterruptedCallExceptionTest extends TestCase {
+public class InterruptedCallExceptionTest {
+	@Test
 	public void testSerialization() throws Exception {
 		InterruptedCallException original =
 			new InterruptedCallException( "Test" );
 
 		InterruptedCallException clone = ( InterruptedCallException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNull(clone.getCause());
 
 
 		original = new InterruptedCallException( "Test", new NullPointerException() );
 
 		clone = ( InterruptedCallException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNotNull( clone.getCause() );
-		assertTrue( clone.getCause() instanceof NullPointerException );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNotNull(clone.getCause());
+		assertTrue(clone.getCause() instanceof NullPointerException);
 
 
 		original = new InterruptedCallException( new NullPointerException() );
 
 		clone = ( InterruptedCallException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNotNull( clone.getCause() );
-		assertTrue( clone.getCause() instanceof NullPointerException );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNotNull(clone.getCause());
+		assertTrue(clone.getCause() instanceof NullPointerException);
 
 
 		original = new InterruptedCallException();
 
 		clone = ( InterruptedCallException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertNull( clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertNull(clone.getMessage());
+		assertNull(clone.getCause());
 	}
 }

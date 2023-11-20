@@ -26,22 +26,26 @@
 package com.starlight.intrepid.exception;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 
 /**
  *
  */
-public class UnknownMethodExceptionTest extends TestCase {
-	
+public class UnknownMethodExceptionTest {
+
+	@Test
 	public void testSerialization() throws Exception {
 		UnknownMethodException original =
 			new UnknownMethodException( 13 );
 
 		UnknownMethodException clone = ( UnknownMethodException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertEquals( "Unknown method: 13", clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertEquals("Unknown method: 13", clone.getMessage());
+		assertNull(clone.getCause());
 	}
 }

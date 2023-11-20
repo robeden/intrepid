@@ -1,11 +1,11 @@
 package com.starlight.intrepid.driver;
 
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Test;
 
 import java.util.OptionalInt;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
@@ -19,11 +19,11 @@ public class ProtocolVersionsTest {
 	}
 
 	@Test
-	public void disallowedOldVersions() throws Exception {
-		Assume.assumeTrue(
+	public void disallowedOldVersions() {
+		Assumptions.assumeTrue(
+			System.getProperty( "intrepid.min_supported_protocol" ) == null,
 			"Version checks won't work properly when the 'min_supported_protocol' " +
-				"system property is set.",
-			System.getProperty( "intrepid.min_supported_protocol" ) == null );
+				"system property is set." );
 
 		assertEquals( OptionalInt.empty(),
 			ProtocolVersions.negotiateProtocolVersion( (byte) 0, (byte) 0 ) );
@@ -38,7 +38,7 @@ public class ProtocolVersionsTest {
 
 
 	@Test
-	public void supportsReconnectTokens() throws Exception {
+	public void supportsReconnectTokens() {
 		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 1 ) );
 		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 2 ) );
 		assertTrue( ProtocolVersions.supportsReconnectTokens( (byte) 3 ) );
@@ -48,7 +48,7 @@ public class ProtocolVersionsTest {
 
 
 	@Test
-	public void supportsMethodAck() throws Exception {
+	public void supportsMethodAck() {
 		assertTrue( ProtocolVersions.supportsMethodAck( (byte) 2 ) );
 		assertTrue( ProtocolVersions.supportsMethodAck( (byte) 3 ) );
 
@@ -58,7 +58,7 @@ public class ProtocolVersionsTest {
 
 
 	@Test
-	public void supportChannelDataRxWindow() throws Exception {
+	public void supportChannelDataRxWindow() {
 		assertTrue( ProtocolVersions.supportsChannelDataRxWindow( (byte) 3 ) );
 		assertTrue( ProtocolVersions.supportsChannelDataRxWindow( (byte) 4 ) );
 

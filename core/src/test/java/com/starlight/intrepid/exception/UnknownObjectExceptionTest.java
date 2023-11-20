@@ -26,22 +26,26 @@
 package com.starlight.intrepid.exception;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 
 /**
  *
  */
-public class UnknownObjectExceptionTest extends TestCase {
-	
+public class UnknownObjectExceptionTest {
+
+	@Test
 	public void testSerialization() throws Exception {
 		UnknownObjectException original =
 			new UnknownObjectException( 35, "foo", null );
 
 		UnknownObjectException clone = ( UnknownObjectException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertEquals( "Unknown object #35 (persistent name: foo)", clone.getMessage() );
-		assertNull( clone.getCause() );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertEquals("Unknown object #35 (persistent name: foo)", clone.getMessage());
+		assertNull(clone.getCause());
 	}
 }

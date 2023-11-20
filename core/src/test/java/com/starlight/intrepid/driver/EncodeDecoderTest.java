@@ -6,24 +6,21 @@ import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.message.*;
 import okio.Buffer;
 import okio.ByteString;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 /**
  *
  */
-@RunWith( Parameterized.class )
 public class EncodeDecoderTest {
-	@Parameterized.Parameters
 	public static List<IMessage> testMessages() {
 		UserContextInfo info = new SimpleUserContextInfo( "bob" );
 		return Arrays.asList(
@@ -90,16 +87,10 @@ public class EncodeDecoderTest {
 	}
 
 
-	private final IMessage message;
 
-	public EncodeDecoderTest( IMessage message ) {
-		this.message = message;
-	}
-
-
-
-	@Test
-	public void testInvokeEncode() throws Exception {
+	@ParameterizedTest
+	@MethodSource("testMessages")
+	public void testInvokeEncode(IMessage message) throws Exception {
 		Buffer length_buffer = new Buffer();
 		Buffer data_buffer = new Buffer();
 

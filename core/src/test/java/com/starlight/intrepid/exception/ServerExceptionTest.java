@@ -26,31 +26,34 @@
 package com.starlight.intrepid.exception;
 
 import com.logicartisan.common.core.IOKit;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
  *
  */
-public class ServerExceptionTest extends TestCase {
-	
+public class ServerExceptionTest {
+
+	@Test
 	public void testSerialization() throws Exception {
 		ServerException original =
 			new ServerException( "Test", new NullPointerException() );
 
 		ServerException clone = ( ServerException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNotNull( clone.getCause() );
-		assertTrue( clone.getCause() instanceof NullPointerException );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNotNull(clone.getCause());
+		assertTrue(clone.getCause() instanceof NullPointerException);
 
 
 		original = new ServerException( new NullPointerException() );
 
 		clone = ( ServerException )
 			IOKit.deserialize( IOKit.serialize( original ) );
-		assertEquals( original.getMessage(), clone.getMessage() );
-		assertNotNull( clone.getCause() );
-		assertTrue( clone.getCause() instanceof NullPointerException );
+		assertEquals(original.getMessage(), clone.getMessage());
+		assertNotNull(clone.getCause());
+		assertTrue(clone.getCause() instanceof NullPointerException);
 	}
 }
