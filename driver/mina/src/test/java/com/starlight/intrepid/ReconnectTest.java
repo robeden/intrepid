@@ -355,23 +355,20 @@ public class ReconnectTest {
 			EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( "my test token" );
-		EasyMock.expect( Integer.valueOf(
-			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
-			Integer.valueOf( 2 ) );
+		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
+            2);
 		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
 			EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.eq( "my test token" ) ) ).andReturn( "my test token - TWO" );
-		EasyMock.expect( Integer.valueOf(
-			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
-			Integer.valueOf( 2 ) );
+		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
+            2);
 		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
 			EasyMock.<ConnectionArgs>isNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.eq( "my test token - TWO" ) ) ).andReturn( "my test token - THREE" );
-		EasyMock.expect( Integer.valueOf(
-			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
-			Integer.valueOf( 2 ) );
+		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
+            2);
 
 		EasyMock.replay( mock_auth_handler );
 
@@ -415,9 +412,8 @@ public class ReconnectTest {
 			EasyMock.<ConnectionArgs>isNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.eq( "my test token - THREE" ) ) )
 			.andReturn( "my NEW test token" );
-		EasyMock.expect( Integer.valueOf(
-			mock_auth_handler.getTokenRegenerationInterval() ) ).andReturn(
-			Integer.valueOf( 60 ) );
+		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
+            60);
 
 		EasyMock.replay( mock_auth_handler );
 

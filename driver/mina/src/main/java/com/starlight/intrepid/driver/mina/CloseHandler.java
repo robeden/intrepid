@@ -57,7 +57,7 @@ class CloseHandler {
 				( Long ) session.getAttribute( MINAIntrepidDriver.CREATED_TIME_KEY );
 			if ( create_time == null ) {
 				assert false : "Null create time: " + session;
-				create_time = Long.valueOf( System.nanoTime() );    // assume worst case
+				create_time = System.nanoTime();    // assume worst case
 			}
 
 			long elapse_ms = TimeUnit.NANOSECONDS.toMillis(
@@ -86,12 +86,12 @@ class CloseHandler {
 		@Override
 		public void run() {
 			if ( nice_close_time_ms >= 0 ) {
-				CloseFuture future = session.close( false );
+				CloseFuture future = session.closeOnFlush();
 				future.awaitUninterruptibly( nice_close_time_ms );
 				if ( future.isDone() ) return;
 			}
 
-			session.close( true );
+			session.closeNow();
 		}
 	}
 }

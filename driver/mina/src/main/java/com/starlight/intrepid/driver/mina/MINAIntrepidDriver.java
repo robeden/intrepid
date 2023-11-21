@@ -65,7 +65,6 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.Serializable;
 import java.net.ConnectException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
@@ -369,7 +368,6 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 
 		if ( connector != null ) {
 			connector.dispose( false );
-			connector = null;
 		}
 	}
 

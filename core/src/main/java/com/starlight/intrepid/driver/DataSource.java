@@ -19,10 +19,10 @@ public interface DataSource {
 	@Nonnull String hex();
 
 
-	byte get();
-	short getShort();
-	int getInt();
-	long getLong();
+	byte get() throws EOFException;
+	short getShort() throws EOFException;
+	int getInt() throws EOFException;
+	long getLong() throws EOFException;
 
 	void getFully( @Nonnull byte[] destination ) throws EOFException;
 

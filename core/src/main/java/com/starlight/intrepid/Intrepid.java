@@ -47,7 +47,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -393,6 +392,19 @@ public class Intrepid {
 
 	/**
 	 * Connect to remote host, throwing an exception immediately if the host is not
+	 * reachable.
+	 * reachable using a default timeout.
+	 *
+	 * @see #connect(SocketAddress, ConnectionArgs, Object, long, TimeUnit)
+	 */
+	public VMID connect( SocketAddress address, ConnectionArgs args,
+						 Object attachment ) throws IOException {
+
+		return connect( address, args, attachment, CONNECT_TIMEOUT, TimeUnit.MILLISECONDS );
+	}
+
+	/**
+	 * Connect to remote host, throwing an exception immediately if the host is not
 	 * reachable. But allowing a caller provider connection timeout.
 	 *
 	 * @param host      	Host to connect to.
@@ -485,7 +497,7 @@ public class Intrepid {
 	 *
 	 * @throws IOException  Thrown if an error occurs while trying to connect.
 	 */
-	public VMID tryConnect( InetSocketAddress destination, ConnectionArgs args,
+	public VMID tryConnect( SocketAddress destination, ConnectionArgs args,
 		Object attachment, long timeout, TimeUnit timeout_units )
 		throws IOException, InterruptedException {
 
@@ -876,7 +888,9 @@ public class Intrepid {
 			if ( driver == null ) {
 				try {
 					driver = ( IntrepidDriver ) Class.forName(
-						"com.starlight.intrepid.driver.mina.MINAIntrepidDriver" ).newInstance();
+						"com.starlight.intrepid.driver.mina.MINAIntrepidDriver" )
+						.getConstructor()
+						.newInstance();
 				}
 				catch( Exception ex ) {
 					throw new UnsupportedOperationException( "Unable to find a default " +

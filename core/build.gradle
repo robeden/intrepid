@@ -9,7 +9,7 @@ dependencies {
 
     testCompile 'org.mockito:mockito-core:2.8.47'
 
-	testCompile 'com.squareup.okio:okio:1.13.0'
+	testCompile 'com.squareup.okio:okio:3.6.0'
 
     testCompile("org.junit.jupiter:junit-jupiter:5.10.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

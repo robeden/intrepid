@@ -41,8 +41,8 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -57,9 +57,9 @@ public final class MessageDecoder {
 	@SuppressWarnings( "DeprecatedIsStillUsed" )
 	@Deprecated
 	private static final CharsetDecoder UTF16_DECODER =     // proto 0-2
-		Charset.forName( "UTF-16" ).newDecoder();
+		StandardCharsets.UTF_16.newDecoder();
 	private static final CharsetDecoder UTF8_DECODER =      // proto 3+
-		Charset.forName( "UTF-8" ).newDecoder();
+		StandardCharsets.UTF_8.newDecoder();
 
 
 
@@ -77,7 +77,7 @@ public final class MessageDecoder {
 		@Nullable Byte proto_version,
 		@Nonnull ResponseHandler response_handler,
 		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
-		throws MessageConsumedButInvalidException {
+		throws MessageConsumedButInvalidException, EOFException {
 
 
 		if ( LOG.isTraceEnabled() ) {
@@ -110,6 +110,9 @@ public final class MessageDecoder {
 			message = decode0( message_type,
 				tracking_source, proto_version, response_handler, vmid_creator );
 		}
+		catch( EOFException ex ) {
+			invalid_message_exception = new MessageConsumedButInvalidException();
+		}
 		catch( MessageConsumedButInvalidException ex ) {
 			invalid_message_exception = ex;
 		}
@@ -135,7 +138,7 @@ public final class MessageDecoder {
 		@Nullable Byte proto_version,
 		@Nonnull ResponseHandler response_handler,
 		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
-		throws MessageConsumedButInvalidException {
+		throws MessageConsumedButInvalidException, EOFException {
 
 		final IMessage message;
 		if ( proto_version == null ) {
@@ -269,7 +272,7 @@ public final class MessageDecoder {
 	private static @Nonnull SessionInitIMessage decodeSessionInit(
 		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler,
 		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
-		throws MessageConsumedButInvalidException {
+		throws MessageConsumedButInvalidException, EOFException {
 
 		// VERSION
 		byte version = buffer.get();
@@ -300,7 +303,7 @@ public final class MessageDecoder {
 		if ( version == 0 ) server_port = null;
 		else {
 			if ( buffer.get() == 0 ) server_port = null;
-			else server_port = Integer.valueOf( buffer.getInt() );
+			else server_port = buffer.getInt();
 		}
 
 		// RECONNECT TOKEN
@@ -331,7 +334,7 @@ public final class MessageDecoder {
 		@Nonnull DataSource buffer,
 		@Nonnull ResponseHandler response_handler,
 		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
-		throws MessageConsumedButInvalidException {
+		throws MessageConsumedButInvalidException, EOFException {
 
 		// VERSION
 		byte version = buffer.get();
@@ -355,7 +358,7 @@ public final class MessageDecoder {
 		if ( version == 0 ) server_port = null;
 		else {
 			if ( buffer.get() == 0 ) server_port = null;
-			else server_port = Integer.valueOf( buffer.getInt() );
+			else server_port = buffer.getInt();
 		}
 
 		// RECONNECT TOKEN
@@ -389,7 +392,7 @@ public final class MessageDecoder {
 	 */
 	private static @Nonnull InvokeIMessage decodeInvoke( byte proto_version,
 		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler )
-		throws MessageConsumedButInvalidException {
+		throws MessageConsumedButInvalidException, EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -437,7 +440,6 @@ public final class MessageDecoder {
 		String persistent_name = null;
 		if ( has_persistent_name ) {
 			try {
-				//noinspection deprecation
 				persistent_name = buffer.getString(
 					proto_version >= 3 ? UTF8_DECODER : UTF16_DECODER,
 					c -> {} );
@@ -478,7 +480,7 @@ public final class MessageDecoder {
 
 
 	private static @Nonnull InvokeReturnIMessage decodeInvokeReturn( byte proto_version,
-		@Nonnull DataSource buffer ) throws MessageConsumedButInvalidException {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -521,13 +523,13 @@ public final class MessageDecoder {
 		// NEW OBJECT ID
 		Integer new_object_id = null;
 		if ( has_new_object_id ) {
-			new_object_id = Integer.valueOf( buffer.getInt() );
+			new_object_id = buffer.getInt();
 		}
 
 		// SERVER TIME
 		Long server_time = null;
 		if ( has_server_time ) {
-			server_time = Long.valueOf( buffer.getLong() );
+			server_time = buffer.getLong();
 		}
 
 		return new InvokeReturnIMessage( call_id, value, is_thrown, new_object_id,
@@ -536,7 +538,7 @@ public final class MessageDecoder {
 
 
 	private static @Nonnull InvokeInterruptIMessage decodeInvokeInterrupt(
-		byte proto_version, @Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -551,7 +553,7 @@ public final class MessageDecoder {
 
 
 	private static @Nonnull InvokeAckIMessage decodeInvokeAck( byte proto_version,
-		@Nonnull DataSource buffer ) {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -567,7 +569,7 @@ public final class MessageDecoder {
 
 	private static @Nonnull SessionTokenChangeIMessage decodeSessionTokenChange(
 		byte proto_version, @Nonnull DataSource buffer )
-		throws MessageConsumedButInvalidException {
+		throws MessageConsumedButInvalidException, EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -592,7 +594,7 @@ public final class MessageDecoder {
 	}
 
 
-	private static @Nonnull SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) {
+	private static @Nonnull SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) throws EOFException {
 		// VERSION or PROTOCOL_VERSION
 		byte version_or_protocol_version = buffer.get();
 
@@ -611,7 +613,7 @@ public final class MessageDecoder {
 
 
 	private static @Nonnull LeaseIMessage decodeLease( byte proto_version,
-		@Nonnull DataSource buffer ) {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -628,7 +630,7 @@ public final class MessageDecoder {
 	}
 
 	private static @Nonnull LeaseReleaseIMessage decodeLeaseRelease( byte proto_version,
-		@Nonnull DataSource buffer ) {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -650,7 +652,7 @@ public final class MessageDecoder {
 	 *              an appropriate response will have been sent.
 	 */
 	private static @Nullable ChannelInitIMessage decodeChannelInit( byte proto_version,
-		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler ) {
+		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -688,7 +690,7 @@ public final class MessageDecoder {
 	}
 
 	private static ChannelInitResponseIMessage decodeChannelInitResponse(
-		byte proto_version, @Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -741,7 +743,7 @@ public final class MessageDecoder {
 	}
 
 	private static @Nonnull ChannelDataAckIMessage decodeChannelDataAck(
-		byte proto_version, @Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) throws EOFException {
 
 		assert proto_version >= 3 :
 			"Invalid proto version for channel data ack: " + proto_version;
@@ -772,7 +774,7 @@ public final class MessageDecoder {
 	}
 
 	private static @Nonnull ChannelCloseIMessage decodeChannelClose( byte proto_version,
-		@Nonnull DataSource buffer ) {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -786,7 +788,7 @@ public final class MessageDecoder {
 	}
 
 	private static @Nonnull PingIMessage decodePing( byte proto_version,
-		@Nonnull DataSource buffer ) {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -800,7 +802,7 @@ public final class MessageDecoder {
 	}
 
 	private static @Nonnull PingResponseIMessage decodePingResponse( byte proto_version,
-		@Nonnull DataSource buffer ) {
+		@Nonnull DataSource buffer ) throws EOFException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -892,7 +894,7 @@ public final class MessageDecoder {
 
 
 	// Visible for testing
-	static int getDualShortLength( @Nonnull DataSource buffer ) {
+	static int getDualShortLength( @Nonnull DataSource buffer ) throws EOFException {
 		short s_length = buffer.getShort();
 		if ( s_length < 0 ) {
 			short low_short = buffer.getShort();
@@ -919,7 +921,7 @@ public final class MessageDecoder {
 
 
 	private static @Nullable String readStringOrLegacyResourceKey(
-		byte proto_version, @Nonnull DataSource buffer ) {
+		byte proto_version, @Nonnull DataSource buffer ) throws EOFException {
 
 		if ( buffer.get() != 0 ) {
 			if ( proto_version >= 3 ) {
@@ -932,7 +934,6 @@ public final class MessageDecoder {
 			}
 			else {
 				try {
-					//noinspection unchecked
 					ResourceKey<String> reject_reason = readObject( buffer );
 					return reject_reason.getValue();
 				}
@@ -962,7 +963,7 @@ public final class MessageDecoder {
 			return vmid_creator.apply( new UUID( hsb, lsb ), hint_text );
 		}
 		else {
-			return ( VMID ) readObject( buffer );
+			return readObject( buffer );
 		}
 	}
 

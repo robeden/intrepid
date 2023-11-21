@@ -116,19 +116,19 @@ public class OkioBufferData implements DataSink, DataSource {
 		return buffer.snapshot().hex();
 	}
 
-	@Override public byte get() {
+	@Override public byte get() throws EOFException {
 		return buffer.readByte();
 	}
 
-	@Override public short getShort() {
+	@Override public short getShort() throws EOFException {
 		return buffer.readShort();
 	}
 
-	@Override public int getInt() {
+	@Override public int getInt() throws EOFException{
 		return buffer.readInt();
 	}
 
-	@Override public long getLong() {
+	@Override public long getLong() throws EOFException {
 		return buffer.readLong();
 	}
 

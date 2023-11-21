@@ -126,7 +126,7 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 
 			// Getting here is a logic error.
 			if ( protocol_version == null ) {
-				session.close( true );
+				session.closeNow();
 
 				String error_message = "Logic error: Should not be sending a " +
 					message_obj.getClass().getName() + " message without the " +
@@ -150,7 +150,7 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 
 
 	@Override
-	public void dispose( IoSession session ) throws Exception {}
+	public void dispose( IoSession session ) {}
 
 
 	static void prependLength( IoBuffer data_buffer, IoBuffer length_buffer ) {

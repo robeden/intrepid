@@ -5,7 +5,11 @@ package com.starlight.intrepid.driver;
  * the message was invalid and so will not be provided.
  */
 public class MessageConsumedButInvalidException extends Exception {
-	MessageConsumedButInvalidException( String message ) {
+	public MessageConsumedButInvalidException() {
+		super();
+	}
+
+	MessageConsumedButInvalidException(String message ) {
 		super( message );
 	}
 

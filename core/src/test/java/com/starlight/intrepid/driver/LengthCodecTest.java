@@ -31,6 +31,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.EOFException;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -74,7 +75,7 @@ public class LengthCodecTest {
 
 	@ParameterizedTest
 	@MethodSource("values")
-	public void testDualShortEncoding(int expect_value, boolean expect_full_int) {
+	public void testDualShortEncoding(int expect_value, boolean expect_full_int) throws EOFException {
 		Buffer buffer = new Buffer();
 
 		OkioBufferData data = new OkioBufferData( buffer );
@@ -86,6 +87,6 @@ public class LengthCodecTest {
 
 		int value = MessageDecoder.getDualShortLength( data );
 
-		assertEquals( value, value );
+		assertEquals( expect_value, value );
 	}
 }

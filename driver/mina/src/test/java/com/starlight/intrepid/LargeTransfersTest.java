@@ -2,14 +2,15 @@ package com.starlight.intrepid;
 
 import com.jakewharton.byteunits.BinaryByteUnit;
 import com.starlight.intrepid.exception.ChannelRejectedException;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.security.MessageDigest;
@@ -327,8 +328,8 @@ public class LargeTransfersTest {
 		}
 
 		// Connect to the server
-		VMID server_vmid = client_instance.tryConnect( InetAddress.getByName( "127.0.0.1" ),
-			server_port.intValue(), null, null, 10, TimeUnit.SECONDS );
+		VMID server_vmid = client_instance.tryConnect(
+			new InetSocketAddress("127.0.0.1", server_port), null, null, 10, TimeUnit.SECONDS );
 		assertNotNull( server_vmid );
 
 		Timer timer = new Timer( "Progress printer", true );

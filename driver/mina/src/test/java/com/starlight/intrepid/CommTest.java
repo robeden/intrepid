@@ -38,9 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.io.*;
-import java.net.ConnectException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.net.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,6 +57,14 @@ public class CommTest {
 		return null;
 	}
 
+	protected SocketAddress createServerAddress() throws IOException {
+		return new InetSocketAddress(11751);
+	}
+
+	protected SocketAddress createClientConnectAddress() throws IOException {
+		return new InetSocketAddress("127.0.0.1", 11751);
+	}
+
 
 	@AfterEach
 	public void tearDown() throws Exception {
@@ -74,7 +80,7 @@ public class CommTest {
 	public void testPortReleaseOnShutdown() throws Exception {
 		for( int i = 0; i < 100; i++ ) {
 			Intrepid instance = Intrepid.newBuilder()
-				.serverAddress( new InetSocketAddress( 11751 ) )
+				.serverAddress( createServerAddress() )
 				.openServer()
 				.driver( createSPI( true ) )
 				.build();
@@ -91,7 +97,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverAddress( new InetSocketAddress( 11751 ) )
+			.serverAddress( createServerAddress() )
 			.openServer()
 			.driver( createSPI( true ) )
 			.build();
@@ -105,8 +111,7 @@ public class CommTest {
 			.build();
 
 		// Connect to the server
-		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
-			11751, null, null );
+		VMID server_vmid = client_instance.connect( createClientConnectAddress(), null, null );
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -222,7 +227,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverAddress( new InetSocketAddress( 11751 ) )
+			.serverAddress( createServerAddress() )
 			.openServer().driver( createSPI( true ) )
 			.build();
 		ServerImpl original_instance =
@@ -235,8 +240,7 @@ public class CommTest {
 			.build();
 
 		// Connect to the server
-		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
-			11751, null, null );
+		VMID server_vmid = client_instance.connect( createClientConnectAddress(), null, null );
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -336,7 +340,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverAddress( new InetSocketAddress( 11751 ) )
+			.serverAddress( createServerAddress() )
 			.openServer()
 			.driver( createSPI( true ) )
 			.build();
@@ -350,8 +354,7 @@ public class CommTest {
 			.build();
 
 		// Connect to the server
-		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
-			11751, null, null );
+		VMID server_vmid = client_instance.connect( createClientConnectAddress(), null, null );
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -447,7 +450,7 @@ public class CommTest {
 
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
-			.serverAddress( new InetSocketAddress( 11751 ) )
+			.serverAddress( createServerAddress() )
 			.openServer()
 			.driver( createSPI( true ) )
 			.build();
@@ -461,8 +464,7 @@ public class CommTest {
 			.build();
 
 		// Connect to the server
-		VMID server_vmid = client_instance.connect( InetAddress.getByName( "127.0.0.1" ),
-			11751, null, null );
+		VMID server_vmid = client_instance.connect( createClientConnectAddress(), null, null );
 		assertNotNull( server_vmid );
 
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
@@ -500,7 +502,7 @@ public class CommTest {
 	public void testConnectFailure() throws Exception {
 		Intrepid client = Intrepid.newBuilder().driver( createSPI( false ) ).build();
 		try {
-			client.connect( InetAddress.getByName( "127.0.0.1" ), 11751, null, null );
+			client.connect( createClientConnectAddress(), null, null );
 			fail( "Shouldn't have worked" );
 		}
 		catch( ConnectException ex ) {
@@ -523,7 +525,7 @@ public class CommTest {
 
 		// Connect and fail immediately, since the server isn't there
 		try {
-			client_instance.connect( InetAddress.getByName( "127.0.0.1" ), 11751, null,
+			client_instance.connect( createClientConnectAddress(), null,
 				null );
 			fail( "Shouldn't have been able to connect" );
 		}
@@ -534,8 +536,7 @@ public class CommTest {
 		// Try to connect, but never start the server
 		long time = System.currentTimeMillis();
 		try {
-			client_instance.tryConnect( InetAddress.getByName( "127.0.0.1" ), 11751, null,
-				null, 3, TimeUnit.SECONDS );
+			client_instance.tryConnect( createClientConnectAddress(), null, null, 3, TimeUnit.SECONDS );
 		}
 		catch ( ConnectException ex ) {
 			// this is good
@@ -550,7 +551,7 @@ public class CommTest {
 			try {
 				server_instance = Intrepid.newBuilder()
 					.vmidHint( "server" )
-					.serverAddress( new InetSocketAddress( 11751 ) )
+					.serverAddress( createServerAddress() )
 					.openServer()
 					.driver( createSPI( true ) )
 					.build();
@@ -566,7 +567,7 @@ public class CommTest {
 		VMID server_vmid = null;
 		try {
 			server_vmid = client_instance.tryConnect(
-				InetAddress.getByName( "127.0.0.1" ), 11751, null, null, 6,
+				createClientConnectAddress(), null, null, 6,
 				TimeUnit.SECONDS );
 		}
 		catch (  ConnectException ex ) {
@@ -749,7 +750,7 @@ public class CommTest {
 			.driver( createSPI( false ) )
 			.build();
 		try {
-			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null,
+			client_instance.connect( createClientConnectAddress(), null,
 				null );
 			fail( "Shouldn't have been able to connect" );
 		}
@@ -761,14 +762,12 @@ public class CommTest {
 		server_instance = Intrepid.newBuilder()
 			.vmidHint( "server" )
 			.openServer()
-			.serverAddress( new InetSocketAddress( 11751 ) )
+			.serverAddress( createServerAddress() )
 			.driver( createSPI( true ) )
 			.build();
 
 		// Try to connect again, should work this time
-		VMID server_vmid =
-			client_instance.connect( InetAddress.getLoopbackAddress(), 11751, null,
-				null );
+		VMID server_vmid = client_instance.connect( createClientConnectAddress(), null, null );
 		assertEquals( server_instance.getLocalVMID(), server_vmid );
 
 		long time = client_instance.ping( server_vmid, 1, TimeUnit.SECONDS );

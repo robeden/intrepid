@@ -39,28 +39,28 @@ class DefaultTrackingDataSource implements DataSource.Tracking {
 	}
 
 	@Override
-	public byte get() {
+	public byte get() throws EOFException {
 		byte value = delegate.get();
 		read++;
 		return value;
 	}
 
 	@Override
-	public short getShort() {
+	public short getShort() throws EOFException {
 		short value = delegate.getShort();
 		read += 2;
 		return value;
 	}
 
 	@Override
-	public int getInt() {
+	public int getInt() throws EOFException {
 		int value = delegate.getInt();
 		read += 4;
 		return value;
 	}
 
 	@Override
-	public long getLong() {
+	public long getLong() throws EOFException {
 		long value = delegate.getLong();
 		read += 8;
 		return value;
