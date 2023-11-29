@@ -12,19 +12,7 @@ dependencies {
 
 
     testCompile "org.junit.jupiter:junit-jupiter:5.10.0"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.0"
 
 	testRuntime 'org.slf4j:slf4j-simple:2.0.9'
-}
-
-test {
-    systemProperty 'intrepid.lease.duration', '2000'
-    systemProperty 'intrepid.lease.prune_interval', '1000'
-    systemProperty 'intrepid.local_call_handler.initial_reservation', '10000'
-    systemProperty 'intrepid.req_invoke_ack_rate_sec', '1'
-
-	systemProperty 'org.slf4j.simpleLogger.defaultLogLevel', 'INFO'
-
-    ignoreFailures true
-	enableAssertions true
 }
