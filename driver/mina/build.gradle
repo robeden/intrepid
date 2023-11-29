@@ -15,7 +15,6 @@ dependencies {
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 
 	testRuntime 'org.slf4j:slf4j-simple:2.0.9'
-    testRuntime 'com.kohlschutter.junixsocket:junixsocket-core:2.8.3'
 }
 
 test {
