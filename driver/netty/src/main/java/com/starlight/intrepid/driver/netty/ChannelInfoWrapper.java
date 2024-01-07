@@ -23,71 +23,52 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.starlight.intrepid.driver.mina;
+package com.starlight.intrepid.driver.netty;
 
 import com.starlight.intrepid.ConnectionListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.driver.SessionInfo;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.transport.socket.nio.NioSession;
+import io.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 
 
 /**
- * Wraps an {@link IoSession} to implement the {@link SessionInfo} interface.
+ * Wraps a {@link Channel} to implement the {@link SessionInfo} interface.
  */
-class IoSessionInfoWrapper implements SessionInfo {
+class ChannelInfoWrapper implements SessionInfo {
 	private static final Logger LOG =
-		LoggerFactory.getLogger( IoSessionInfoWrapper.class );
-
-	private static final Method nioSessionGetChannelMethod;
-
-	static {
-		Method m = null;
-		try {
-			// WARNING!!!
-			// Use magical reflection powers to get at the underlying SocketChannel. This
-			// can fail if a SecurityManager is installed.
-			// This is dependent on MINA internals and could break with newer versions!
-			m = NioSession.class.getDeclaredMethod( "getChannel" );
-			m.setAccessible( true );
-		}
-		catch( Exception ex ) {
-			// ignore
-		}
-		nioSessionGetChannelMethod = m;
-	}
+		LoggerFactory.getLogger( ChannelInfoWrapper.class );
 
 
-	private final IoSession session;
-	private final Map<VMID,SessionContainer> session_map;
-	private final Map<SocketAddress,SessionContainer> outbound_session_map;
+	private final Channel channel;
+	private final Map<VMID, ChannelContainer> session_map;
+	private final Map<SocketAddress, ChannelContainer> outbound_session_map;
 	private final Map<VMID,VMID> vmid_remap;
 	private final Lock map_lock;
 	private final ConnectionListener connection_listener;
 	private final String connection_type_description;
 	private final VMID local_vmid;
 
-	IoSessionInfoWrapper( IoSession session, Map<VMID,SessionContainer> session_map,
-		Map<SocketAddress,SessionContainer> outbound_session_map,
-		Map<VMID,VMID> vmid_remap, Lock map_lock,
-		ConnectionListener connection_listener, String connection_type_description,
-		VMID local_vmid ) {
+	ChannelInfoWrapper(Channel channel, Map<VMID, ChannelContainer> session_map,
+					   Map<SocketAddress, ChannelContainer> outbound_session_map,
+					   Map<VMID,VMID> vmid_remap, Lock map_lock,
+					   ConnectionListener connection_listener, String connection_type_description,
+					   VMID local_vmid ) {
 
-		this.session = session;
+		this.channel = channel;
 		this.session_map = session_map;
 		this.outbound_session_map = outbound_session_map;
 		this.vmid_remap = vmid_remap;
@@ -100,7 +81,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 
 	@Override
 	public VMID getVMID() {
-		return ( VMID ) session.getAttribute( MINAIntrepidDriver.VMID_KEY );
+		return channel.attr( NettyIntrepidDriver.VMID_KEY ).get();
 	}
 
 
@@ -113,39 +94,37 @@ class IoSessionInfoWrapper implements SessionInfo {
 		// Allowing null to be set would allow sessions to disappear from the session_map.
 		Objects.requireNonNull( vmid );
 
-		session.setAttribute( MINAIntrepidDriver.INVOKE_ACK_RATE, ack_rate_sec);
+		channel.attr( NettyIntrepidDriver.INVOKE_ACK_RATE ).set( ack_rate_sec);
 
-		VMID old_vmid = ( VMID ) session.setAttribute( MINAIntrepidDriver.VMID_KEY, vmid );
+		VMID old_vmid = channel.attr( NettyIntrepidDriver.VMID_KEY ).getAndSet( vmid );
 
-		if ( LOG.isDebugEnabled() ) {
-			StringBuilder buf = new StringBuilder();
-			boolean first = true;
-			for( Object key : session.getAttributeKeys() ) {
-				if ( first ) first = false;
-				else buf.append( ", " );
-				buf.append( key );
-				buf.append( "=" );
-				buf.append( session.getAttribute( key ) );
-			}
-			LOG.debug( "MINA.SessionInfo setVMID: {} old_vmid: {} attributes: {}",
-				vmid, old_vmid, buf.toString() );
-		}
+//		if ( LOG.isDebugEnabled() ) {
+//			StringBuilder buf = new StringBuilder();
+//			boolean first = true;
+//			for( Object key : channel.getAttributeKeys() ) {
+//				if ( first ) first = false;
+//				else buf.append( ", " );
+//				buf.append( key );
+//				buf.append( "=" );
+//				buf.append( channel.getAttribute( key ) );
+//			}
+//			LOG.debug( "MINA.SessionInfo setVMID: {} old_vmid: {} attributes: {}",
+//				vmid, old_vmid, buf.toString() );
+//		}
 
 		// If the VMID is unchanged, exit
 		if ( Objects.equals( vmid, old_vmid ) ) {
 			// Make sure the VMIDFuture is set
-			VMIDFuture future =
-				( VMIDFuture ) session.getAttribute( MINAIntrepidDriver.VMID_FUTURE_KEY );
+			CompletableFuture<VMID> future = channel.attr( NettyIntrepidDriver.VMID_FUTURE_KEY ).get();
 			assert future != null;
 			//noinspection ConstantConditions
-			if ( future != null ) future.setVMID( vmid );
+			if ( future != null ) future.complete( vmid );
 
 			// Make sure the session is set in the container
-			SessionContainer container =
-				( SessionContainer ) session.getAttribute( MINAIntrepidDriver.CONTAINER_KEY );
+			ChannelContainer container = channel.attr( NettyIntrepidDriver.CONTAINER_KEY ).get();
 			if ( container != null ) {
-				IoSession old_session = container.setSession( session );
-				MINAIntrepidDriver.closeSessionIfDifferent( session, old_session, 2000 );
+				Channel old_channel = container.setChannel(channel);
+				NettyIntrepidDriver.closeChannelIfDifferent(channel, old_channel, 2000 );
 			}
 
 			return;
@@ -154,11 +133,10 @@ class IoSessionInfoWrapper implements SessionInfo {
 		// If the VMID is different from its original value, update the session map.
 		map_lock.lock();
 		try {
-			SessionContainer container = ( SessionContainer )
-				session.getAttribute( MINAIntrepidDriver.CONTAINER_KEY );
+			ChannelContainer container = channel.attr( NettyIntrepidDriver.CONTAINER_KEY ).get();
 
 			if ( old_vmid != null ) {
-				SessionContainer old_container = session_map.remove( old_vmid );
+				ChannelContainer old_container = session_map.remove( old_vmid );
 				if ( container != null ) {
 					outbound_session_map.remove( container.getSocketAddress() );
 				}
@@ -178,53 +156,58 @@ class IoSessionInfoWrapper implements SessionInfo {
 				}
 
 				// Make sure any old connections are cleaned up
-				if ( old_container != null && old_container.getSession() != null ) {
-					IoSession old_session = old_container.getSession();
-					MINAIntrepidDriver.closeSessionIfDifferent( session, old_session, 2000 );
+				if ( old_container != null && old_container.getChannel() != null ) {
+					Channel old_channel = old_container.getChannel();
+					NettyIntrepidDriver.closeChannelIfDifferent(channel, old_channel, 2000 );
 				}
 
 //				System.out.println( "Remap is now: " + vmid_remap );
 			}
 
 			if ( container != null ) {
-				container.setSession( session );
+				container.setChannel(channel);
 				session_map.put( vmid, container );
 
-				InetSocketAddress address =
-					( InetSocketAddress ) session.getRemoteAddress();
+				SocketAddress address = channel.remoteAddress();
 				connection_listener.connectionOpened(
 					address,
-					session.getAttribute( MINAIntrepidDriver.ATTACHMENT_KEY ), local_vmid,
+					channel.attr( NettyIntrepidDriver.ATTACHMENT_KEY ).get(), local_vmid,
 					vmid, getUserContext(), old_vmid, connection_type_description,
 					ack_rate_sec );
 			}
-			else assert false : "Null SessionContainer: " + session;
+			else assert false : "Null SessionContainer: " + channel;
 
 			// If the connection wasn't initiated by us and the peer has a server port,
 			// see if we already have an established connection to it. If so, blow that
 			// connection away and use this one.
-			Boolean locally_initiated =
-				( Boolean ) session.getAttribute( MINAIntrepidDriver.LOCAL_INITIATE_KEY );
-			if ( ( locally_initiated == null || !locally_initiated) &&
+			Boolean locally_initiated = channel.attr( NettyIntrepidDriver.LOCAL_INITIATE_KEY ).get();
+			Integer peer_server_port = getPeerServerPort();
+			SocketAddress channel_remote_address = channel.remoteAddress();
+			if ( ( locally_initiated == null || !locally_initiated ) &&
 				getPeerServerPort() != null ) {
 
-				SocketAddress search_template = new InetSocketAddress(
-					( ( InetSocketAddress ) session.getRemoteAddress() ).getAddress(),
-                    getPeerServerPort());
-				SessionContainer current_ob_container =
+				SocketAddress search_template;
+				if ( channel_remote_address instanceof InetSocketAddress ) {
+					search_template = new InetSocketAddress(
+						((InetSocketAddress) channel_remote_address).getAddress(),
+						peer_server_port);
+				}
+				else {
+					search_template = channel_remote_address;
+				}
+				ChannelContainer current_ob_container =
 					outbound_session_map.get( search_template );
 				if ( current_ob_container != container ) {
 					outbound_session_map.put( search_template, container );
 
 					if ( current_ob_container != null ) {
-						IoSession current_session = current_ob_container.getSession();
+						Channel current_channel = current_ob_container.getChannel();
 
 						// In case there are already listeners on this container, point
 						// them to the new session.
-						current_ob_container.setSession( session );
+						current_ob_container.setChannel(channel);
 
-						MINAIntrepidDriver.closeSessionIfDifferent( session,
-							current_session, 2000 );
+						NettyIntrepidDriver.closeChannelIfDifferent(channel, current_channel, 2000 );
 					}
 				}
 			}
@@ -237,97 +220,84 @@ class IoSessionInfoWrapper implements SessionInfo {
 		// NOTE: must come after putting the session in the map to avoid a race condition
 		//       where the VMID is returned from the connect method before the connection
 		//       is available in the map.
-		VMIDFuture future =
-			( VMIDFuture ) session.getAttribute( MINAIntrepidDriver.VMID_FUTURE_KEY );
+		CompletableFuture<VMID> future = channel.attr( NettyIntrepidDriver.VMID_FUTURE_KEY ).get();
 		assert future != null;
 		//noinspection ConstantConditions
-		if ( future != null ) future.setVMID( vmid );
+		if ( future != null ) future.complete( vmid );
 	}
 
 	@Override
 	public Byte getProtocolVersion() {
-		return ( Byte ) session.getAttribute( MINAIntrepidDriver.PROTOCOL_VERSION_KEY );
+		return channel.attr( NettyIntrepidDriver.PROTOCOL_VERSION_KEY ).get();
 	}
 
 	@Override
 	public void setProtocolVersion( Byte version ) {
-		session.setAttribute( MINAIntrepidDriver.PROTOCOL_VERSION_KEY, version );
+		channel.attr( NettyIntrepidDriver.PROTOCOL_VERSION_KEY ).set( version );
 		LOG.debug( "MINA.SessionInfo setProtocolVersion: {}", version );
 	}
 
 
 	@Override
 	public UserContextInfo getUserContext() {
-		return ( UserContextInfo ) session.getAttribute( MINAIntrepidDriver.USER_CONTEXT_KEY );
+		return channel.attr( NettyIntrepidDriver.USER_CONTEXT_KEY ).get();
 	}
 
 	@Override
 	public void setUserContext( UserContextInfo user_context ) {
-		session.setAttribute( MINAIntrepidDriver.USER_CONTEXT_KEY, user_context );
+		channel.attr( NettyIntrepidDriver.USER_CONTEXT_KEY ).set( user_context );
 		LOG.debug( "MINA.SessionInfo setUserContext: {}", user_context );
 	}
 
 
 	@Override
 	public SocketAddress getRemoteAddress() {
-		return session.getRemoteAddress();
+		return channel.remoteAddress();
 	}
 
 
 	@Override
 	public Object getSessionSource() {
-		try {
-			NioSession nio_session = ( NioSession ) session;
-
-			if ( nioSessionGetChannelMethod != null ) {
-				return nioSessionGetChannelMethod.invoke( nio_session );
-			}
-			else return null;
-		}
-		catch( Exception ex ) {
-			return null;
-		}
+		return channel;
 	}
 
 	@Override
 	public Integer getPeerServerPort() {
-		return ( Integer ) session.getAttribute( MINAIntrepidDriver.SERVER_PORT_KEY );
+		return channel.attr( NettyIntrepidDriver.SERVER_PORT_KEY ).get();
 	}
 
 	@Override
 	public void setPeerServerPort( Integer port ) {
-		session.setAttribute( MINAIntrepidDriver.SERVER_PORT_KEY, port );
+		channel.attr( NettyIntrepidDriver.SERVER_PORT_KEY ).set( port );
 	}
 
 
 	@Override
 	public Serializable getReconnectToken() {
-		return ( Serializable ) session.getAttribute(
-			MINAIntrepidDriver.RECONNECT_TOKEN_KEY );
+		return channel.attr( NettyIntrepidDriver.RECONNECT_TOKEN_KEY ).get();
 	}
 
 	@Override
 	public void setReconnectToken( Serializable reconnect_token ) {
-		session.setAttribute( MINAIntrepidDriver.RECONNECT_TOKEN_KEY, reconnect_token );
+		channel.attr( NettyIntrepidDriver.RECONNECT_TOKEN_KEY ).set( reconnect_token );
 	}
 
 
 	@Override
 	public ScheduledFuture<?> getReconnectTokenRegenerationTimer() {
-		return ( ScheduledFuture<?> ) session.getAttribute(
-			MINAIntrepidDriver.RECONNECT_TOKEN_REGENERATION_TIMER );
+		return channel.attr( NettyIntrepidDriver.RECONNECT_TOKEN_REGENERATION_TIMER ).get();
 	}
 
 	@Override
 	public void setReconnectTokenRegenerationTimer( ScheduledFuture<?> timer ) {
-		session.setAttribute( MINAIntrepidDriver.RECONNECT_TOKEN_REGENERATION_TIMER, timer );
+		channel.attr( NettyIntrepidDriver.RECONNECT_TOKEN_REGENERATION_TIMER ).set( timer );
 	}
 
 
 
 	@Override
 	public Byte getAckRateSec() {
-		return ( Byte ) session.getAttribute( MINAIntrepidDriver.INVOKE_ACK_RATE );
+		return ( Byte ) channel.attr( NettyIntrepidDriver.INVOKE_ACK_RATE ).get();
 	}
 
 
@@ -336,7 +306,7 @@ class IoSessionInfoWrapper implements SessionInfo {
 	public String toString() {
 		return "IoSessionInfoWrapper{" + ", connection_type_description='" +
 			connection_type_description + '\'' + ", local_vmid=" + local_vmid +
-			", outbound_session_map=" + outbound_session_map + ", session=" + session +
+			", outbound_session_map=" + outbound_session_map + ", session=" + channel +
 			", session_map=" + session_map + ", vmid_remap=" + vmid_remap + '}';
 	}
 }

@@ -1,0 +1,16 @@
+dependencies {
+    compile project( ':core' )
+
+    compile 'io.netty:netty-transport:4.1.104.Final'
+
+    testCompile 'org.mockito:mockito-core:4.3.1'
+    testCompile 'org.easymock:easymock:3.4'
+	testCompile 'com.jakewharton.byteunits:byteunits:0.9.1'
+    testCompile project( ':core' ).sourceSets.test.output
+
+
+    testCompile "org.junit.jupiter:junit-jupiter:5.10.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.0"
+
+	testRuntime 'org.slf4j:slf4j-simple:2.0.9'
+}

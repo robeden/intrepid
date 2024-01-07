@@ -39,24 +39,6 @@ import java.util.concurrent.ScheduledFuture;
  * Interface to access attributes associated with the session.
  */
 public interface SessionInfo {
-	/**
-	 * Get an attribute for the session.
-	 *
-	 * @param key		The key of the attribute.
-	 */
-	Object getAttribute( Object key );
-
-	/**
-	 * Set an attribute for the session.
-	 *
-	 * @param key		The key of the attribute. If the key is a String, it should not
-	 * 					start with a period ('.') as those are reserved for the SPI
-	 * 					implementation.
-	 * @param value		The value of the attribute.
-	 *
-	 * @return			The old value of the attribute if there was one, otherwise null.
-	 */
-	Object setAttribute( Object key, Object value );
 
 
 	/**
