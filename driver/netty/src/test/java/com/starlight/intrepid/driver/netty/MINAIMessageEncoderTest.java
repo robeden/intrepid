@@ -1,4 +1,4 @@
-package com.starlight.intrepid.driver.mina;
+package com.starlight.intrepid.driver.netty;
 
 import org.apache.mina.core.buffer.IoBuffer;
 import org.junit.jupiter.api.Test;

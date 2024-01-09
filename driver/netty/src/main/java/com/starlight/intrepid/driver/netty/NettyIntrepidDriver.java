@@ -41,19 +41,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.util.AttributeKey;
-import org.apache.mina.core.future.ConnectFuture;
-import org.apache.mina.core.future.WriteFuture;
-import org.apache.mina.core.session.IdleStatus;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.core.session.IoSessionInitializer;
-import org.apache.mina.filter.FilterEvent;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.filter.codec.ProtocolEncoderException;
-import org.apache.mina.filter.compression.CompressionFilter;
-import org.apache.mina.filter.ssl.SslFilter;
-import org.apache.mina.transport.socket.SocketAcceptor;
-import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
-import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -316,6 +303,7 @@ public class NettyIntrepidDriver
 	/**
 	 * Local address for the server socket, if applicable.
 	 */
+	@Override
 	public SocketAddress getServerAddress() {
 		if ( server_channel_future == null ) return null;
 		return server_channel_future.channel().localAddress();
@@ -771,14 +759,13 @@ public class NettyIntrepidDriver
 
 	@Override
 	public Integer getServerPort() {
-		SocketAcceptor acceptor = this.server_bootstrap;
-		if ( acceptor == null ) return null;
-
-		InetSocketAddress address = acceptor.getLocalAddress();
+		SocketAddress address = server_channel_future.channel().localAddress();
 		if ( address == null ) return null;
-
-		return address.getPort();
+		if ( !( address instanceof InetSocketAddress ) ) return null;
+		return ( ( InetSocketAddress ) address ).getPort();
 	}
+
+
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext context, Throwable cause) throws Exception {
@@ -1452,7 +1439,8 @@ public class NettyIntrepidDriver
 	static void closeChannelIfDifferent(Channel new_channel, Channel old_channel,
 										long nice_close_time_ms ) {
 
-		if ( old_channel == null || old_channel.id().equals( new_channel.id() ) ) return;
+		if ( old_channel == null ) return;
+		if ( Objects.equals( old_channel.id(), new_channel.id() ) ) return;
 
 		LOG.debug( "Closing session '{}' because we have a new session '{}'", old_channel,
 			new_channel );

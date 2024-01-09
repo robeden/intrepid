@@ -23,7 +23,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.starlight.intrepid.driver.mina;
+package com.starlight.intrepid.driver.netty;
 
 import com.starlight.intrepid.Intrepid;
 import org.junit.jupiter.api.Test;
@@ -72,7 +72,7 @@ public class NettyIntrepidDriverTest {
 
 			System.out.println( "Server address: " + spi.getServerAddress() );
 			assertNotNull(spi.getServerAddress());
-			assertEquals(11751, spi.getServerAddress().getPort());
+			assertEquals(11751, ((InetSocketAddress) spi.getServerAddress()).getPort());
 		}
 		catch( Exception ex ) {
 			ex.printStackTrace();

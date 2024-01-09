@@ -6,6 +6,7 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.function.IntConsumer;
 
@@ -73,20 +74,20 @@ class DefaultTrackingDataSource implements DataSource.Tracking {
 	}
 
 	@Override
-	public @Nonnull String getString( @Nonnull CharsetDecoder decoder,
-		@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException {
+	public @Nonnull String getString(@Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
+									 @Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException {
 
-		return delegate.getString( decoder, count -> {
+		return delegate.getString( charset, decoder, count -> {
 			read += count;
 			byte_count_consumer.accept( count );
 		} );
 	}
 
 	@Override
-	public @Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+	public @Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder decoder, int length )
 		throws CharacterCodingException, EOFException {
 
-		String value = delegate.getString( decoder, length );
+		String value = delegate.getString( charset, decoder, length );
 		read += length;
 		return value;
 	}

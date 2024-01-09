@@ -31,20 +31,18 @@ import com.starlight.locale.UnlocalizableTextResourceKey;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.StandardCharsets;
 
 
 /**
  *
  */
 public final class MessageEncoder  {
-	@SuppressWarnings( "DeprecatedIsStillUsed" )
-	@Deprecated
 	private static final CharsetEncoder UTF16_ENCODER =     // pre-proto 3
-		Charset.forName( "UTF-16" ).newEncoder();
+		StandardCharsets.UTF_16.newEncoder();
 	private static final CharsetEncoder UTF8_ENCODER =      // proto 3+
-		Charset.forName( "UTF-8" ).newEncoder();
+		StandardCharsets.UTF_8.newEncoder();
 
 	private static final int MAX_SINGLE_SHORT_LENGTH = 0x7FFF;
 	private static final int DUAL_SHORT_FLAG = 0x8000;
@@ -318,7 +316,6 @@ public final class MessageEncoder  {
 
 		// PERSISTENT NAME
 		if ( message.getPersistentName() != null ) {
-			//noinspection deprecation
 			buffer.putString( message.getPersistentName(),
 				proto_version >= 3 ? UTF8_ENCODER : UTF16_ENCODER,
 				c -> {} );

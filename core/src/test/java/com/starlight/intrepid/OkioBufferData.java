@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.util.function.IntConsumer;
@@ -136,8 +137,8 @@ public class OkioBufferData implements DataSink, DataSource {
 		buffer.readFully( destination );
 	}
 
-	@Override public @Nonnull String getString( @Nonnull CharsetDecoder decoder,
-		@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException {
+	@Override public @Nonnull String getString(@Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
+											   @Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException {
 
 		// Logic (mostly) from MINA
         boolean utf16 = decoder.charset().name().startsWith( "UTF-16" );
@@ -177,7 +178,8 @@ public class OkioBufferData implements DataSink, DataSource {
 	}
 
 	@Override
-	public @Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+	public @Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
+									  int length )
 		throws CharacterCodingException, EOFException {
 
 		return buffer.readString( length, decoder.charset() );

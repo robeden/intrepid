@@ -40,6 +40,7 @@ import java.io.EOFException;
 import java.io.InputStream;
 import java.nio.BufferUnderflowException;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -169,17 +170,18 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 		}
 
 		@Override
-		public @Nonnull String getString( @Nonnull CharsetDecoder decoder,
+		public @Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
 			@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException {
 
 			int position_before = delegate.position();
-			String value = delegate.getString( decoder );
+			String value = delegate.getString( charset.newDecoder() );
 			byte_count_consumer.accept( delegate.position() - position_before );
 			return value;
 		}
 
 		@Override
-		public @Nonnull String getString( @Nonnull CharsetDecoder decoder, int length )
+		public @Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
+										  int length )
 			throws CharacterCodingException, EOFException {
 
 			return delegate.getString( length, decoder );

@@ -87,10 +87,13 @@ public final class MessageDecoder {
 		// Need at least 4 bytes
 		if ( !source.request( 4 ) ) return null;
 
+		source.maybeMarkRead();
+
 		// LENGTH
 		int length = getDualShortLength( source );
 		if ( !source.request( length ) ) {
 			LOG.trace( "Decoder not enough data. Length: {} Buffer: {}", length, source );
+			source.maybeResetRead();
 			return null;
 		}
 
@@ -122,9 +125,7 @@ public final class MessageDecoder {
 			//       deserialized (i.e., user error).
 			LOG.debug( "Read too few bytes. Expected: {} Read: {}",
 				length, tracking_source.bytesRead() );
-			while( tracking_source.bytesRead() < length ) {
-				tracking_source.get();
-			}
+			tracking_source.consume(length - (int) tracking_source.bytesRead());
 		}
 
 		if ( invalid_message_exception != null ) throw invalid_message_exception;
@@ -441,6 +442,7 @@ public final class MessageDecoder {
 		if ( has_persistent_name ) {
 			try {
 				persistent_name = buffer.getString(
+					proto_version >= 3 ? StandardCharsets.UTF_8 : StandardCharsets.UTF_16,
 					proto_version >= 3 ? UTF8_DECODER : UTF16_DECODER,
 					c -> {} );
 
@@ -900,7 +902,9 @@ public final class MessageDecoder {
 			short low_short = buffer.getShort();
 			return ( ( s_length & 0x7FFF ) << 16 ) | ( low_short & 0xFFFF );
 		}
-		else return s_length & 0xFFFF;
+		else {
+			return s_length & 0xFFFF;
+		}
 	}
 
 
@@ -926,7 +930,7 @@ public final class MessageDecoder {
 		if ( buffer.get() != 0 ) {
 			if ( proto_version >= 3 ) {
 				try {
-					return buffer.getString( UTF8_DECODER, c -> {} );
+					return buffer.getString( StandardCharsets.UTF_8, UTF8_DECODER, c -> {} );
 				}
 				catch ( CharacterCodingException ex ) {
 					LOG.warn( "Unable to decode channel rejection reason", ex );
@@ -958,7 +962,7 @@ public final class MessageDecoder {
 			String hint_text = null;
 			int length = buffer.getShort() & 0xFFFF;
 			if ( length != 0 ) {
-				hint_text = buffer.getString( UTF8_DECODER, length );
+				hint_text = buffer.getString( StandardCharsets.UTF_8, UTF8_DECODER, length );
 			}
 			return vmid_creator.apply( new UUID( hsb, lsb ), hint_text );
 		}

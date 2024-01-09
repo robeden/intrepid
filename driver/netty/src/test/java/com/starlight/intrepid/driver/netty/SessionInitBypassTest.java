@@ -1,4 +1,4 @@
-package com.starlight.intrepid.driver.mina;
+package com.starlight.intrepid.driver.netty;
 
 import com.starlight.intrepid.*;
 import com.starlight.intrepid.driver.ProtocolVersions;
@@ -7,12 +7,7 @@ import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
 import com.starlight.intrepid.message.PingIMessage;
 import gnu.trove.map.TIntObjectMap;
-import org.apache.mina.core.future.ConnectFuture;
-import org.apache.mina.core.future.WriteFuture;
-import org.apache.mina.core.service.IoHandlerAdapter;
-import org.apache.mina.core.session.IoSession;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.transport.socket.nio.NioSocketConnector;
+import io.netty.channel.Channel;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +40,7 @@ public class SessionInitBypassTest {
 	private AtomicBoolean indicated_in_call;
 
 	private CountDownLatch session_close_latch;
-	private IoSession session;
+	private Channel channel;
 
 
 	@BeforeEach
@@ -101,9 +96,9 @@ public class SessionInitBypassTest {
 		server.close();
 		server = null;
 
-		if ( session != null ) {
-			session.closeNow();
-			session = null;
+		if ( channel != null ) {
+			channel.close();
+			channel = null;
 		}
 	}
 
@@ -114,12 +109,12 @@ public class SessionInitBypassTest {
 		IMessage message =
 			new InvokeIMessage( 0, 1234, null, 4321, new Object[] {}, null, false );
 
-		session = connectAndSend( message );
+		channel = connectAndSend( message );
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
 		assertNull( received_message.get() );
-		assertFalse( session.isConnected() );
+		assertFalse( channel.isActive() );
 	}
 
 	// Test to see if a message is received at all
@@ -127,12 +122,12 @@ public class SessionInitBypassTest {
 	public void testCovertMessage_Ping() throws Exception {
 		IMessage message = new PingIMessage( ( short ) 123 );
 
-		session = connectAndSend( message );
+		channel = connectAndSend( message );
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
 		assertNull( received_message.get() );
-		assertFalse( session.isConnected() );
+		assertFalse( channel.isActive() );
 	}
 
 
@@ -142,7 +137,7 @@ public class SessionInitBypassTest {
 		InvokeIMessage invoke_message = new InvokeIMessage(
 			0, object_id, null, method_id, new Object[] {}, null, false );
 
-		session = connectAndSend( invoke_message );
+		channel = connectAndSend( invoke_message );
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
@@ -161,7 +156,7 @@ public class SessionInitBypassTest {
 		InvokeIMessage invoke_message = new InvokeIMessage(
 			0, object_id, null, method_id, new Object[] {}, null, false );
 
-		session = connectAndSend( invoke_message );
+		channel = connectAndSend( invoke_message );
 
 		session_close_latch.await( 5, TimeUnit.SECONDS );
 
@@ -173,7 +168,7 @@ public class SessionInitBypassTest {
 
 
 
-	private IoSession connectAndSend( IMessage message ) throws InterruptedException {
+	private Channel connectAndSend( IMessage message ) throws InterruptedException {
 		VMID vmid = VMID.createForTesting();
 		IntrepidCodecFactory codec =
 			new IntrepidCodecFactory( vmid, new ThreadLocal<>(),

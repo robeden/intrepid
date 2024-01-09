@@ -1,6 +1,7 @@
 dependencies {
     compile project( ':core' )
 
+    compile 'io.netty:netty-handler:4.1.104.Final'
     compile 'io.netty:netty-transport:4.1.104.Final'
 
     testCompile 'org.mockito:mockito-core:4.3.1'

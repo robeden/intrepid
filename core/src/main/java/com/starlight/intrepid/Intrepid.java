@@ -557,6 +557,13 @@ public class Intrepid {
 		return spi.getServerPort();
 	}
 
+	/**
+	 * Returns the server address in use, if applicable.
+	 */
+	public SocketAddress getServerAddress() {
+		return spi.getServerAddress();
+	}
+
 
 	/**
 	 * Ping a remote connection to see if it's responding.

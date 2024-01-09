@@ -36,8 +36,6 @@ import com.starlight.intrepid.message.IMessage;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -122,6 +120,10 @@ public interface IntrepidDriver {
 	 */
 	Integer getServerPort();
 
+	/**
+	 * Return the server address in use, if applicable.
+	 */
+	SocketAddress getServerAddress();
 
 
 	/**

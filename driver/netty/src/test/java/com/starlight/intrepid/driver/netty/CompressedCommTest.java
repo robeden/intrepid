@@ -23,26 +23,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.starlight.intrepid.driver.mina;
+package com.starlight.intrepid.driver.netty;
 
 import com.starlight.intrepid.CommTest;
 import com.starlight.intrepid.driver.IntrepidDriver;
-import org.junit.jupiter.api.Disabled;
-
-import javax.net.ssl.SSLContext;
 
 
 /**
  *
  */
-@Disabled("Anon protocols are no longer supported :-(")
-public class EncryptedCommTest extends CommTest {
+public class CompressedCommTest extends CommTest {
 	@Override
-	protected IntrepidDriver createSPI( boolean server ) throws Exception {
-		SSLConfig config = new SSLConfig( SSLContext.getDefault() );
-		config.setNeedClientAuth( false );
-		config.setWantClientAuth( false );
-		config.setEnabledCipherSuites( new String[] { "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" } );
-		return new NettyIntrepidDriver( false, config );
+	protected IntrepidDriver createSPI( boolean server ) {
+		return new NettyIntrepidDriver( true, null );
 	}
 }
