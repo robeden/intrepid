@@ -57,7 +57,7 @@ public class OkioBufferDataStringTest {
 
 		AtomicInteger total_read = new AtomicInteger( 0 );
 		for( String s : strings ) {
-			assertEquals( s, data.getString( charset.newDecoder(),
+			assertEquals( s, data.getString( charset, charset.newDecoder(),
 				total_read::addAndGet ) );
 		}
 

@@ -7,7 +7,8 @@ import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
 import com.starlight.intrepid.message.PingIMessage;
 import gnu.trove.map.TIntObjectMap;
-import io.netty.channel.Channel;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -170,31 +171,35 @@ public class SessionInitBypassTest {
 
 	private Channel connectAndSend( IMessage message ) throws InterruptedException {
 		VMID vmid = VMID.createForTesting();
-		IntrepidCodecFactory codec =
-			new IntrepidCodecFactory( vmid, new ThreadLocal<>(),
-				( uuid, s ) -> {
-					throw new AssertionError( "Shouldn't be called" );
-				} );
-		NioSocketConnector connector = new NioSocketConnector();
-		connector.getFilterChain().addLast( "intrepid", new ProtocolCodecFilter( codec ) );
 
-		session_close_latch = new CountDownLatch( 1 );
-		connector.setHandler( new IoHandlerAdapter() {
-			@Override
-			public void messageReceived( IoSession session, Object message )
-				throws Exception {
-				System.out.println( "Received: " + message );
-			}
+		Bootstrap bootstrap = new Bootstrap()
+			.option(ChannelOption.TCP_NODELAY, true)
+			.option(ChannelOption.SO_KEEPALIVE, true)
+			.option(ChannelOption.SO_LINGER, 0)
+			.handler(new ChannelInitializer<>() {
+				@Override
+				protected void initChannel(Channel ch) throws Exception {
+					ch.pipeline().addLast(new NettyIMessageDecoder(vmid, new ThreadLocal<>(),
+						( uuid, s ) -> {
+							throw new AssertionError( "Shouldn't be called" );
+						}));
+					ch.pipeline().addLast(new NettyIMessageEncoder());
+				}
 
-			@Override
-			public void sessionClosed( IoSession session ) throws Exception {
-				System.out.println( "Session closed" );
-				session_close_latch.countDown();
-			}
-		} );
+				@Override
+				public void channelRead(ChannelHandlerContext ctx, Object msg) {
+					System.out.println( "Received: " + msg );
+				}
+
+				@Override
+				public void channelInactive(ChannelHandlerContext ctx) {
+					System.out.println( "Channel closed" );
+					session_close_latch.countDown();
+				}
+			});
 
 
-		ConnectFuture connect_future = connector.connect( new InetSocketAddress(
+		ChannelFuture connect_future = bootstrap.connect( new InetSocketAddress(
 			InetAddress.getLoopbackAddress(), server.getServerPort() ) );
 		assertTrue( connect_future.await( 30, TimeUnit.SECONDS ) );
 
@@ -203,18 +208,18 @@ public class SessionInitBypassTest {
 			.thenReturn( ProtocolVersions.PROTOCOL_VERSION );
 
 
-		IoSession session = connect_future.getSession();
+		Channel channel = connect_future.channel();
 
 		// Need to manually set the SessionInfo, otherwise we can't send this message
 		// due to version checks.
-		session.setAttribute( NettyIntrepidDriver.SESSION_INFO_KEY, mock_info );
+		channel.attr( NettyIntrepidDriver.SESSION_INFO_KEY ).set( mock_info );
 
-		assertNotNull( session );
-		assertTrue( session.isConnected() );
+		assertNotNull( channel );
+		assertTrue( channel.isActive() );
 
-		WriteFuture write_future = session.write( message );
+		ChannelFuture write_future = channel.write( message );
 		assertTrue( write_future.await( 30, TimeUnit.SECONDS ) );
 
-		return session;
+		return channel;
 	}
 }

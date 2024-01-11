@@ -40,6 +40,13 @@ import com.starlight.intrepid.message.SessionCloseIMessage;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.compression.JZlibDecoder;
+import io.netty.handler.codec.compression.JZlibEncoder;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
 import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,7 +125,8 @@ public class NettyIntrepidDriver
 		new IOException( "Timeout during reconnect" );
 
 	private final boolean enable_compression;
-	private final SSLConfig ssl_config;
+	private final SslContext client_ssl_context;
+	private final SslContext server_ssl_context;
 
 	private String connection_type_description;
 
@@ -165,19 +173,19 @@ public class NettyIntrepidDriver
 	 * Create an instance with compression and SSL disabled.
 	 */
 	public NettyIntrepidDriver() {
-		this( false, null );
+		this( false, null, null );
 	}
 
 	/**
 	 * Create an instance with the given parameters.
 	 *
 	 * @param enable_compression		If true, compression will be enabled.
-	 * @param ssl_config				If non-null, SSL will be enabled with the given
-	 * 									parameters.
 	 */
-	public NettyIntrepidDriver(boolean enable_compression, SSLConfig ssl_config ) {
+	public NettyIntrepidDriver(boolean enable_compression,
+							   SslContext client_ssl_context, SslContext server_ssl_context ) {
 		this.enable_compression = enable_compression;
-		this.ssl_config = ssl_config;
+		this.client_ssl_context = client_ssl_context;
+		this.server_ssl_context = server_ssl_context;
 
 		if ( message_send_delay != null ) {
 			LOG.warn( "Message send delay is active: " + message_send_delay + " ms" );
@@ -204,7 +212,7 @@ public class NettyIntrepidDriver
 		this.unit_test_hook = unit_test_hook;
 		this.thread_pool = thread_pool;
 		this.local_vmid = vmid;
-		if ( ssl_config != null ) {
+		if ( client_ssl_context != null ) {
 			if ( enable_compression ) connection_type_description = "SSL/Compress";
 			else connection_type_description = "SSL";
 		}
@@ -212,9 +220,6 @@ public class NettyIntrepidDriver
 			if ( enable_compression ) connection_type_description = "Compress";
 			else connection_type_description = "Plain";
 		}
-
-		IntrepidCodecFactory codec =
-			new IntrepidCodecFactory( vmid, deserialization_context_vmid, vmid_creator );
 
 		SSLContext context;
 		try {
@@ -225,71 +230,37 @@ public class NettyIntrepidDriver
 			LOG.error( "Unable to enable SSL", ex );
 		}
 
+		ChannelHandler handler = new ChannelHandler(deserialization_context_vmid, vmid_creator);
+
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+
 		client_bootstrap = new Bootstrap()
+			.group(workerGroup)
+			.channel(NioSocketChannel.class)	// TODO: change for UDS
 			.attr(LOCAL_INITIATE_KEY, true)
 			.option(ChannelOption.TCP_NODELAY, true)
 			.option(ChannelOption.SO_KEEPALIVE, true)
 			.option(ChannelOption.SO_LINGER, 0)
-			.handler(this);
+			.handler(handler);
 
-		client_bootstrap = new NioSocketConnector();
+		// TODO: What is this? Still apply?
+//		client_bootstrap.getSessionConfig().setThroughputCalculationInterval( 1 );
 
-		if ( ssl_config != null ) {
-			SslFilter ssl_filter = new SslFilter( ssl_config.getSSLContext() );
-			ssl_filter.setWantClientAuth( ssl_config.isWantClientAuth() );
-			ssl_filter.setNeedClientAuth( ssl_config.isNeedClientAuth() );
-			ssl_filter.setEnabledCipherSuites( ssl_config.getEnabledCipherSuites() );
-			ssl_filter.setEnabledProtocols( ssl_config.getEnabledProtocols() );
-			client_bootstrap.getFilterChain().addLast( "ssl", ssl_filter );
-		}
-
-		if ( enable_compression ) {
-			client_bootstrap.getFilterChain().addLast( "compress", new CompressionFilter() );
-		}
-		client_bootstrap.getFilterChain().addLast( "intrepid", new ProtocolCodecFilter( codec ) );
-//		connector.getFilterChain().addLast( "logger", new LoggingFilter() );
-		client_bootstrap.setHandler( this );
-
-		client_bootstrap.getSessionConfig().setThroughputCalculationInterval( 1 );
 
 		if ( server_address != null ) {
+			EventLoopGroup bossGroup = new NioEventLoopGroup(1);
 			server_bootstrap = new ServerBootstrap()
+				.group(bossGroup, workerGroup)
+             	.channel(NioServerSocketChannel.class)	// TODO: change for UDS
 				.childAttr(LOCAL_INITIATE_KEY, false)
 				.option(ChannelOption.TCP_NODELAY, true)
 				.option(ChannelOption.SO_KEEPALIVE, true)
 				.option(ChannelOption.SO_LINGER, 0)
-				.
-
-			server_bootstrap = new NioSocketAcceptor();
-
-			if ( ssl_config != null ) {
-				SslFilter ssl_filter = new SslFilter( ssl_config.getSSLContext() );
-				ssl_filter.setWantClientAuth( ssl_config.isWantClientAuth() );
-				ssl_filter.setNeedClientAuth( ssl_config.isNeedClientAuth() );
-				ssl_filter.setEnabledCipherSuites( ssl_config.getEnabledCipherSuites() );
-				ssl_filter.setEnabledProtocols( ssl_config.getEnabledProtocols() );
-				server_bootstrap.getFilterChain().addLast( "ssl", ssl_filter );
-			}
-
-			if ( enable_compression ) {
-				server_bootstrap.getFilterChain().addLast( "compress", new CompressionFilter() );
-			}
-			server_bootstrap.getFilterChain().addLast( "intrepid",
-				new ProtocolCodecFilter( codec ) );
-//			acceptor.getFilterChain().addLast( "logger", new LoggingFilter() );
-			server_bootstrap.setHandler( this );
-
-			// Disable Nagle's algorithm
-			server_bootstrap.getSessionConfig().setTcpNoDelay( true );
-
-			// Enable keep alive
-			server_bootstrap.getSessionConfig().setKeepAlive( true );
-
-			// Make sure sockets don't linger
-			server_bootstrap.getSessionConfig().setSoLinger( 0 );
+				.handler(new LoggingHandler())
+				.childHandler(handler);
 
 			if (server_address instanceof InetSocketAddress && ((InetSocketAddress) server_address).getPort() <= 0) {
-				server_channel_future = server_bootstrap.bind();
+				server_channel_future = server_bootstrap.bind(0);
 			}
 			else {
 				server_channel_future = server_bootstrap.bind(server_address);
@@ -320,7 +291,7 @@ public class NettyIntrepidDriver
 		reconnect_manager.halt();
 
 		if ( server_bootstrap != null ) {
-			server_channel_future.channel().closeFuture().syncUninterruptibly();
+			server_channel_future.channel().close();
 			server_bootstrap = null;
 		}
 
@@ -554,11 +525,16 @@ public class NettyIntrepidDriver
 
 		ChannelFuture future = client_bootstrap.connect(socket_address);
 		Channel channel = future.channel();
-		channel.attr(VMID_FUTURE_KEY).setIfAbsent(new CompletableFuture<>());
+		CompletableFuture<VMID> vmid_future = new CompletableFuture<>();
+		vmid_future = channel.attr(VMID_FUTURE_KEY).setIfAbsent(vmid_future);
 		channel.attr(CONNECTION_ARGS_KEY).set(args);
 		channel.attr(RECONNECT_TOKEN_KEY).set(reconnect_token);
 		channel.attr(CONTAINER_KEY).set(container);
 		channel.attr(ATTACHMENT_KEY).set(attachment);
+		if (original_vmid != null) {
+			channel.attr(VMID_KEY).setIfAbsent(original_vmid);
+			vmid_future.complete(original_vmid);
+		}
 
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
 			future.cancel(true);
@@ -576,7 +552,6 @@ public class NettyIntrepidDriver
 		boolean abend = true;
 		try {
 			// Wait for the VMID to be set
-			CompletableFuture<VMID> vmid_future = channel.attr( VMID_FUTURE_KEY ).get();
             try {
                 VMID vmid = vmid_future.get(Math.max( 0, timeout_ns - nano_time ), TimeUnit.NANOSECONDS );
 				abend = false;
@@ -1013,8 +988,14 @@ public class NettyIntrepidDriver
 				SocketAddress peer_address = channel.remoteAddress();
 				SocketAddress search_template = null;
 				if ( peer_address != null ) {
-					search_template = new InetSocketAddress(
-						peer_address.getAddress(), peer_address.getPort());
+					if ( peer_address instanceof InetSocketAddress ) {
+						search_template = new InetSocketAddress(
+							((InetSocketAddress) peer_address).getAddress(),
+							((InetSocketAddress) peer_address).getPort());	
+					}
+					else {
+						search_template = peer_address;
+					}
 				}
 				else if ( container != null ){
 					search_template = container.getSocketAddress();
@@ -1449,5 +1430,75 @@ public class NettyIntrepidDriver
 		old_channel.attr( NettyIntrepidDriver.LOCAL_TERMINATE_KEY ).set( Boolean.TRUE );
 
 		CloseHandler.close( old_channel, nice_close_time_ms );
+	}
+
+
+	class ChannelHandler extends ChannelInitializer<Channel> {
+		private final ThreadLocal<VMID> deserialization_context_vmid;
+		private final BiFunction<UUID,String,VMID> vmid_creator;
+
+		public ChannelHandler( @Nonnull ThreadLocal<VMID> deserialization_context_vmid,
+							   @Nonnull BiFunction<UUID,String,VMID> vmid_creator) {
+			this.deserialization_context_vmid = deserialization_context_vmid;
+			this.vmid_creator = vmid_creator;
+		}
+
+		@Override
+		protected void initChannel(Channel c) throws Exception {
+			c.pipeline().addLast(new LoggingHandler());
+
+			SslContext ssl_context = null;
+			if (c.parent() == null && client_ssl_context != null) ssl_context = client_ssl_context;
+			if (c.parent() != null && server_ssl_context != null ) ssl_context = server_ssl_context;
+			if (ssl_context != null) {
+				c.pipeline().addLast(ssl_context.newHandler(c.alloc()));
+			}
+
+			if (enable_compression) {
+				c.pipeline().addLast(new JZlibEncoder());
+				c.pipeline().addLast(new JZlibDecoder());
+			}
+
+			c.pipeline().addLast(new NettyIMessageEncoder());
+			c.pipeline().addLast(new NettyIMessageDecoder(
+				local_vmid, deserialization_context_vmid, vmid_creator));
+		}
+
+		@Override
+		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+			LOG.trace( "NETTY.exceptionCaught: {}", ctx, cause );
+
+			// Make sure unexpected errors are printed
+			if ( cause instanceof RuntimeException || cause instanceof Error ) {
+				LOG.warn( "Unexpected exception caught", cause );
+			}
+			else LOG.debug( "Exception caught", cause );
+
+			super.exceptionCaught(ctx, cause);
+		}
+
+		@Override
+		public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+			NettyIntrepidDriver.this.channelUnregistered(ctx);
+			super.channelUnregistered(ctx);
+		}
+
+		@Override
+		public void channelActive(ChannelHandlerContext ctx) throws Exception {
+			NettyIntrepidDriver.this.channelActive(ctx);
+			super.channelActive(ctx);
+		}
+
+		@Override
+		public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+			NettyIntrepidDriver.this.channelInactive(ctx);
+			super.channelInactive(ctx);
+		}
+
+		@Override
+		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+			NettyIntrepidDriver.this.channelRead(ctx, msg);
+			super.channelRead(ctx, msg);
+		}
 	}
 }

@@ -101,8 +101,8 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 
 		buffer.position( 4 );       // leave space for length
 
-		DataSink length_slice_wrapper = new IoBufferWrapper( length_slice );
-		DataSink buffer_wrapper = new IoBufferWrapper( buffer );
+		DataSink length_slice_wrapper = new IoBufferWrapper(length_slice);
+		DataSink buffer_wrapper = new IoBufferWrapper(buffer);
 		if ( message.getType() == IMessageType.SESSION_INIT ) {
 			MessageEncoder.encodeSessionInit( ( SessionInitIMessage ) message,
 				length_slice_wrapper, buffer_wrapper );
@@ -167,7 +167,7 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 	}
 
 
-	private class IoBufferWrapper implements DataSink {
+	private static class IoBufferWrapper implements DataSink {
 		private final IoBuffer delegate;
 
 		IoBufferWrapper( IoBuffer delegate ) {

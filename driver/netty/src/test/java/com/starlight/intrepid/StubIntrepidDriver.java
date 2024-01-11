@@ -36,7 +36,6 @@ import com.starlight.intrepid.message.IMessage;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -89,6 +88,11 @@ public class StubIntrepidDriver implements IntrepidDriver {
 
 	@Override
 	public Integer getServerPort() {
+		return null;
+	}
+
+	@Override
+	public SocketAddress getServerAddress() {
 		return null;
 	}
 

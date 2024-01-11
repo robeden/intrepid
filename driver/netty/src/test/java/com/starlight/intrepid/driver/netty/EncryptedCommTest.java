@@ -27,22 +27,28 @@ package com.starlight.intrepid.driver.netty;
 
 import com.starlight.intrepid.CommTest;
 import com.starlight.intrepid.driver.IntrepidDriver;
-import org.junit.jupiter.api.Disabled;
-
-import javax.net.ssl.SSLContext;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 
 /**
  *
  */
-@Disabled("Anon protocols are no longer supported :-(")
 public class EncryptedCommTest extends CommTest {
 	@Override
 	protected IntrepidDriver createSPI( boolean server ) throws Exception {
-		SSLConfig config = new SSLConfig( SSLContext.getDefault() );
-		config.setNeedClientAuth( false );
-		config.setWantClientAuth( false );
-		config.setEnabledCipherSuites( new String[] { "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" } );
-		return new NettyIntrepidDriver( false, config );
+		SslContext client_ctx = SslContextBuilder
+			.forClient()
+			.trustManager(InsecureTrustManagerFactory.INSTANCE)
+			.build();
+
+		SelfSignedCertificate ssc = new SelfSignedCertificate();
+		SslContext server_ctx = SslContextBuilder
+			.forServer(ssc.certificate(), ssc.privateKey())
+			.build();
+
+		return new NettyIntrepidDriver( false, client_ctx, server_ctx );
 	}
 }

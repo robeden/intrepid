@@ -35,6 +35,6 @@ import com.starlight.intrepid.driver.IntrepidDriver;
 public class CompressedCommTest extends CommTest {
 	@Override
 	protected IntrepidDriver createSPI( boolean server ) {
-		return new NettyIntrepidDriver( true, null );
+		return new NettyIntrepidDriver( true, null, null );
 	}
 }

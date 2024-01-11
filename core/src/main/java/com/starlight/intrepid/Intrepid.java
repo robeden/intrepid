@@ -894,10 +894,18 @@ public class Intrepid {
 		public Intrepid build() throws IOException {
 			if ( driver == null ) {
 				try {
-					driver = ( IntrepidDriver ) Class.forName(
-						"com.starlight.intrepid.driver.mina.MINAIntrepidDriver" )
-						.getConstructor()
-						.newInstance();
+					try {
+						driver = (IntrepidDriver) Class.forName(
+								"com.starlight.intrepid.driver.mina.MINAIntrepidDriver")
+							.getConstructor()
+							.newInstance();
+					}
+					catch( ClassNotFoundException ex ) {
+						driver = (IntrepidDriver) Class.forName(
+								"com.starlight.intrepid.driver.netty.NettyIntrepidDriver")
+							.getConstructor()
+							.newInstance();
+					}
 				}
 				catch( Exception ex ) {
 					throw new UnsupportedOperationException( "Unable to find a default " +
