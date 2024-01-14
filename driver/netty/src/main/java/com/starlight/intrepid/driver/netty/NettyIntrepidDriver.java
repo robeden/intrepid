@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.driver.netty;
 
+import com.logicartisan.common.core.thread.ObjectSlot;
 import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.ConnectionListener;
@@ -32,8 +33,10 @@ import com.starlight.intrepid.PerformanceListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
-import com.starlight.intrepid.driver.*;
-import com.starlight.intrepid.exception.ConnectionFailureException;
+import com.starlight.intrepid.driver.InboundMessageHandler;
+import com.starlight.intrepid.driver.IntrepidDriver;
+import com.starlight.intrepid.driver.SessionInfo;
+import com.starlight.intrepid.driver.UnitTestHook;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
 import com.starlight.intrepid.message.SessionCloseIMessage;
@@ -43,8 +46,10 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.EncoderException;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.JZlibEncoder;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.util.AttributeKey;
@@ -66,15 +71,13 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 
 /**
  *
  */
-public class NettyIntrepidDriver
-	implements IntrepidDriver, ChannelInboundHandler, ChannelOutboundHandler {
+public class NettyIntrepidDriver implements IntrepidDriver {
 
 	private static final Logger LOG = LoggerFactory.getLogger( NettyIntrepidDriver.class );
 
@@ -119,7 +122,7 @@ public class NettyIntrepidDriver
 	// VMID object for the session.
 	static final AttributeKey<VMID> VMID_KEY = AttributeKey.newInstance(".vmid");
 	// Slot for VMID to be set into when opening a connection as a client.
-	static final AttributeKey<CompletableFuture<VMID>> VMID_FUTURE_KEY = AttributeKey.newInstance(".vmid_future");
+	static final AttributeKey<ObjectSlot<VmidOrBust>> VMID_SLOT_KEY = AttributeKey.newInstance(".vmid_future");
 
 	private static final IOException RECONNECT_TIMEOUT_EXCEPTION =
 		new IOException( "Timeout during reconnect" );
@@ -140,12 +143,13 @@ public class NettyIntrepidDriver
 	private ServerBootstrap server_bootstrap;
 	private ChannelFuture server_channel_future;
 	private Bootstrap client_bootstrap;
+	private EventLoopGroup worker_group;
+	private EventLoopGroup boss_group;
 
 	// Lock for session_map, outbound_session_map and vmid_remap
 	private final Lock map_lock = new ReentrantLock();
 
-	private final Map<VMID, ChannelContainer> session_map =
-		new HashMap<>();
+	private final Map<VMID, ChannelContainer> session_map = new HashMap<>();
 
 	// Map containing information about outbound_session_map sessions (sessions opened
 	// locally). There session are managed for automatic reconnection.
@@ -232,12 +236,13 @@ public class NettyIntrepidDriver
 
 		ChannelHandler handler = new ChannelHandler(deserialization_context_vmid, vmid_creator);
 
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        worker_group = new NioEventLoopGroup();
 
 		client_bootstrap = new Bootstrap()
-			.group(workerGroup)
+			.group(worker_group)
 			.channel(NioSocketChannel.class)	// TODO: change for UDS
 			.attr(LOCAL_INITIATE_KEY, true)
+
 			.option(ChannelOption.TCP_NODELAY, true)
 			.option(ChannelOption.SO_KEEPALIVE, true)
 			.option(ChannelOption.SO_LINGER, 0)
@@ -248,15 +253,17 @@ public class NettyIntrepidDriver
 
 
 		if ( server_address != null ) {
-			EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+			boss_group = new NioEventLoopGroup(1);
 			server_bootstrap = new ServerBootstrap()
-				.group(bossGroup, workerGroup)
+				.group(boss_group, worker_group)
              	.channel(NioServerSocketChannel.class)	// TODO: change for UDS
 				.childAttr(LOCAL_INITIATE_KEY, false)
 				.option(ChannelOption.TCP_NODELAY, true)
 				.option(ChannelOption.SO_KEEPALIVE, true)
 				.option(ChannelOption.SO_LINGER, 0)
-				.handler(new LoggingHandler())
+				.handler(new LoggingHandler("<<HANDLER>>", LogLevel.INFO))
+//				.childHandler(new LoggingHandler("<<<CHILD>>>", LogLevel.INFO));
+//				.handler(handler)
 				.childHandler(handler);
 
 			if (server_address instanceof InetSocketAddress && ((InetSocketAddress) server_address).getPort() <= 0) {
@@ -265,7 +272,13 @@ public class NettyIntrepidDriver
 			else {
 				server_channel_future = server_bootstrap.bind(server_address);
 			}
-		}
+            try {
+                server_channel_future.sync();
+            }
+			catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
+        }
 
 		reconnect_manager.start();
 	}
@@ -291,45 +304,40 @@ public class NettyIntrepidDriver
 		reconnect_manager.halt();
 
 		if ( server_bootstrap != null ) {
-			server_channel_future.channel().close();
+			server_channel_future.channel().close().syncUninterruptibly();
 			server_bootstrap = null;
 		}
 
 		// Shut down all sessions. Try to do it nicely, but don't wait too long.
+		List<ChannelContainer> containers;
 		map_lock.lock();
 		try {
-			List<ChannelFuture> futures = new ArrayList<>( session_map.size() );
-
-			for( ChannelContainer container : session_map.values() ) {
-				container.setCanceled();        // cancel reconnector
-
-				Channel channel = container.getChannel();
-				if ( channel != null ) {
-					// Indicate that it was terminated locally.
-					channel.attr( LOCAL_TERMINATE_KEY ).set( Boolean.TRUE );
-
-					SessionInfo info = channel.attr( SESSION_INFO_KEY ).get();
-
-					SessionCloseIMessage message = new SessionCloseIMessage();
-					channel.write( message );
-					performance_listener.messageSent(
-						info == null ? null : info.getVMID(), message );
-					futures.add( channel.flush().close() );
-				}
-			}
-
-			for( ChannelFuture future : futures ) {
-				future.awaitUninterruptibly( 100 );
-				if ( !future.isDone() ) {
-					ChannelFuture immediate_future = future.channel().close().syncUninterruptibly();
-					immediate_future.awaitUninterruptibly( 500 );
-				}
-			}
+			containers = new ArrayList<>(session_map.values());
 		}
 		finally {
 			map_lock.unlock();
 		}
 
+		containers.forEach( container -> {
+			container.setCanceled();        // cancel reconnector
+
+			Channel channel = container.getChannel();
+			if ( channel == null ) return;
+
+			// Indicate that it was terminated locally.
+			channel.attr( LOCAL_TERMINATE_KEY ).set( Boolean.TRUE );
+
+			SessionInfo info = channel.attr( SESSION_INFO_KEY ).get();
+
+			SessionCloseIMessage message = new SessionCloseIMessage();
+			channel.writeAndFlush( message ).addListener(l -> channel.close());
+			performance_listener.messageSent(
+				info == null ? null : info.getVMID(), message );
+			thread_pool.schedule(() -> channel.close(), 1, TimeUnit.SECONDS);
+		});
+
+		if (boss_group != null) boss_group.shutdownGracefully();
+		if (worker_group != null) worker_group.shutdownGracefully();
 
 		if ( client_bootstrap != null ) {
 			client_bootstrap = null;
@@ -523,21 +531,19 @@ public class NettyIntrepidDriver
 		// NOTE: slot initializer ensures expected attributes are present
         LOG.trace( "MINA.inner_connection: {}", socket_address );
 
-		ChannelFuture future = client_bootstrap.connect(socket_address);
-		Channel channel = future.channel();
-		CompletableFuture<VMID> vmid_future = new CompletableFuture<>();
-		vmid_future = channel.attr(VMID_FUTURE_KEY).setIfAbsent(vmid_future);
-		channel.attr(CONNECTION_ARGS_KEY).set(args);
-		channel.attr(RECONNECT_TOKEN_KEY).set(reconnect_token);
-		channel.attr(CONTAINER_KEY).set(container);
-		channel.attr(ATTACHMENT_KEY).set(attachment);
-		if (original_vmid != null) {
-			channel.attr(VMID_KEY).setIfAbsent(original_vmid);
-			vmid_future.complete(original_vmid);
-		}
+		ObjectSlot<VmidOrBust> vmid_slot = new ObjectSlot<>();
+		ChannelFuture future = client_bootstrap.clone()
+			.attr(CONNECTION_ARGS_KEY, args)
+			.attr(RECONNECT_TOKEN_KEY, reconnect_token)
+			.attr(CONTAINER_KEY, container)
+			.attr(ATTACHMENT_KEY, attachment)
+			.attr(CONTAINER_KEY, new ChannelContainer(socket_address, args))
+			.attr(VMID_SLOT_KEY, vmid_slot)
+			.connect(socket_address);
 
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
 			future.cancel(true);
+			future.channel().close();
 			return null;
 		}
 
@@ -549,11 +555,23 @@ public class NettyIntrepidDriver
 			else throw new IOException( "Unable to connect due to error", t );
 		}
 
+		Channel channel = future.channel();
+
 		boolean abend = true;
 		try {
 			// Wait for the VMID to be set
             try {
-                VMID vmid = vmid_future.get(Math.max( 0, timeout_ns - nano_time ), TimeUnit.NANOSECONDS );
+                VmidOrBust vob = vmid_slot.waitForValue(
+					TimeUnit.NANOSECONDS.toMillis(Math.max( 0, timeout_ns - nano_time )));
+				if (vob == null) {	// timeout
+					// Force the session closed to make sure we don't get stuck
+					channel.attr( LOCAL_TERMINATE_KEY ).set( Boolean.TRUE );
+					CloseHandler.close( channel );
+					return null;
+				}
+
+				VMID vmid = vob.get();
+
 				abend = false;
 				return vmid;
             }
@@ -562,13 +580,9 @@ public class NettyIntrepidDriver
 				if ( t instanceof IOException ) throw ( IOException ) t;
 				else throw new IOException( "Unable to connect due to error", t );
             }
-			catch (TimeoutException e) {
-				// Force the session closed to make sure we don't get stuck
-				channel.attr( LOCAL_TERMINATE_KEY ).set( Boolean.TRUE );
-				CloseHandler.close( channel );
-
-				return null;
-            }
+			catch(Throwable th ) {
+				throw new IOException("Unable to connect due to error", th);
+			}
 		}
 		finally {
 			// If we abnormally exit and have a session, close it
@@ -710,16 +724,20 @@ public class NettyIntrepidDriver
 //		System.err.println( "Sending message to " + destination + ": " + message );
 
 		// Write the message and wait for it to be sent.
-		ChannelFuture future = channel.write( message );
-		LOG.trace( ">>>  return from session.write: {}  Waiting...", message_id );
-		try {
-			future.await();
+		LOG.trace(">>> write: {}", message_id);
+		ChannelFuture future = channel.writeAndFlush(message);
+        LOG.trace( ">>>  return from session.write: {}  Waiting...", message_id );
+        try {
+            future = future.sync();
+        }
+		catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
+		catch( EncoderException ex ) {
+			if ( ex.getCause() instanceof IOException ) throw ( IOException ) ex.getCause();
+			else throw new IOException( ex.getCause() );
 		}
-		catch( InterruptedException ex ) {
-			throw new InterruptedIOException(
-				"Interrupted while waiting for message write" );
-		}
-		LOG.trace( ">>> return from future.await: {}", message_id );
+		LOG.trace( ">>> return from future.sync: {}", message_id );
 
 		Throwable exception = future.cause();
 		if ( exception != null ) {
@@ -734,449 +752,14 @@ public class NettyIntrepidDriver
 
 	@Override
 	public Integer getServerPort() {
-		SocketAddress address = server_channel_future.channel().localAddress();
+		if (server_channel_future == null) return null;
+		Channel channel = server_channel_future.channel();
+		if (channel == null) return null;
+		SocketAddress address = channel.localAddress();
 		if ( address == null ) return null;
 		if ( !( address instanceof InetSocketAddress ) ) return null;
 		return ( ( InetSocketAddress ) address ).getPort();
 	}
-
-
-
-	@Override
-	public void exceptionCaught(ChannelHandlerContext context, Throwable cause) throws Exception {
-        LOG.trace( "NETTY.exceptionCaught: {}", context, cause );
-
-		// Make sure unexpected errors are printed
-		if ( cause instanceof RuntimeException || cause instanceof Error ) {
-			LOG.warn( "Unexpected exception caught", cause );
-		}
-		else LOG.debug( "Exception caught", cause );
-	}
-
-	@Override
-	public void channelActive(ChannelHandlerContext context) throws Exception {
-        LOG.trace( "NETTY.channelActive: {}", context );
-
-		Channel channel = context.channel();
-
-		// Make sure the session has a container attached
-		ChannelContainer container = channel.attr(CONTAINER_KEY).get();
-		if ( container == null ) {
-			InetSocketAddress address = ( InetSocketAddress ) channel.remoteAddress();
-			container = new ChannelContainer(
-				new InetSocketAddress( address.getAddress(), address.getPort() ), null );
-			channel.attr(CONTAINER_KEY).set( container );
-
-			// Install a VMID future
-			channel.attr(VMID_FUTURE_KEY).set( new CompletableFuture<>() );
-		}
-
-		// WARNING: Don't set session in container here because the session isn't fully
-		//          initialized. It needs to be done when the VMID is set because that
-		//          indicates that a full handshake has happened. Previously I did it here
-		//          and that cause a race condition on reconnection because the client
-		//          could think the channel was ready and send a message before the
-		//          server was ready, so it would be unable to send a response.
-
-		// Install the SessionInfo wrapper
-		ChannelInfoWrapper session_info_wrapper = new ChannelInfoWrapper( channel,
-			session_map, outbound_session_map, vmid_remap, map_lock, connection_listener,
-			connection_type_description, local_vmid );
-		channel.attr(SESSION_INFO_KEY).set(session_info_wrapper);
-
-		IMessage message;
-		try {
-			message = message_handler.sessionOpened( session_info_wrapper,
-				channel.parent() == null,		// locally initiated does not have a parent
-				channel.attr(CONNECTION_ARGS_KEY).get() );
-		}
-		catch ( CloseSessionIndicator close_indicator ) {
-			// If there's a message, write it first
-			if ( close_indicator.getReasonMessage() != null ) {
-				IMessage close_message = close_indicator.getReasonMessage();
-				channel.write( close_message );
-				performance_listener.messageSent( session_info_wrapper.getVMID(),
-					close_message );
-			}
-
-			CloseHandler.close( channel );
-			return;
-		}
-
-		if ( message != null ) {
-			channel.write( message );
-			performance_listener.messageSent( session_info_wrapper.getVMID(), message );
-		}
-	}
-
-	@Override
-	public void channelInactive(ChannelHandlerContext context) throws Exception {
-        LOG.trace( "NETTY.channelInactive: {}", context );
-
-		Channel channel = context.channel();
-
-		LOG.debug( "Session closed: {}", channel.attr( VMID_KEY ).get() );
-
-		Boolean locally_terminated = channel.attr( LOCAL_TERMINATE_KEY ).get();
-		if ( locally_terminated == null ) locally_terminated = Boolean.FALSE;
-
-		Boolean locally_initiated = channel.attr( LOCAL_INITIATE_KEY ).get();
-		if ( locally_initiated == null ) locally_initiated = Boolean.FALSE;
-
-		final ChannelContainer container = channel.attr( CONTAINER_KEY ).get();
-		if ( container != null ) container.setChannel( null );
-
-		final VMID vmid = channel.attr( VMID_KEY ).get();
-		final Object attachment = channel.attr( ATTACHMENT_KEY ).get();
-
-		// Kill the session reconnect token timer, if it exists
-		ScheduledFuture<?> regen_timer = channel.attr( RECONNECT_TOKEN_REGENERATION_TIMER ).get();
-		if ( regen_timer != null ) {
-			regen_timer.cancel( true );
-		}
-
-//		// If it has a VMID associated, see if it's the main session for the connection.
-//		// If it isn't, ignore the close. This is to resolve an issue with (delayed)
-//		// session close notifications that blow out the active session. See the
-//		// MultiConnectTest.testSimultaneousConnections unit test.
-//		if ( vmid != null ) {
-//			map_lock.lock();
-//			try {
-//				SessionContainer active_container = session_map.get( vmid );
-//				if ( active_container != null &&
-//					!active_container.getSession().equals( session ) ) {
-//
-//					System.out.println( "Close of session (" + session +
-//						") ignored because it isn't the active session (" +
-//						active_container.getSession() + ") for " + vmid );
-//					if ( LOG.isDebugEnabled() ) {
-//						LOG.debug( "Close of session ({}) ignored because it isn't the " +
-//							"active session ({}) for {}",
-//							new Object[] { session, active_container.getSession(), vmid } );
-//					}
-//					return;
-//				}
-//			}
-//			finally {
-//				map_lock.unlock();
-//			}
-//		}
-
-
-		// Clean up the outbound session map
-		if ( container != null && container.getSocketAddress() != null ) {
-			map_lock.lock();
-			try {
-				outbound_session_map.remove( container.getSocketAddress() );
-			}
-			finally {
-				map_lock.unlock();
-			}
-		}
-
-		// If it's locally initiated, make sure there isn't a caller waiting on it
-		if (locally_initiated) {
-			CompletableFuture<VMID> vmid_future = channel.attr( VMID_FUTURE_KEY ).get();
-			if ( vmid_future != null && !vmid_future.isDone() ) {
-				vmid_future.completeExceptionally(
-					new IOException( "Session unexpectedly closed" ) );
-
-				// No need to notify listeners or anything since it was never an
-				// established connection.
-				return;
-			}
-		}
-
-		boolean reconnect = message_handler.sessionClosed(
-			channel.attr( SESSION_INFO_KEY ).get(),
-            locally_initiated, locally_terminated,
-			container != null && vmid != null );
-        if ( LOG.isDebugEnabled() ) {
-            LOG.debug( "MINA.sessionClosed (stage 2): {} session_info: {} " +
-                "locally_initiated: {} locally_terminated: {} vmid: {} attachment: {} " +
-                "RECONNECT: {} container: {}", channel,
-	            channel.attr( SESSION_INFO_KEY ).get(),
-				locally_initiated,
-	            locally_terminated, vmid, attachment, reconnect,
-	            container );
-        }
-
-		// If it was not locally terminated, notify listeners. Otherwise, this has already
-		// been done.
-		boolean send_close_updates = false;
-		if ( !locally_terminated && vmid != null ) {
-			SocketAddress address = channel.remoteAddress();
-			if ( address == null && container != null ) {
-				address = container.getSocketAddress();
-			}
-
-			if ( address != null ) {
-				connection_listener.connectionClosed(address, local_vmid, vmid, attachment,
-						reconnect, channel.attr(USER_CONTEXT_KEY).get());
-				send_close_updates = true;
-			}
-			else {
-				LOG.warn( "Unable to notify listeners that connection closed, remote address unknown: {}",
-					channel.attr( VMID_KEY ).get() );
-			}
-		}
-
-		if ( reconnect ) {
-			// TODO: make sure this is the "current" connection for this host
-			map_lock.lock();
-			try {
-				ChannelContainer test_container = session_map.get( vmid );
-				boolean should_really_reconnect;
-				//noinspection SimplifiableIfStatement
-				if ( test_container == null ) should_really_reconnect = true;
-				else {
-					should_really_reconnect = test_container == container;
-				}
-
-				SocketAddress socket_address =
-					container == null ? null : container.getSocketAddress();
-				if ( should_really_reconnect && container != null &&
-					!container.isCanceled() && socket_address != null ) {
-
-					// Reset the VMIDFuture since this is used to determine when a new
-					// connection is established (and the VMID might have changed).
-					channel.attr( VMID_FUTURE_KEY ).set( new CompletableFuture<>() );
-
-					// Schedule a retry (will pretty much run immediately)
-					ReconnectRunnable runnable = new ReconnectRunnable( container, vmid,
-						attachment, socket_address,
-                        channel.attr( RECONNECT_TOKEN_KEY ).get());
-					LOG.debug( "ReconnectRunnable added to delay queue: {}", runnable );
-					reconnect_delay_queue.add( runnable );
-					return;
-				}
-				else if ( send_close_updates ) {
-					SocketAddress address = channel.remoteAddress();
-					if ( address == null && container != null ) {
-						address = container.getSocketAddress();
-					}
-
-					if ( address != null ) {
-						connection_listener.connectionClosed(address, local_vmid, vmid,
-							attachment, false, channel.attr(USER_CONTEXT_KEY).get());
-					}
-					// fall through...
-				}
-			}
-			finally {
-				map_lock.unlock();
-			}
-		}
-
-		// Clean up the map, if the session being closed is the one we currently know
-		// about for the VMID. If the session for the VMID is different, then don't
-		// mess with the map.
-		map_lock.lock();
-		try {
-			ChannelContainer test_container = session_map.get( vmid );
-			if ( test_container != null && test_container == container ) {
-				session_map.remove( vmid );
-
-				if ( LOG.isDebugEnabled() ) {
-					LOG.debug( "Removed {} from session_map due to close of session " +
-						"({}) , container session ({})", vmid, channel,
-						test_container.getChannel() );
-				}
-			}
-
-			if (locally_initiated) {
-				SocketAddress peer_address = channel.remoteAddress();
-				SocketAddress search_template = null;
-				if ( peer_address != null ) {
-					if ( peer_address instanceof InetSocketAddress ) {
-						search_template = new InetSocketAddress(
-							((InetSocketAddress) peer_address).getAddress(),
-							((InetSocketAddress) peer_address).getPort());	
-					}
-					else {
-						search_template = peer_address;
-					}
-				}
-				else if ( container != null ){
-					search_template = container.getSocketAddress();
-				}
-
-				if ( search_template != null ) {
-					test_container = outbound_session_map.get(search_template);
-					if (test_container != null && test_container == container) {
-						outbound_session_map.remove(search_template);
-					}
-				}
-			}
-		}
-		finally {
-			map_lock.unlock();
-		}
-	}
-
-	@Override
-	public void channelRead(ChannelHandlerContext context, Object message) throws Exception {
-		LOG.trace( "channelRead: {} - {}", message, context );
-
-		if ( message == null ) return;
-
-		Channel channel = context.channel();
-
-		final SessionInfo session_info = channel.attr( SESSION_INFO_KEY ).get();
-
-		final boolean locally_initiated_session = Optional.ofNullable(channel.attr(LOCAL_INITIATE_KEY).get())
-            .orElse(Boolean.FALSE);
-
-		final Consumer<CloseSessionIndicator> close_handler = close_indicator -> {
-			thread_pool.execute( () -> {
-				// If there's a message, write it first
-				try {
-					if ( close_indicator.getReasonMessage() != null ) {
-						IMessage close_message = close_indicator.getReasonMessage();
-						ChannelFuture future = channel.write(close_message);
-
-						performance_listener.messageSent( session_info.getVMID(),
-							close_message );
-
-						// Wait (a bit) for the message to be sent
-						future.awaitUninterruptibly( 2000 );
-
-						ThreadKit.sleep( 500 );	// for good measure
-					}
-				}
-				catch( Exception ex ) {
-					LOG.info( "Error writing close message to {}",
-						session_info.getVMID(), ex );
-				}
-
-				// If this is a locally opened connection, make sure we flag the error
-				// so the caller isn't left waiting.
-				CompletableFuture<VMID> vmid_future = channel.attr( VMID_FUTURE_KEY ).get();
-				if ( vmid_future != null ) {
-					if ( close_indicator.getServerReasonMessage() != null ) {
-						IOException exception;
-						if ( close_indicator.isAuthFailure() ) {
-							exception = new ConnectionFailureException(
-								close_indicator.getServerReasonMessage().orElse( null ) );
-						}
-						else {
-							exception = new IOException(
-								close_indicator.getServerReasonMessage().orElse( null ) );
-						}
-
-						vmid_future.completeExceptionally( exception );
-					}
-					else vmid_future.completeExceptionally( new IOException( "Session closed" ) );
-				}
-
-				CloseHandler.close( channel );
-			} );
-		};
-
-
-		try {
-			message_handler.validateReceivedMessage( session_info,
-				( IMessage ) message, locally_initiated_session );
-		}
-		catch( CloseSessionIndicator close_indicator ) {
-			performance_listener.invalidMessageReceived( session_info.getRemoteAddress(),
-				( IMessage ) message );
-
-			close_handler.accept( close_indicator );
-			return;
-		}
-
-
-		performance_listener.messageReceived( session_info.getVMID(),
-			( IMessage ) message );
-
-
-		// See if there's a test hook that would like to drop the message
-		if ( unit_test_hook != null && unit_test_hook.dropMessageReceive(
-			session_info.getVMID(), ( IMessage ) message ) ) {
-
-			LOG.info( "Dropping message receive per UnitTestHook instructions: {} from {}",
-				message, session_info.getVMID() );
-			return;
-		}
-
-		final IMessage response;
-		try {
-			try {
-				response = message_handler.receivedMessage( session_info,
-					( IMessage ) message, locally_initiated_session );
-			}
-			catch( ClassCastException ex ) {
-				throw new CloseSessionIndicator( new SessionCloseIMessage(
-					"Invalid message type: " + message.getClass().getName(),
-					false ) );
-			}
-		}
-		catch ( final CloseSessionIndicator close_indicator ) {
-			close_handler.accept( close_indicator );
-			return;
-		}
-
-		// If there was a response, write it
-		if ( response != null ) {
-			channel.write( response );
-			performance_listener.messageSent( session_info.getVMID(), response );
-		}
-	}
-
-
-	@Override
-	public void channelRegistered(ChannelHandlerContext ctx) {
-        LOG.trace( "channelRegistered: {}", ctx );
-		ctx.channel().attr( CREATED_TIME_KEY ).set( System.nanoTime());
-	}
-
-	@Override
-	public void channelUnregistered(ChannelHandlerContext ctx) {}
-
-	@Override
-	public void channelReadComplete(ChannelHandlerContext ctx) {}
-
-	@Override
-	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {}
-
-	@Override
-	public void channelWritabilityChanged(ChannelHandlerContext ctx) {}
-
-
-	@Override
-	public void bind(ChannelHandlerContext ctx, SocketAddress localAddress,
-					 ChannelPromise promise) throws Exception {}
-
-	@Override
-	public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress,
-						SocketAddress localAddress, ChannelPromise promise) throws Exception {}
-
-	@Override
-	public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) {}
-
-	@Override
-	public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {}
-
-	@Override
-	public void deregister(ChannelHandlerContext ctx, ChannelPromise promise) {}
-
-	@Override
-	public void read(ChannelHandlerContext ctx) throws Exception {}
-
-	@Override
-	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {}
-
-	@Override
-	public void flush(ChannelHandlerContext ctx) {}
-
-
-	@Override
-	public void handlerAdded(ChannelHandlerContext ctx) {}
-
-	@Override
-	public void handlerRemoved(ChannelHandlerContext ctx) {}
-
 
 	@Override
 	public void setMessageSendDelay( Long delay_ms ) {
@@ -1226,8 +809,7 @@ public class NettyIntrepidDriver
 			if ( active_reconnections.putIfAbsent(
 				socket_address, socket_address) != null ) {
 
-				LOG.debug( "ReconnectRunnable ({}) exiting because one is already " +
-					"active: " + active_reconnections );
+				LOG.debug( "ReconnectRunnable exiting because one is already active: {}", active_reconnections );
 				return;
 			}
 
@@ -1346,10 +928,7 @@ public class NettyIntrepidDriver
 		@Override
 		public int compareTo( @Nonnull Delayed o ) {
 			ReconnectRunnable other = ( ReconnectRunnable ) o;
-
-			if ( next_run_time < other.next_run_time ) return -1;
-			else if ( next_run_time == other.next_run_time ) return 0;
-			else return 1;
+            return Long.compare(next_run_time, other.next_run_time);
 		}
 
         @Override
@@ -1360,7 +939,14 @@ public class NettyIntrepidDriver
     }
 
 
-	private class ReconnectManager extends Thread {
+	@FunctionalInterface
+	interface ReconnectRunnableCreator {
+		ReconnectRunnable create(ChannelContainer container, VMID original_vmid,
+								 Object attachment, SocketAddress socket_address, Serializable reconnect_token);
+	}
+
+
+	class ReconnectManager extends Thread {
 		private volatile boolean keep_going = true;
 
 		ReconnectManager() {
@@ -1445,23 +1031,35 @@ public class NettyIntrepidDriver
 
 		@Override
 		protected void initChannel(Channel c) throws Exception {
-			c.pipeline().addLast(new LoggingHandler());
+			ChannelPipeline pipe = c.pipeline();
 
 			SslContext ssl_context = null;
 			if (c.parent() == null && client_ssl_context != null) ssl_context = client_ssl_context;
 			if (c.parent() != null && server_ssl_context != null ) ssl_context = server_ssl_context;
 			if (ssl_context != null) {
-				c.pipeline().addLast(ssl_context.newHandler(c.alloc()));
+				pipe.addLast(ssl_context.newHandler(c.alloc()));
 			}
 
 			if (enable_compression) {
-				c.pipeline().addLast(new JZlibEncoder());
-				c.pipeline().addLast(new JZlibDecoder());
+				pipe.addLast(new JZlibEncoder());
+				pipe.addLast(new JZlibDecoder());
 			}
 
-			c.pipeline().addLast(new NettyIMessageEncoder());
-			c.pipeline().addLast(new NettyIMessageDecoder(
-				local_vmid, deserialization_context_vmid, vmid_creator));
+			String header = server_bootstrap == null ? "<<CLIENT " : "<<SERVER ";
+//			pipe.addLast(new LoggingHandler(header + "PIPELINE 1>>", LogLevel.INFO));
+			pipe.addLast(new NettyIMessageEncoder());
+			pipe.addLast(new NettyIMessageDecoder(local_vmid, deserialization_context_vmid, vmid_creator));
+
+//			pipe.addLast(new LoggingHandler(header + "PIPELINE 3>>", LogLevel.INFO));
+
+			pipe.addLast(new ProcessListener(session_map, outbound_session_map, vmid_remap, map_lock, connection_listener,
+					connection_type_description, local_vmid, message_handler, performance_listener,
+					reconnect_delay_queue, thread_pool, unit_test_hook,
+					ReconnectRunnable::new));
+//			pipe.addLast(new LoggingHandler(header + "PIPELINE 4>>", LogLevel.INFO));
+
+//			c.pipeline().addLast(new LoggingHandler("<<PIPELINE>>", LogLevel.INFO));
+
 		}
 
 		@Override
@@ -1475,30 +1073,6 @@ public class NettyIntrepidDriver
 			else LOG.debug( "Exception caught", cause );
 
 			super.exceptionCaught(ctx, cause);
-		}
-
-		@Override
-		public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-			NettyIntrepidDriver.this.channelUnregistered(ctx);
-			super.channelUnregistered(ctx);
-		}
-
-		@Override
-		public void channelActive(ChannelHandlerContext ctx) throws Exception {
-			NettyIntrepidDriver.this.channelActive(ctx);
-			super.channelActive(ctx);
-		}
-
-		@Override
-		public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-			NettyIntrepidDriver.this.channelInactive(ctx);
-			super.channelInactive(ctx);
-		}
-
-		@Override
-		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-			NettyIntrepidDriver.this.channelRead(ctx, msg);
-			super.channelRead(ctx, msg);
 		}
 	}
 }

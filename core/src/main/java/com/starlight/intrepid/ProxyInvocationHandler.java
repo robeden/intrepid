@@ -239,8 +239,7 @@ class ProxyInvocationHandler implements InvocationHandler, Externalizable {
 				catch( NewIDIndicator id ) {
 					if ( LOG.isDebugEnabled() ) {
 						LOG.debug( "New IDs received: {} -> {}  and  {} -> {}", vmid,
-							id.getNewVMID(), Integer.valueOf( object_id ),
-							Integer.valueOf( id.getNewObjectID() ) );
+							id.getNewVMID(), object_id, id.getNewObjectID());
 					}
 
 					if ( id.getNewVMID() != null ) vmid = id.getNewVMID();

@@ -47,7 +47,7 @@ public class NettyIMessageDecoder extends ByteToMessageDecoder {
 		try {
 			int position_before = in.readerIndex();
 
-			SessionInfo session_info = ( SessionInfo ) ctx.attr( SESSION_INFO_KEY );
+			SessionInfo session_info = ctx.attr( SESSION_INFO_KEY ).get();
 			final Byte protocol_version = session_info.getProtocolVersion();
 
 			IMessage message = MessageDecoder.decode( new ByteBufWrapper( in ),

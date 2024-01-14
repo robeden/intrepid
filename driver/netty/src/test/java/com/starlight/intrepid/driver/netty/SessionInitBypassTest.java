@@ -9,6 +9,7 @@ import com.starlight.intrepid.message.PingIMessage;
 import gnu.trove.map.TIntObjectMap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -172,7 +173,10 @@ public class SessionInitBypassTest {
 	private Channel connectAndSend( IMessage message ) throws InterruptedException {
 		VMID vmid = VMID.createForTesting();
 
+		EventLoopGroup group = new NioEventLoopGroup();
+
 		Bootstrap bootstrap = new Bootstrap()
+			.group(group)
 			.option(ChannelOption.TCP_NODELAY, true)
 			.option(ChannelOption.SO_KEEPALIVE, true)
 			.option(ChannelOption.SO_LINGER, 0)

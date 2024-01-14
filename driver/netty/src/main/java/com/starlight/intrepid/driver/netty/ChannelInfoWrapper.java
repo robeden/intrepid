@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.driver.netty;
 
+import com.logicartisan.common.core.thread.ObjectSlot;
 import com.starlight.intrepid.ConnectionListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -40,7 +41,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 
@@ -115,10 +115,10 @@ class ChannelInfoWrapper implements SessionInfo {
 		// If the VMID is unchanged, exit
 		if ( Objects.equals( vmid, old_vmid ) ) {
 			// Make sure the VMIDFuture is set
-			CompletableFuture<VMID> future = channel.attr( NettyIntrepidDriver.VMID_FUTURE_KEY ).get();
-			assert future != null;
+			ObjectSlot<VmidOrBust> slot = channel.attr( NettyIntrepidDriver.VMID_SLOT_KEY).get();
+			assert slot != null;
 			//noinspection ConstantConditions
-			if ( future != null ) future.complete( vmid );
+			if ( slot != null ) slot.set( new VmidOrBust(vmid) );
 
 			// Make sure the session is set in the container
 			ChannelContainer container = channel.attr( NettyIntrepidDriver.CONTAINER_KEY ).get();
@@ -167,15 +167,14 @@ class ChannelInfoWrapper implements SessionInfo {
 			if ( container != null ) {
 				container.setChannel(channel);
 				session_map.put( vmid, container );
-
-				SocketAddress address = channel.remoteAddress();
-				connection_listener.connectionOpened(
-					address,
-					channel.attr( NettyIntrepidDriver.ATTACHMENT_KEY ).get(), local_vmid,
-					vmid, getUserContext(), old_vmid, connection_type_description,
-					ack_rate_sec );
 			}
 			else assert false : "Null SessionContainer: " + channel;
+
+			connection_listener.connectionOpened(
+				channel.remoteAddress(),
+				channel.attr( NettyIntrepidDriver.ATTACHMENT_KEY ).get(), local_vmid,
+				vmid, getUserContext(), old_vmid, connection_type_description,
+				ack_rate_sec );
 
 			// If the connection wasn't initiated by us and the peer has a server port,
 			// see if we already have an established connection to it. If so, blow that
@@ -220,10 +219,10 @@ class ChannelInfoWrapper implements SessionInfo {
 		// NOTE: must come after putting the session in the map to avoid a race condition
 		//       where the VMID is returned from the connect method before the connection
 		//       is available in the map.
-		CompletableFuture<VMID> future = channel.attr( NettyIntrepidDriver.VMID_FUTURE_KEY ).get();
-		assert future != null;
+		ObjectSlot<VmidOrBust> slot = channel.attr( NettyIntrepidDriver.VMID_SLOT_KEY).get();
+		assert slot != null;
 		//noinspection ConstantConditions
-		if ( future != null ) future.complete( vmid );
+		if ( slot != null ) slot.set( new VmidOrBust(vmid) );
 	}
 
 	@Override
