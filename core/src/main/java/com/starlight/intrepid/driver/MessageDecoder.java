@@ -596,7 +596,8 @@ public final class MessageDecoder {
 	}
 
 
-	private static @Nonnull SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer ) throws EOFException {
+	private static @Nonnull SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer )
+		throws EOFException, MessageConsumedButInvalidException {
 		// VERSION or PROTOCOL_VERSION
 		byte version_or_protocol_version = buffer.get();
 
@@ -692,7 +693,7 @@ public final class MessageDecoder {
 	}
 
 	private static ChannelInitResponseIMessage decodeChannelInitResponse(
-		byte proto_version, @Nonnull DataSource buffer ) throws EOFException {
+		byte proto_version, @Nonnull DataSource buffer ) throws EOFException, MessageConsumedButInvalidException {
 
 		if ( proto_version < 3 ) {
 			// VERSION      - removed in proto 3
@@ -925,7 +926,7 @@ public final class MessageDecoder {
 
 
 	private static @Nullable String readStringOrLegacyResourceKey(
-		byte proto_version, @Nonnull DataSource buffer ) throws EOFException {
+		byte proto_version, @Nonnull DataSource buffer ) throws EOFException, MessageConsumedButInvalidException {
 
 		if ( buffer.get() != 0 ) {
 			if ( proto_version >= 3 ) {
@@ -934,6 +935,7 @@ public final class MessageDecoder {
 				}
 				catch ( CharacterCodingException ex ) {
 					LOG.warn( "Unable to decode channel rejection reason", ex );
+					throw new MessageConsumedButInvalidException( "Unable to decode text", ex);
 				}
 			}
 			else {
@@ -944,6 +946,7 @@ public final class MessageDecoder {
 				catch ( Exception ex ) {
 					LOG.warn( "Unable to decode channel rejection reason (old " +
 						"proto version={})", proto_version, ex );
+					throw new MessageConsumedButInvalidException( "Unable to decode text", ex);
 				}
 			}
 		}

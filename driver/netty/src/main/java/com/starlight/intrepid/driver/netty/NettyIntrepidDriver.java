@@ -241,8 +241,6 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		client_bootstrap = new Bootstrap()
 			.group(worker_group)
 			.channel(NioSocketChannel.class)	// TODO: change for UDS
-			.attr(LOCAL_INITIATE_KEY, true)
-
 			.option(ChannelOption.TCP_NODELAY, true)
 			.option(ChannelOption.SO_KEEPALIVE, true)
 			.option(ChannelOption.SO_LINGER, 0)
@@ -313,6 +311,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		map_lock.lock();
 		try {
 			containers = new ArrayList<>(session_map.values());
+			session_map.clear();
 		}
 		finally {
 			map_lock.unlock();
@@ -330,11 +329,13 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			SessionInfo info = channel.attr( SESSION_INFO_KEY ).get();
 
 			SessionCloseIMessage message = new SessionCloseIMessage();
-			channel.writeAndFlush( message ).addListener(l -> channel.close());
-			performance_listener.messageSent(
-				info == null ? null : info.getVMID(), message );
-			thread_pool.schedule(() -> channel.close(), 1, TimeUnit.SECONDS);
+			channel.writeAndFlush( message ).addListener(l ->
+				performance_listener.messageSent(
+					info == null ? null : info.getVMID(), message ));
+			channel.close();
 		});
+
+
 
 		if (boss_group != null) boss_group.shutdownGracefully();
 		if (worker_group != null) worker_group.shutdownGracefully();
@@ -500,8 +501,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 							VMID vmid = channel.attr( VMID_KEY ).get();
 							if ( vmid != null ) {
-								ChannelContainer session_map_container =
-									session_map.remove( vmid );
+								ChannelContainer session_map_container = session_map.remove( vmid );
 
 								if ( session_map_container != pulled_container ) {
 									Channel session_map_channel =
@@ -533,6 +533,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 		ObjectSlot<VmidOrBust> vmid_slot = new ObjectSlot<>();
 		ChannelFuture future = client_bootstrap.clone()
+			.attr(LOCAL_INITIATE_KEY, true)
 			.attr(CONNECTION_ARGS_KEY, args)
 			.attr(RECONNECT_TOKEN_KEY, reconnect_token)
 			.attr(CONTAINER_KEY, container)
@@ -556,6 +557,8 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		}
 
 		Channel channel = future.channel();
+		LOG.debug("{} channel opened: {}", local_vmid, channel);
+		assert channel.attr(LOCAL_INITIATE_KEY).get();
 
 		boolean abend = true;
 		try {
@@ -633,7 +636,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
             channel.attr( USER_CONTEXT_KEY ).get());
 
 		IMessage message = new SessionCloseIMessage( "User-initiated disconnect", false );
-		channel.write( message );
+		channel.writeAndFlush( message );
 		performance_listener.messageSent( vmid, message );
 		CloseHandler.close( channel, 2000 );
 	}
@@ -1009,8 +1012,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		if ( old_channel == null ) return;
 		if ( Objects.equals( old_channel.id(), new_channel.id() ) ) return;
 
-		LOG.debug( "Closing session '{}' because we have a new session '{}'", old_channel,
-			new_channel );
+		LOG.debug( "Closing channel '{}' due to new channel '{}'", old_channel, new_channel );
 
 		// Indicate that it's locally terminated to prevent confusion about reconnection
 		old_channel.attr( NettyIntrepidDriver.LOCAL_TERMINATE_KEY ).set( Boolean.TRUE );

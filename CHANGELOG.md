@@ -9,14 +9,18 @@ the details may be recreated by slogging through git logs, but for the moment
 real history will start at 1.7.0.
 
 
-## [1.9.0]
+## [2.0.0]
 ### Changed
+- **Breaking change:** The wire protocol was incremented to version 4, which is incompatible
+  with earlier releases. Primarily, the way frame lengths are handled is a vast simplification.
+  While the cutting torch is out, string length handling is also a little safer. 
 - **Breaking change:** ConnectionListener replaces host (`InetAddress`) and port (`int`)
   with a single `SocketAddress`.
 - **Breaking change:** Builder method `serverPort` has been removed and the signature of
   `serverAddress` has been changed to take a `SocketAddress` rather than an `InetAddress`.
 
-## [1.8.0]
+
+## [1.8.0] - 2023-05-26
 ### Removed
 - `IntrepidSetup`/`Intrepid.create` has been removed and replaced by `Intrepid.newBuilder`
   followed by a `build()` call on the builder when configured. 

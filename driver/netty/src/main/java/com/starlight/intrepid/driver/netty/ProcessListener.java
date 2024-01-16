@@ -86,7 +86,7 @@ public class ProcessListener extends ChannelDuplexHandler {
 
 	@Override
 	public void channelActive(ChannelHandlerContext context) throws Exception {
-        LOG.trace( "NETTY.channelActive: {}", context );
+        LOG.trace( "{} channelActive: {}", local_vmid, context );
 
 		Channel channel = context.channel();
 
@@ -125,7 +125,7 @@ public class ProcessListener extends ChannelDuplexHandler {
 			// If there's a message, write it first
 			if ( close_indicator.getReasonMessage() != null ) {
 				IMessage close_message = close_indicator.getReasonMessage();
-				channel.write( close_message );
+				channel.writeAndFlush( close_message );
 				performance_listener.messageSent( session_info_wrapper.getVMID(),
 					close_message );
 			}
@@ -145,11 +145,15 @@ public class ProcessListener extends ChannelDuplexHandler {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext context) throws Exception {
-        LOG.trace( "NETTY.channelInactive: {}", context );
+        LOG.trace( "{} = channelInactive: {}", context );
 
 		Channel channel = context.channel();
 
-		LOG.debug( "Session closed: {}", channel.attr( VMID_KEY ).get() );
+		LOG.debug( "{} - session closed: {} (local-init={} local-term={})",
+			local_vmid,
+			channel.attr( VMID_KEY ).get(),
+			channel.attr(LOCAL_INITIATE_KEY).get(),
+			channel.attr(LOCAL_TERMINATE_KEY).get());
 
 		Boolean locally_terminated = channel.attr( LOCAL_TERMINATE_KEY ).get();
 		if ( locally_terminated == null ) locally_terminated = Boolean.FALSE;
@@ -211,13 +215,14 @@ public class ProcessListener extends ChannelDuplexHandler {
 		// If it's locally initiated, make sure there isn't a caller waiting on it
 		if (locally_initiated) {
 			ObjectSlot<VmidOrBust> vmid_slot = channel.attr(VMID_SLOT_KEY).get();
-			if ( vmid_slot != null && vmid_slot.get() != null ) {
-				vmid_slot.set( new VmidOrBust(
-					new IOException( "Session unexpectedly closed" ) ) );
+			if ( vmid_slot != null ) {
+				if ( vmid_slot.compareAndSet( (VmidOrBust) null,
+					new VmidOrBust( new IOException( "Session unexpectedly closed" ) ) ) ) {
 
-				// No need to notify listeners or anything since it was never an
-				// established connection.
-				return;
+					// No need to notify listeners or anything since it was never an
+					// established connection.
+//					return;
+				}
 			}
 		}
 
@@ -225,15 +230,13 @@ public class ProcessListener extends ChannelDuplexHandler {
 			channel.attr( SESSION_INFO_KEY ).get(),
             locally_initiated, locally_terminated,
 			container != null && vmid != null );
-        if ( LOG.isDebugEnabled() ) {
-            LOG.debug( "MINA.sessionClosed (stage 2): {} session_info: {} " +
-                "locally_initiated: {} locally_terminated: {} vmid: {} attachment: {} " +
-                "RECONNECT: {} container: {}", channel,
-	            channel.attr( SESSION_INFO_KEY ).get(),
-				locally_initiated,
-	            locally_terminated, vmid, attachment, reconnect,
-	            container );
-        }
+		LOG.debug( "MINA.sessionClosed (stage 2): {} session_info: {} " +
+			"locally_initiated: {} locally_terminated: {} vmid: {} attachment: {} " +
+			"RECONNECT: {} container: {}", channel,
+			channel.attr( SESSION_INFO_KEY ).get(),
+			locally_initiated,
+			locally_terminated, vmid, attachment, reconnect,
+			container );
 
 		// If it was not locally terminated, notify listeners. Otherwise, this has already
 		// been done.

@@ -10,6 +10,7 @@ import gnu.trove.map.TIntObjectMap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -177,6 +178,7 @@ public class SessionInitBypassTest {
 
 		Bootstrap bootstrap = new Bootstrap()
 			.group(group)
+			.channel(NioSocketChannel.class)
 			.option(ChannelOption.TCP_NODELAY, true)
 			.option(ChannelOption.SO_KEEPALIVE, true)
 			.option(ChannelOption.SO_LINGER, 0)
@@ -201,6 +203,7 @@ public class SessionInitBypassTest {
 					session_close_latch.countDown();
 				}
 			});
+		session_close_latch = new CountDownLatch( 1 );
 
 
 		ChannelFuture connect_future = bootstrap.connect( new InetSocketAddress(
@@ -221,7 +224,7 @@ public class SessionInitBypassTest {
 		assertNotNull( channel );
 		assertTrue( channel.isActive() );
 
-		ChannelFuture write_future = channel.write( message );
+		ChannelFuture write_future = channel.writeAndFlush( message );
 		assertTrue( write_future.await( 30, TimeUnit.SECONDS ) );
 
 		return channel;

@@ -1,14 +1,19 @@
 package com.starlight.intrepid;
 
 import com.logicartisan.common.core.thread.ThreadKit;
+import com.starlight.intrepid.auth.ConnectionArgs;
+import com.starlight.intrepid.auth.UserContextInfo;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
@@ -49,6 +54,38 @@ public class ListenerRegistrationTest {
 	@Test
 	public void testKeepListenerRegistered() throws Exception {
 		server = Intrepid.newBuilder().openServer().build();
+		server.addConnectionListener(new ConnectionListener() {
+			@Override
+			public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+										 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
+										 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
+										 @Nonnull Object connection_type_description, byte ack_rate_sec) {
+				System.out.println("SERVER Connection opened");
+			}
+
+			@Override
+			public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
+										 @Nullable VMID vmid, @Nullable Object attachment,
+										 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
+
+				System.out.println("SERVER Connection closed");
+			}
+
+			@Override
+			public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+										  @Nullable ConnectionArgs args,
+										  @Nonnull Object connection_type_description) {
+
+				System.out.println("SERVER Connection opening");
+			}
+
+			@Override
+			public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
+											 @Nullable Object attachment, @Nullable Exception error,
+											 boolean will_retry) {
+				System.out.println("SERVER Connection opened failed");
+			}
+		});
 		int server_port = server.getServerPort().intValue();
 
 		Server server_mock = Mockito.mock( Server.class );
@@ -56,6 +93,38 @@ public class ListenerRegistrationTest {
 
 
 		client = Intrepid.newBuilder().build();
+		client.addConnectionListener(new ConnectionListener() {
+			@Override
+			public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+										 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
+										 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
+										 @Nonnull Object connection_type_description, byte ack_rate_sec) {
+				System.out.println("CLIENT Connection opened");
+			}
+
+			@Override
+			public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
+										 @Nullable VMID vmid, @Nullable Object attachment,
+										 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
+
+				System.out.println("CLIENT Connection closed");
+			}
+
+			@Override
+			public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+										  @Nullable ConnectionArgs args,
+										  @Nonnull Object connection_type_description) {
+
+				System.out.println("CLIENT Connection opening");
+			}
+
+			@Override
+			public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
+											 @Nullable Object attachment, @Nullable Exception error,
+											 boolean will_retry) {
+				System.out.println("CLIENT Connection opened failed");
+			}
+		});
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
@@ -86,6 +155,7 @@ public class ListenerRegistrationTest {
 
 		for( int i = 0; i < 5; i++ ) {
 			// Close the server
+			System.out.println("LRT stopping server...");
 			server.close();
 
 			// Should indicate we're NOT connected
@@ -99,10 +169,43 @@ public class ListenerRegistrationTest {
 			Mockito.verifyNoMoreInteractions( server_mock );
 
 			// Bring the server back
+			System.out.println("LRT starting server...");
 			server = Intrepid.newBuilder()
 				.openServer()
 				.serverAddress( new InetSocketAddress( server_port ) )
 				.build();
+			server.addConnectionListener(new ConnectionListener() {
+				@Override
+				public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+											 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
+											 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
+											 @Nonnull Object connection_type_description, byte ack_rate_sec) {
+					System.out.println("SERVER Connection opened");
+				}
+
+				@Override
+				public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
+											 @Nullable VMID vmid, @Nullable Object attachment,
+											 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
+
+					System.out.println("SERVER Connection closed");
+				}
+
+				@Override
+				public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+											  @Nullable ConnectionArgs args,
+											  @Nonnull Object connection_type_description) {
+
+					System.out.println("SERVER Connection opening");
+				}
+
+				@Override
+				public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
+												 @Nullable Object attachment, @Nullable Exception error,
+												 boolean will_retry) {
+					System.out.println("SERVER Connection opened failed");
+				}
+			});
 			server.getLocalRegistry().bind( "server", server_mock );
 
 			// Make sure we get the add call
@@ -252,6 +355,8 @@ public class ListenerRegistrationTest {
 		AtomicInteger successful_add_count = new AtomicInteger( 0 );
 		AtomicInteger unsuccessful_add_count = new AtomicInteger( 0 );
 		Server server_impl = listener -> {
+			System.out.println("Listener added: " + listener);
+
 			if ( temp_unbound_from_registry.get() ) {
 				fail("Shouldn't have been able to call this");
 			}

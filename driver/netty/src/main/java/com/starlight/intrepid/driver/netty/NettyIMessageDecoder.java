@@ -55,7 +55,7 @@ public class NettyIMessageDecoder extends ByteToMessageDecoder {
 				( response, close_option ) -> {
 					LOG.debug( "Response: {}", response );
 
-                    ctx.write( response );
+                    ctx.writeAndFlush( response );
 
 					if ( close_option != null ) {
 						long flush_time = 0;
