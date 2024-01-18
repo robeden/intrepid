@@ -88,7 +88,8 @@ class ChannelInfoWrapper implements SessionInfo {
 
 	@Override
 	public void setVMID( VMID vmid, byte ack_rate_sec ) {
-		LOG.debug( "{} -> setVMID({},{})", this, vmid, ack_rate_sec );
+		LOG.debug( "setVMID vmid={} ack={} local_vmid={} channel={}",
+			vmid, ack_rate_sec, local_vmid, channel );
 
 		// Setting a null VMID is invalid. It will be null by default, but this is okay.
 		// Allowing null to be set would allow sessions to disappear from the session_map.
@@ -97,20 +98,6 @@ class ChannelInfoWrapper implements SessionInfo {
 		channel.attr( NettyIntrepidDriver.INVOKE_ACK_RATE ).set( ack_rate_sec);
 
 		VMID old_vmid = channel.attr( NettyIntrepidDriver.VMID_KEY ).getAndSet( vmid );
-
-//		if ( LOG.isDebugEnabled() ) {
-//			StringBuilder buf = new StringBuilder();
-//			boolean first = true;
-//			for( Object key : channel.getAttributeKeys() ) {
-//				if ( first ) first = false;
-//				else buf.append( ", " );
-//				buf.append( key );
-//				buf.append( "=" );
-//				buf.append( channel.getAttribute( key ) );
-//			}
-//			LOG.debug( "MINA.SessionInfo setVMID: {} old_vmid: {} attributes: {}",
-//				vmid, old_vmid, buf.toString() );
-//		}
 
 		// If the VMID is unchanged, exit
 		if ( Objects.equals( vmid, old_vmid ) ) {
@@ -233,7 +220,7 @@ class ChannelInfoWrapper implements SessionInfo {
 	@Override
 	public void setProtocolVersion( Byte version ) {
 		channel.attr( NettyIntrepidDriver.PROTOCOL_VERSION_KEY ).set( version );
-		LOG.debug( "MINA.SessionInfo setProtocolVersion: {}", version );
+		LOG.debug( "setProtocolVersion: {}", version );
 	}
 
 
@@ -245,7 +232,7 @@ class ChannelInfoWrapper implements SessionInfo {
 	@Override
 	public void setUserContext( UserContextInfo user_context ) {
 		channel.attr( NettyIntrepidDriver.USER_CONTEXT_KEY ).set( user_context );
-		LOG.debug( "MINA.SessionInfo setUserContext: {}", user_context );
+		LOG.debug( "setUserContext: {}", user_context );
 	}
 
 

@@ -82,10 +82,10 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	private static final Logger LOG = LoggerFactory.getLogger( NettyIntrepidDriver.class );
 
 	private static final long SEND_MESSAGE_SESSION_CONNECT_TIMEOUT =
-        Long.getLong("intrepid.driver.mina.send_message_connect_timeout", 11000);
+        Long.getLong("intrepid.driver.netty.send_message_connect_timeout", 11000);
 
 	private static final long RECONNECT_RETRY_INTERVAL =
-        Long.getLong("intrepid.driver.mina.reconnect_retry", 5000);
+        Long.getLong("intrepid.driver.netty.reconnect_retry", 5000);
 
 
 	////////////////////////////////
@@ -529,9 +529,10 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 		long nano_time = System.nanoTime();
 		// NOTE: slot initializer ensures expected attributes are present
-        LOG.trace( "MINA.inner_connection: {}", socket_address );
+        LOG.trace( "inner_connect: {}", socket_address );
 
-		ObjectSlot<VmidOrBust> vmid_slot = new ObjectSlot<>();
+		ObjectSlot<VmidOrBust> vmid_slot =
+			new ObjectSlot<>(original_vmid == null ? null : new VmidOrBust(original_vmid));
 		ChannelFuture future = client_bootstrap.clone()
 			.attr(LOCAL_INITIATE_KEY, true)
 			.attr(CONNECTION_ARGS_KEY, args)
@@ -540,6 +541,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			.attr(ATTACHMENT_KEY, attachment)
 			.attr(CONTAINER_KEY, new ChannelContainer(socket_address, args))
 			.attr(VMID_SLOT_KEY, vmid_slot)
+			.attr(VMID_KEY, original_vmid)
 			.connect(socket_address);
 
 		if ( !future.await( timeout_ns, TimeUnit.NANOSECONDS ) ) {
@@ -600,7 +602,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	public void disconnect( VMID vmid ) {
 		ChannelContainer container;
 
-        LOG.trace( "MINA.disconnect: {}", vmid );
+        LOG.trace( "disconnect: {}", vmid );
 
 		map_lock.lock();
 		try {
@@ -648,7 +650,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		try {
 			boolean has_connection = session_map.containsKey( vmid );
 
-            LOG.debug( "MINA.hasConnection({}): {}", vmid,
+            LOG.debug( "hasConnection({}): {}", vmid,
                 has_connection);
 
 			return has_connection;
@@ -675,6 +677,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 		// If there's an artificial delay, sleep now
 		if ( message_send_delay != null ) {
+			LOG.trace("Artificial delay active for message {}: {} ms", message_id, message_send_delay);
 			ThreadKit.sleep(message_send_delay);
 		}
 
@@ -688,13 +691,11 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 			// No container means not connected and not trying to connect
 			if ( container == null ) {
-				if ( LOG.isDebugEnabled() ) {
-					LOG.debug( "Container not found for {} in sendMessage. " +
-						"Session map: {}  Outbound session map: {}  VMID remap: {}  " +
-						"Reconnect delay queue: {}  Active reconnections: {}",
-						destination, session_map, outbound_session_map,
-						vmid_remap, reconnect_delay_queue, active_reconnections );
-				}
+				LOG.debug( "Container not found for {} in sendMessage. " +
+					"Session map: {}  Outbound session map: {}  VMID remap: {}  " +
+					"Reconnect delay queue: {}  Active reconnections: {}",
+					destination, session_map, outbound_session_map,
+					vmid_remap, reconnect_delay_queue, active_reconnections );
 				throw new NotConnectedException( destination );
 			}
 		}
@@ -821,12 +822,12 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			boolean abend = true;
 			try {
                 if ( LOG.isDebugEnabled() ) {
-                    LOG.debug( "MINA.ReconnectRunnable({}) running for {}",
+                    LOG.debug( "ReconnectRunnable({}) running for {}",
                         System.identityHashCode(this), socket_address);
                 }
 
 				if ( container.isCanceled() ) {
-					LOG.debug( "MINA.ReconnectRunnable exiting because container " +
+					LOG.debug( "ReconnectRunnable exiting because container " +
 						"is canceled (before inner_connect): {} container: {}", this,
 						container );
 
@@ -840,12 +841,13 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 					return;
 				}
 
+				LOG.debug("Trying reconnect to {} original_vmid={}", socket_address, original_vmid);
 				VMID vmid = inner_connect( socket_address, container.getConnectionArgs(),
 					reconnect_token, attachment, TimeUnit.SECONDS.toNanos( 30 ),
 					container, original_vmid );
 
 				if ( container.isCanceled() ) {
-					LOG.debug( "MINA.ReconnectRunnable exiting because container " +
+					LOG.debug( "ReconnectRunnable exiting because container " +
 						"is canceled (AFTER inner_connect): {} container: {}", this,
 						container );
 
@@ -870,7 +872,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			}
 			catch( ClosedChannelException ex ) {
                 if ( LOG.isDebugEnabled() ) {
-                    LOG.debug( "MINA.ReconnectRunnable({}) - {} - CHANNEL CLOSED",
+                    LOG.debug( "ReconnectRunnable({}) - {} - CHANNEL CLOSED",
                         System.identityHashCode(this),
 						socket_address, ex );
                 }
@@ -883,7 +885,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			}
 			catch( Throwable ex ) {
                 if ( LOG.isDebugEnabled() ) {
-                    LOG.debug( "MINA.ReconnectRunnable({}) - {} - exception (will be " +
+                    LOG.debug( "ReconnectRunnable({}) - {} - exception (will be " +
                         "rescheduled)",
                         System.identityHashCode(this),
 						socket_address, ex );
@@ -906,7 +908,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			}
 			finally {
                 if ( LOG.isDebugEnabled() ) {
-                    LOG.debug( "MINA.ReconnectRunnable({}) exiting for {} (abend={})",
+                    LOG.debug( "ReconnectRunnable({}) exiting for {} (abend={})",
                         System.identityHashCode(this),
 						socket_address, abend);
                 }
@@ -953,7 +955,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		private volatile boolean keep_going = true;
 
 		ReconnectManager() {
-			super( "MINA ReconnectManager" );
+			super( "ReconnectManager" );
 			setDaemon( true );
 		}
 
@@ -966,7 +968,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 		@Override
 		public void start() {
-			setName( "MINA ReconnectManager - " + local_vmid );
+			setName( "ReconnectManager - " + local_vmid );
 			super.start();
 		}
 
@@ -976,9 +978,9 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 				try {
 					ReconnectRunnable runnable = reconnect_delay_queue.take();
 					Thread reconnect_thread =
-						new Thread( runnable, "MINA Reconnect Thread: " +
+						new Thread( runnable, "Reconnect Thread: " +
 						runnable.socket_address);
-                    LOG.debug( "MINA.ReconnectManager starting reconnect thread: {}",
+                    LOG.debug( "ReconnectManager starting reconnect thread: {}",
                         runnable );
 					reconnect_thread.start();
 				}
@@ -986,7 +988,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 					// ignore
 				}
 				catch( Throwable t ) {
-					LOG.warn( "Error in MINA ReconnectManager", t );
+					LOG.warn( "Error in ReconnectManager", t );
 				}
 			}
 		}

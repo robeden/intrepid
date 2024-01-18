@@ -121,8 +121,7 @@ class InvokeRunner implements Runnable {
 					LocalRegistry registry = local_handler.getLocalRegistry();
 					Object object = registry.lookup( message.getPersistentName() );
 					if ( object != null && object instanceof Proxy ) {
-						new_object_id = Integer.valueOf(
-							( ( Proxy ) object ).__intrepid__getObjectID() );
+						new_object_id = ((Proxy) object).__intrepid__getObjectID();
 //						System.out.println( "  New ID: " + new_object_id + "  Old ID: " +
 //							message.getObjectID() + "  Call ID: " + message.getCallID() );
 					}
@@ -146,15 +145,11 @@ class InvokeRunner implements Runnable {
 			try {
 				spi.sendMessage( source, new InvokeReturnIMessage( message.getCallID(),
 					result, result_was_thrown, new_object_id, perf_stats ?
-					Long.valueOf( System.nanoTime() - start ) : null ), null );
+                    System.nanoTime() - start : null ), null );
 			}
 			catch ( Throwable throwable ) {
-				if ( LOG.isDebugEnabled() ) {
-					LOG.debug(
-						"Unable to send return message for call {} to {} (will retry)",
-						Integer.valueOf( message.getCallID() ), source,
-						throwable );
-				}
+				LOG.debug( "Unable to send return message for call {} to {} (will retry)",
+                    message.getCallID(), source, throwable );
 
 				if ( throwable instanceof IOException ) {
 					result = throwable;
@@ -164,15 +159,11 @@ class InvokeRunner implements Runnable {
 				try {
 					spi.sendMessage( source, new InvokeReturnIMessage( message.getCallID(),
 						throwable, result_was_thrown, new_object_id, perf_stats ?
-							Long.valueOf( System.nanoTime() - start ) : null ), null );
+                        System.nanoTime() - start : null ), null );
 				}
 				catch ( Exception e ) {
-					if ( LOG.isInfoEnabled() ) {
-						LOG.info( "Unable to send return message for call {} to {} " +
-							"(will NOT retry)",
-							Integer.valueOf( message.getCallID() ), source,
-							throwable );
-					}
+					LOG.info( "Unable to send return message for call {} to {} " +
+						"(will NOT retry)", message.getCallID(), source, throwable );
 				}
 			}
 		}
@@ -230,17 +221,13 @@ class InvokeRunner implements Runnable {
 					spi.sendMessage( source,
 						new InvokeAckIMessage( message.getCallID() ), null );
 
-					if ( LOG.isDebugEnabled() ) {
-						LOG.debug( "Sent ack for invoke {} to {}",
-							Integer.valueOf( message.getCallID() ), source );
-					}
+					LOG.debug( "Sent ack for invoke {} to {}", message.getCallID(), source );
 
 					break;
 				}
 				catch ( IOException e ) {
 					LOG.warn( "Unable to send ack for invoke {} to {}. Will retry: {}",
-						Integer.valueOf( message.getCallID() ), source,
-						Boolean.valueOf( i != 2 ) );
+                        message.getCallID(), source, i != 2);
 				}
 			}
 		}

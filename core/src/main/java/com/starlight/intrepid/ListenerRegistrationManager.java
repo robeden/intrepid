@@ -51,6 +51,9 @@ class ListenerRegistrationManager implements ConnectionListener {
 		VMID previous_vmid,
 		@Nonnull Object connection_type_description, byte ack_rate_sec ) {
 
+		LOG.debug("notified connectionOpened: {}  source={} vmid={} prev={}",
+			socket_address, source_vmid, vmid, previous_vmid);
+
 		listeners_map_lock.lock();
 		try {
 			// Deal with remapped VMID
@@ -62,7 +65,14 @@ class ListenerRegistrationManager implements ConnectionListener {
 			Set<ListenerInfo> listeners = listeners_map.get( vmid );
 
 			if ( listeners == null ) {
-				if ( old_listeners == null ) return;
+				if ( old_listeners == null ) {
+					LOG.debug("No new or old listeners found for {}  source={} vmid={} prev={}",
+						socket_address, source_vmid, vmid, previous_vmid);
+					if (LOG.isTraceEnabled()) {
+						LOG.trace("Known listeners in map: {}", listeners_map.keySet());
+					}
+					return;
+				}
 
 				listeners_map.put( vmid, old_listeners );
 				listeners = old_listeners;
@@ -71,6 +81,8 @@ class ListenerRegistrationManager implements ConnectionListener {
 				listeners.addAll( old_listeners );
 			}
 
+			LOG.debug("Found {} listeners for {}  source={} vmid={} prev={}",
+				listeners.size(), socket_address, source_vmid, vmid, previous_vmid);
 			for( ListenerInfo info : listeners ) {
 				SharedThreadPool.INSTANCE.execute( () -> info.addListener( true ) );
 			}
@@ -86,6 +98,9 @@ class ListenerRegistrationManager implements ConnectionListener {
 	public void connectionClosed( @Nonnull SocketAddress socket_address,
 		@Nonnull VMID source_vmid, @Nullable VMID vmid, @Nullable Object attachment,
 		boolean will_attempt_reconnect, @Nullable UserContextInfo user_context ) {
+
+		LOG.debug("notified connectionClosed: {}  source={} vmid={}",
+			socket_address, source_vmid, vmid);
 
 		listeners_map_lock.lock();
 		try {
@@ -115,6 +130,8 @@ class ListenerRegistrationManager implements ConnectionListener {
 		final @Nonnull VMID vmid, @Nonnull P proxy, @Nonnull BiFunction<P,L,R> add_method,
 		@Nullable BiConsumer<P,L> remove_method,
 		@Nonnull Consumer<R> return_value_handler ) throws IllegalArgumentException {
+
+		LOG.debug("keepListenerRegistered for {}", vmid);
 
 		final ListenerInfo<L,P,R> info = new ListenerInfo<>( proxy, listener, add_method,
 			remove_method, return_value_handler );

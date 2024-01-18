@@ -230,7 +230,7 @@ public class ProcessListener extends ChannelDuplexHandler {
 			channel.attr( SESSION_INFO_KEY ).get(),
             locally_initiated, locally_terminated,
 			container != null && vmid != null );
-		LOG.debug( "MINA.sessionClosed (stage 2): {} session_info: {} " +
+		LOG.debug( "sessionClosed (stage 2): {} session_info: {} " +
 			"locally_initiated: {} locally_terminated: {} vmid: {} attachment: {} " +
 			"RECONNECT: {} container: {}", channel,
 			channel.attr( SESSION_INFO_KEY ).get(),

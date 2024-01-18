@@ -53,78 +53,16 @@ public class ListenerRegistrationTest {
 
 	@Test
 	public void testKeepListenerRegistered() throws Exception {
-		server = Intrepid.newBuilder().openServer().build();
-		server.addConnectionListener(new ConnectionListener() {
-			@Override
-			public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
-										 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
-										 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
-										 @Nonnull Object connection_type_description, byte ack_rate_sec) {
-				System.out.println("SERVER Connection opened");
-			}
-
-			@Override
-			public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
-										 @Nullable VMID vmid, @Nullable Object attachment,
-										 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
-
-				System.out.println("SERVER Connection closed");
-			}
-
-			@Override
-			public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
-										  @Nullable ConnectionArgs args,
-										  @Nonnull Object connection_type_description) {
-
-				System.out.println("SERVER Connection opening");
-			}
-
-			@Override
-			public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
-											 @Nullable Object attachment, @Nullable Exception error,
-											 boolean will_retry) {
-				System.out.println("SERVER Connection opened failed");
-			}
-		});
+		server = Intrepid.newBuilder().openServer().vmidHint("LRT server 1").build();
+		server.addConnectionListener(new LoggingConnectionListener("SERVER"));
 		int server_port = server.getServerPort().intValue();
 
 		Server server_mock = Mockito.mock( Server.class );
 		server.getLocalRegistry().bind( "server", server_mock );
 
 
-		client = Intrepid.newBuilder().build();
-		client.addConnectionListener(new ConnectionListener() {
-			@Override
-			public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
-										 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
-										 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
-										 @Nonnull Object connection_type_description, byte ack_rate_sec) {
-				System.out.println("CLIENT Connection opened");
-			}
-
-			@Override
-			public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
-										 @Nullable VMID vmid, @Nullable Object attachment,
-										 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
-
-				System.out.println("CLIENT Connection closed");
-			}
-
-			@Override
-			public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
-										  @Nullable ConnectionArgs args,
-										  @Nonnull Object connection_type_description) {
-
-				System.out.println("CLIENT Connection opening");
-			}
-
-			@Override
-			public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
-											 @Nullable Object attachment, @Nullable Exception error,
-											 boolean will_retry) {
-				System.out.println("CLIENT Connection opened failed");
-			}
-		});
+		client = Intrepid.newBuilder().vmidHint("LRT client").build();
+		client.addConnectionListener(new LoggingConnectionListener("CLIENT"));
 		VMID server_vmid = client.connect( InetAddress.getLoopbackAddress(),
 			server.getServerPort().intValue(), null, null );
 
@@ -171,41 +109,11 @@ public class ListenerRegistrationTest {
 			// Bring the server back
 			System.out.println("LRT starting server...");
 			server = Intrepid.newBuilder()
+				.vmidHint("LRT server 2")
 				.openServer()
 				.serverAddress( new InetSocketAddress( server_port ) )
 				.build();
-			server.addConnectionListener(new ConnectionListener() {
-				@Override
-				public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
-											 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
-											 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
-											 @Nonnull Object connection_type_description, byte ack_rate_sec) {
-					System.out.println("SERVER Connection opened");
-				}
-
-				@Override
-				public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
-											 @Nullable VMID vmid, @Nullable Object attachment,
-											 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
-
-					System.out.println("SERVER Connection closed");
-				}
-
-				@Override
-				public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
-											  @Nullable ConnectionArgs args,
-											  @Nonnull Object connection_type_description) {
-
-					System.out.println("SERVER Connection opening");
-				}
-
-				@Override
-				public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
-												 @Nullable Object attachment, @Nullable Exception error,
-												 boolean will_retry) {
-					System.out.println("SERVER Connection opened failed");
-				}
-			});
+			server.addConnectionListener(new LoggingConnectionListener("SERVER"));
 			server.getLocalRegistry().bind( "server", server_mock );
 
 			// Make sure we get the add call
@@ -491,4 +399,44 @@ public class ListenerRegistrationTest {
 	// Must be public
 	@SuppressWarnings( "WeakerAccess" )
 	public interface Listener {}
+	
+	
+	private static class LoggingConnectionListener implements ConnectionListener {
+		private final String header;
+
+		public LoggingConnectionListener(String header) {
+			this.header = header;
+		}
+
+		@Override
+		public void connectionOpened(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+									 @Nonnull VMID source_vmid, @Nonnull VMID vmid,
+									 @Nullable UserContextInfo user_context, @Nullable VMID previous_vmid,
+									 @Nonnull Object connection_type_description, byte ack_rate_sec) {
+			System.out.println(header + " connection opened: " + socket_address);
+		}
+
+		@Override
+		public void connectionClosed(@Nonnull SocketAddress socket_address, @Nonnull VMID source_vmid,
+									 @Nullable VMID vmid, @Nullable Object attachment,
+									 boolean will_attempt_reconnect, @Nullable UserContextInfo user_context) {
+
+			System.out.println(header + " connection closed: " + socket_address);
+		}
+
+		@Override
+		public void connectionOpening(@Nonnull SocketAddress socket_address, @Nullable Object attachment,
+									  @Nullable ConnectionArgs args,
+									  @Nonnull Object connection_type_description) {
+
+			System.out.println(header + " connection opening: " + socket_address);
+		}
+
+		@Override
+		public void connectionOpenFailed(@Nonnull SocketAddress socket_address,
+										 @Nullable Object attachment, @Nullable Exception error,
+										 boolean will_retry) {
+			System.out.println(header + " connection opened failed: " + socket_address);
+		}
+	}
 }
