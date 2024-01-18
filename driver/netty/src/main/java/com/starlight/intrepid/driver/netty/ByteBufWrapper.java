@@ -33,7 +33,7 @@ class ByteBufWrapper implements DataSource, DataSink {
 
     @Override
     public @Nonnull String hex() {
-        return "<not available>";        // TODO?
+        return "<not available>";
     }
 
     @Override

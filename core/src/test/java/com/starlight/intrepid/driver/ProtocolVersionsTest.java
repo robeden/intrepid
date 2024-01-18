@@ -2,6 +2,8 @@ package com.starlight.intrepid.driver;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.OptionalInt;
 
@@ -14,25 +16,20 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ProtocolVersionsTest {
 	@Test
 	public void currentVersion() {
-		assertEquals( OptionalInt.of( 3 ),
-			ProtocolVersions.negotiateProtocolVersion( (byte) 3, (byte) 3 ) );
+		assertEquals( OptionalInt.of( 4 ),
+			ProtocolVersions.negotiateProtocolVersion( (byte) 4, (byte) 4 ) );
 	}
 
-	@Test
-	public void disallowedOldVersions() {
+	@ParameterizedTest
+	@ValueSource(ints = {0, 1, 2, 3})
+	public void disallowedOldVersions(int high_version) {
 		Assumptions.assumeTrue(
 			System.getProperty( "intrepid.min_supported_protocol" ) == null,
 			"Version checks won't work properly when the 'min_supported_protocol' " +
 				"system property is set." );
 
 		assertEquals( OptionalInt.empty(),
-			ProtocolVersions.negotiateProtocolVersion( (byte) 0, (byte) 0 ) );
-
-		assertEquals( OptionalInt.empty(),
-			ProtocolVersions.negotiateProtocolVersion( (byte) 1, (byte) 0 ) );
-
-		assertEquals( OptionalInt.empty(),
-			ProtocolVersions.negotiateProtocolVersion( (byte) 2, (byte) 0 ) );
+			ProtocolVersions.negotiateProtocolVersion( (byte) high_version, (byte) 0 ) );
 	}
 
 

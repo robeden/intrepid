@@ -63,7 +63,7 @@ public class ChannelDataAckMessageCodecTest {
 
 		Buffer length_buffer = new Buffer();
 		Buffer data_buffer = new Buffer();
-		MessageEncoder.encode( original, ( byte ) 3, new OkioBufferData( length_buffer ),
+		MessageEncoder.encode( original, ( byte ) 4, new OkioBufferData( length_buffer ),
 			new OkioBufferData( data_buffer ) );
 
 
