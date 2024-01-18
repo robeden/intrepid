@@ -25,25 +25,22 @@
 
 package com.starlight.intrepid.driver;
 
+import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.message.*;
-import com.starlight.locale.UnlocalizableTextResourceKey;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 
 /**
  *
  */
 public final class MessageEncoder  {
-	private static final CharsetEncoder UTF16_ENCODER =     // pre-proto 3
-		StandardCharsets.UTF_16.newEncoder();
-	private static final CharsetEncoder UTF8_ENCODER =      // proto 3+
-		StandardCharsets.UTF_8.newEncoder();
-
 	private static final int MAX_SINGLE_SHORT_LENGTH = 0x7FFF;
 	private static final int DUAL_SHORT_FLAG = 0x8000;
 
@@ -93,6 +90,10 @@ public final class MessageEncoder  {
 	public static void encode( IMessage message, byte proto_version,
 		DataSink length_sink, DataSink data_sink ) throws Exception {
 
+		if ( proto_version < 4 ) {
+			throw new IllegalArgumentException("Invalid protocol version: " + proto_version);
+		}
+
 		IMessageType type = message.getType();
 		if ( type == IMessageType.SESSION_INIT ||
 			type == IMessageType.SESSION_INIT_RESPONSE ) {
@@ -104,7 +105,7 @@ public final class MessageEncoder  {
 		Encoder encoder_function;
 		switch ( message.getType() ) {
 			case SESSION_TOKEN_CHANGE:
-				encoder_function = sink -> encodeSesssionTokenChange(
+				encoder_function = sink -> encodeSessionTokenChange(
 					( SessionTokenChangeIMessage ) message, proto_version, sink );
 				break;
 
@@ -208,9 +209,7 @@ public final class MessageEncoder  {
 		DataSink buffer ) throws IOException {
 
 		// VERSION
-		buffer.put( ( byte ) 3 );       // NOTE: Version 4 should change VMID,
-										//       CONNECTION ARGS and RECONNECT TOKEN.
-										//       See MessageDecoder.
+		buffer.put( ( byte ) 4 );
 
 		// MIN PROTOCOL VERSION
 		buffer.put( message.getMinProtocolVersion() );
@@ -219,14 +218,10 @@ public final class MessageEncoder  {
 		buffer.put( message.getPrefProtocolVersion() );
 
 		// VMID
-		putObject( message.getInitiatorVMID(), buffer );
+		writeVMID(message.getInitiatorVMID(), buffer);
 
 		// CONNECTION ARGS
-		if ( message.getConnectionArgs() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			putObject( message.getConnectionArgs(), buffer );
-		}
+		putModernObject( message.getConnectionArgs(), buffer );
 
 		// SERVER PORT
 		if ( message.getInitiatorServerPort() == null ) buffer.put( ( byte ) 0 );
@@ -236,11 +231,7 @@ public final class MessageEncoder  {
 		}
 
 		// RECONNECT TOKEN
-		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			putObject( message.getReconnectToken(), buffer );
-		}
+		putModernObject( message.getReconnectToken(), buffer );
 
 		// REQUESTED ACK RATE
 		buffer.put( message.getRequestedAckRateSec() );
@@ -259,7 +250,7 @@ public final class MessageEncoder  {
 		buffer.put( message.getProtocolVersion() );
 
 		// VMID
-		putObject( message.getResponderVMID(), buffer );
+		writeVMID(message.getResponderVMID(), buffer );
 
 		// SERVER PORT
 		if ( message.getResponderServerPort() == null ) buffer.put( ( byte ) 0 );
@@ -269,11 +260,7 @@ public final class MessageEncoder  {
 		}
 
 		// RECONNECT TOKEN
-		if ( message.getReconnectToken() == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-			putObject( message.getReconnectToken(), buffer );
-		}
+		putModernObject( message.getReconnectToken(), buffer );
 
 		// ACK RATE
 		buffer.put( message.getAckRateSec() );
@@ -282,11 +269,6 @@ public final class MessageEncoder  {
 
 	private static void encodeInvoke( InvokeIMessage message, byte proto_version,
 		DataSink buffer ) throws Exception {
-
-		if ( proto_version < 3 ) {
-			// VERSION      - removed in proto 3
-			buffer.put( ( byte ) 0 );
-		}
 
 		// CALL ID
 		buffer.putInt( message.getCallID() );
@@ -300,7 +282,7 @@ public final class MessageEncoder  {
 		// FLAGS
 		byte flags = 0;
 		if ( message.getArgs() != null ) flags |= 0x01;
-		if ( message.getPersistentName() != null ) flags |= 0x02;
+		// 0x02 is unused (as of version 4)
 		if ( message.getUserContext() != null ) flags |= 0x04;
 		if ( message.isServerPerfStatsRequested() ) flags |= 0x08;
 		buffer.put( flags );
@@ -315,11 +297,7 @@ public final class MessageEncoder  {
 		}
 
 		// PERSISTENT NAME
-		if ( message.getPersistentName() != null ) {
-			buffer.putString( message.getPersistentName(),
-				proto_version >= 3 ? UTF8_ENCODER : UTF16_ENCODER,
-				c -> {} );
-		}
+		writeString(message.getPersistentName(), buffer);
 
 		// USER CONTEXT
 		if ( message.getUserContext() != null ) {
@@ -401,13 +379,10 @@ public final class MessageEncoder  {
 	}
 
 
-	private static void encodeSesssionTokenChange( SessionTokenChangeIMessage message,
+	private static void encodeSessionTokenChange(SessionTokenChangeIMessage message,
 		byte proto_version, DataSink buffer ) throws IOException {
 
-		if ( proto_version < 3 ) {
-			// VERSION      - removed in proto 3
-			buffer.put( ( byte ) 0 );
-		}
+		assert proto_version >= 4;
 
 		// NEW RECONNECT TOKEN
 		if ( message.getNewReconnectToken() == null ) buffer.put( ( byte ) 0 );
@@ -421,28 +396,14 @@ public final class MessageEncoder  {
 	private static void encodeSessionClose( SessionCloseIMessage message,
 		byte proto_version, DataSink buffer ) throws IOException {
 
-		if ( proto_version < 3 ) {
-			// VERSION      - removed in proto 3
-			buffer.put( ( byte ) 0 );
-		}
-		else {
-			// PROTOCOL VERSION
-			buffer.put( proto_version );
-		}
+		assert proto_version >= 4;
+
+		// PROTOCOL VERSION
+		buffer.put( proto_version );
 
 		// REASON
 		String reason = message.getReason().orElse( null );
-		if ( reason == null ) buffer.put( ( byte ) 0 );
-		else {
-			buffer.put( ( byte ) 1 );
-
-			if ( proto_version >= 3 ) {
-				buffer.putString( reason, UTF8_ENCODER, c -> {} );
-			}
-			else {
-				putObject( new UnlocalizableTextResourceKey( reason ), buffer );
-			}
-		}
+		writeString(reason, buffer);
 
 		// AUTH FAILURE
 		buffer.put( message.isAuthFailure() ? ( byte ) 1 : 0 );
@@ -525,17 +486,7 @@ public final class MessageEncoder  {
 
 			// REJECT REASON
 			String reject_reason = message.getRejectReason().orElse( null );
-			if ( reject_reason == null ) buffer.put( ( byte ) 0 );
-			else {
-				buffer.put( ( byte ) 1 );
-
-				if ( proto_version >= 3 ) {
-					buffer.putString( reject_reason, UTF8_ENCODER, c -> {} );
-				}
-				else {
-					putObject( new UnlocalizableTextResourceKey( reject_reason ), buffer );
-				}
-			}
+			writeString(reject_reason, buffer);
 		}
 		else {
 			buffer.put( ( byte ) 0 );
@@ -720,6 +671,22 @@ public final class MessageEncoder  {
 //		IoBufferSerialization.putObject( object, buffer );
 //	}
 
+	private static void writeVMID(VMID vmid, DataSink buffer) throws IOException {
+		UUID uuid = vmid.uuid();
+		buffer.putLong(uuid.getLeastSignificantBits());
+		buffer.putLong(uuid.getMostSignificantBits());
+		writeString(vmid.hint(), buffer);
+	}
+
+	private static void writeString(String string, DataSink buffer) throws CharacterCodingException {
+		if (string == null) buffer.putInt(0);
+		else {
+			byte[] data = string.getBytes(StandardCharsets.UTF_8);
+			buffer.putInt(data.length);
+			buffer.put(data, 0, data.length);
+		}
+	}
+
 
 	/**
 	 * @return		True if it's using a full int
@@ -738,12 +705,30 @@ public final class MessageEncoder  {
 		}
 	}
 
+	private static void putModernObject( Object object, DataSink buffer ) throws IOException {
+		if (object == null) {
+			buffer.putInt(0);
+			return;
+		}
 
-	private static void putObject( Object object, DataSink buffer ) throws IOException {
-		try ( ObjectOutputStream out = new ObjectOutputStream( buffer.outputStream() ) ) {
+		try (
+			ByteArrayOutputStream bout = new ByteArrayOutputStream(8 * 1024);
+			ObjectOutputStream out = new ObjectOutputStream( bout ) ) {
+
 			out.writeUnshared( object );
+
+			byte[] data = bout.toByteArray();
+			buffer.putInt(data.length);
+			buffer.put(data, 0, data.length);
 		}
 	}
+
+	private static void putObject( Object object, DataSink buffer ) throws IOException {
+		try (ObjectOutputStream out = new ObjectOutputStream(buffer.outputStream())) {
+			out.writeUnshared(object);
+		}
+	}
+
 
 
 

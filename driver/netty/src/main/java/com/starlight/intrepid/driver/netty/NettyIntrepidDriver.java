@@ -1048,11 +1048,11 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			}
 
 			String header = server_bootstrap == null ? "<<CLIENT " : "<<SERVER ";
-//			pipe.addLast(new LoggingHandler(header + "PIPELINE 1>>", LogLevel.INFO));
+//			pipe.addLast(new LoggingHandler(header + "PRE-CODEC", LogLevel.INFO));
 			pipe.addLast(new NettyIMessageEncoder());
 			pipe.addLast(new NettyIMessageDecoder(local_vmid, deserialization_context_vmid, vmid_creator));
 
-//			pipe.addLast(new LoggingHandler(header + "PIPELINE 3>>", LogLevel.INFO));
+//			pipe.addLast(new LoggingHandler(header + "POST-CODEC", LogLevel.INFO));
 
 			pipe.addLast(new ProcessListener(session_map, outbound_session_map, vmid_remap, map_lock, connection_listener,
 					connection_type_description, local_vmid, message_handler, performance_listener,

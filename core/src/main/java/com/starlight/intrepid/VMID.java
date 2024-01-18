@@ -71,6 +71,14 @@ public final class VMID implements Externalizable {
 		this.hint_text = hint_text;
 	}
 
+	public UUID uuid() {
+		return new UUID(msb, lsb);
+	}
+
+	public String hint() {
+		return hint_text;
+	}
+
 
 	// NOTE: hint_text is intentionally excluded
 	@Override

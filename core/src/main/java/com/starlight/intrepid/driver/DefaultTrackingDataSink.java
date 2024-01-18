@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
-import java.util.function.IntConsumer;
 
 
 /**
@@ -69,17 +67,11 @@ public class DefaultTrackingDataSink implements DataSink.Tracking {
 
 
 	@Override
-	public void putString( @Nonnull String value,
-		@Nonnull CharsetEncoder encoder, @Nonnull IntConsumer byte_count_consumer )
-		throws CharacterCodingException {
-
-		delegate.putString( value, encoder, count -> {
-			written += count;
-			byte_count_consumer.accept( count );
-		} );
+	public int putUtf8String(@Nonnull String value) throws CharacterCodingException {
+		int count = delegate.putUtf8String(value);
+		written += count;
+		return count;
 	}
-
-
 
 	@Override
 	public @Nonnull OutputStream outputStream() {

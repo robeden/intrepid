@@ -4,9 +4,7 @@ import javax.annotation.Nonnull;
 import java.io.EOFException;
 import java.io.InputStream;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.util.function.IntConsumer;
+import java.nio.charset.StandardCharsets;
 
 
 /**
@@ -46,23 +44,13 @@ public interface DataSource {
 
 
 	/**
-	 * Read a null-terminated string. This operation should also consume the null marker.
-	 *
-	 * @param byte_count_consumer       A consumer that will be called to indicate the
-	 *                                  number of bytes consumed during the read. The
-	 *                                  consumer may be called more than once during the
-	 *                                  operation but will no longer be called once the
-	 *                                  method returns.
+	 * Get a UTF-8 string encoded using the given number of bytes.
 	 */
-	@Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder charset_decoder,
-		@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException;
-
-	/**
-	 * Read a string of a specified length. In this case the string is not null-terminated.
-	 */
-	@Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder charset_decoder,
-							   int length )
-		throws CharacterCodingException, EOFException;
+	default @Nonnull String getUtf8String(int length) throws CharacterCodingException, EOFException {
+		byte[] data = new byte[length];
+		getFully(data);
+		return new String(data, StandardCharsets.UTF_8);
+	}
 
 
 	/**

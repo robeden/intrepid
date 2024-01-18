@@ -39,12 +39,10 @@ import javax.annotation.Nonnull;
 import java.io.EOFException;
 import java.io.InputStream;
 import java.nio.BufferUnderflowException;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.function.BiFunction;
-import java.util.function.IntConsumer;
 
 import static com.starlight.intrepid.driver.mina.MINAIntrepidDriver.SESSION_INFO_KEY;
 import static java.util.Objects.requireNonNull;
@@ -56,6 +54,8 @@ import static java.util.Objects.requireNonNull;
 class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 	private static final Logger LOG =
 		LoggerFactory.getLogger( MINAIMessageDecoder.class );
+
+	private static final CharsetDecoder UTF8_DECODER = StandardCharsets.UTF_8.newDecoder();
 
 
 	private final VMID vmid;
@@ -167,24 +167,6 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 				eof.initCause( ex );
 				throw eof;
 			}
-		}
-
-		@Override
-		public @Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
-			@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException {
-
-			int position_before = delegate.position();
-			String value = delegate.getString( charset.newDecoder() );
-			byte_count_consumer.accept( delegate.position() - position_before );
-			return value;
-		}
-
-		@Override
-		public @Nonnull String getString( @Nonnull Charset charset, @Nonnull CharsetDecoder decoder,
-										  int length )
-			throws CharacterCodingException, EOFException {
-
-			return delegate.getString( length, decoder );
 		}
 
 		@Override

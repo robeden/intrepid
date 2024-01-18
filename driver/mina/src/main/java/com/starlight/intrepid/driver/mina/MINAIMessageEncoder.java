@@ -46,9 +46,6 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
-import java.util.function.IntConsumer;
 
 import static com.starlight.intrepid.driver.mina.MINAIntrepidDriver.SESSION_INFO_KEY;
 
@@ -204,28 +201,6 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 			delegate.put( src );
 		}
 
-
-
-		@Override
-		public void putString( @Nonnull String value,
-			@Nonnull CharsetEncoder encoder, @Nonnull IntConsumer byte_count_consumer )
-			throws CharacterCodingException {
-
-			int position_before = delegate.position();
-			delegate.putString( value, encoder );
-
-			// NULL terminate string!!
-			// NOTE: Since UTF-16 is 2 bytes, need to insert 2 bytes properly terminate
-            boolean utf16 = encoder.charset().name().startsWith( "UTF-16" );
-            if ( utf16 ) {
-	            delegate.putShort( ( short ) 0x00 );
-            }
-            else {
-            	delegate.put( ( byte ) 0 );
-            }
-
-			byte_count_consumer.accept( delegate.position() - position_before );
-		}
 
 		@Override
 		public void prepareForData( int length ) {

@@ -12,11 +12,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CharsetEncoder;
-import java.util.function.IntConsumer;
 
 class ByteBufWrapper implements DataSource, DataSink {
     protected final ByteBuf delegate;
@@ -73,26 +68,6 @@ class ByteBufWrapper implements DataSource, DataSink {
     }
 
     @Override
-    public @Nonnull String getString(@Nonnull Charset charset,
-                                     @Nonnull CharsetDecoder charset_decoder,
-                                     @Nonnull IntConsumer byte_count_consumer) throws CharacterCodingException {
-
-        int position_before = delegate.readerIndex();
-        CharSequence value = delegate.readCharSequence(delegate.readableBytes(), charset);
-        byte_count_consumer.accept(delegate.readerIndex() - position_before);
-        return value.toString();
-    }
-
-    @Override
-    public @Nonnull String getString(@Nonnull Charset charset,
-                                     @Nonnull CharsetDecoder decoder,
-                                     int length)
-        throws CharacterCodingException, EOFException {
-
-        return delegate.readCharSequence(length, charset).toString();
-    }
-
-    @Override
     public @Nonnull InputStream inputStream() {
         return new ByteBufInputStream(delegate);
     }
@@ -114,71 +89,46 @@ class ByteBufWrapper implements DataSource, DataSink {
     }
 
 
+    @Override
+    public void put(int value) {
+        delegate.writeByte(value);
+    }
 
-		@Override
-		public void put( int value ) {
-            delegate.writeByte( value );
-		}
+    @Override
+    public void putShort(short value) {
+        delegate.writeShort(value);
+    }
 
-		@Override
-		public void putShort( short value ) {
-			delegate.writeShort( value );
-		}
+    @Override
+    public void putInt(int value) {
+        delegate.writeInt(value);
+    }
 
-		@Override
-		public void putInt( int value ) {
-			delegate.writeInt( value );
-		}
+    @Override
+    public void putLong(long value) {
+        delegate.writeLong(value);
+    }
 
-		@Override
-		public void putLong( long value ) {
-			delegate.writeLong( value );
-		}
+    @Override
+    public void put(byte[] b, int offset, int length) {
+        delegate.writeBytes(b, offset, length);
+    }
 
-		@Override
-		public void put( byte[] b, int offset, int length ) {
-			delegate.writeBytes( b, offset, length );
-		}
-
-		@Override
-		public void put( ByteBuffer src ) {
-			delegate.writeBytes( src );
-		}
-
+    @Override
+    public void put(ByteBuffer src) {
+        delegate.writeBytes(src);
+    }
 
 
-		@Override
-		public void putString(@Nonnull String value,
-                              @Nonnull CharsetEncoder encoder,
-                              @Nonnull IntConsumer byte_count_consumer )
-			throws CharacterCodingException {
+    @Override
+    public void prepareForData(int length) {
+        delegate.ensureWritable(length);
+    }
 
-			int position_before = delegate.writerIndex();
-			delegate.writeCharSequence( value, encoder.charset() );
-
-			// NULL terminate string!!
-			// NOTE: Since UTF-16 is 2 bytes, need to insert 2 bytes properly terminate
-            boolean utf16 = encoder.charset().name().startsWith( "UTF-16" );
-            if ( utf16 ) {
-	            delegate.writeShort( ( short ) 0x00 );
-            }
-            else {
-            	delegate.writeByte( 0 );
-            }
-
-			byte_count_consumer.accept( delegate.writerIndex() - position_before );
-		}
-
-		@Override
-		public void prepareForData( int length ) {
-			delegate.ensureWritable( length );
-		}
-
-		@Override
-		public @Nonnull OutputStream outputStream() {
-            return new ByteBufOutputStream(delegate);
-		}
-
+    @Override
+    public @Nonnull OutputStream outputStream() {
+        return new ByteBufOutputStream(delegate);
+    }
 
 
     @Override

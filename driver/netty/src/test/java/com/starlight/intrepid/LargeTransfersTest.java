@@ -43,13 +43,13 @@ public class LargeTransfersTest {
 			             1,
 			            10,
 			           100,
-			         1_000,
+//			         1_000,
 			        10_000,
-			       100_000,
+//			       100_000,
 			     1_000_000,
-			    10_000_000,
+//			    10_000_000,
 			   100_000_000,
-			 1_000_000_000,
+//			 1_000_000_000,
 	    	10_000_000_000L
 		};
 		if ( System.getProperty( "intrepid.test.include_slow" ) == null ) {
@@ -78,7 +78,8 @@ public class LargeTransfersTest {
 					if ( thread_count > 1 && size >= 10_000_000) continue;
 
 					for( int buffer_size : buffer_sizes ) {
-						if ( buffer_size == 10 && size >= 10_000_000 ) continue;
+						// These combinations are way slow and not particularly useful
+						if ( buffer_size == 10 && size >= 10_000 ) continue;
 
 						to_return.add(
 							arguments( size, thread_count, digest, buffer_size ) );

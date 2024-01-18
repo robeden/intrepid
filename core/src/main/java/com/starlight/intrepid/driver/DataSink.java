@@ -4,8 +4,7 @@ import javax.annotation.Nonnull;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
-import java.util.function.IntConsumer;
+import java.nio.charset.StandardCharsets;
 
 
 /**
@@ -22,10 +21,15 @@ public interface DataSink {
 
 
 	/**
-	 * Write a null-terminated string.
+	 * Write a string (just the string value without null-termination).
+	 *
+	 * @return the number of bytes encoded
 	 */
-	void putString( @Nonnull String value, @Nonnull CharsetEncoder encoder,
-		@Nonnull IntConsumer byte_count_consumer ) throws CharacterCodingException;
+	default int putUtf8String(@Nonnull String value) throws CharacterCodingException {
+		byte[] str_data = value.getBytes(StandardCharsets.UTF_8);
+		put(str_data, 0, str_data.length);
+		return str_data.length;
+	}
 
 
 	/**

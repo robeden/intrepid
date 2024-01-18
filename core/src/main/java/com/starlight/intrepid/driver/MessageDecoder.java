@@ -31,7 +31,6 @@ import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
 import com.starlight.intrepid.exception.ServerException;
 import com.starlight.intrepid.message.*;
-import com.starlight.locale.ResourceKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -288,10 +288,10 @@ public final class MessageDecoder {
 		ConnectionArgs connection_args;
 		try {
 			// VMID
-			vmid = readVMID( version < 4, buffer, vmid_creator );
+			vmid = readVMID( buffer, vmid_creator );
 
 			// CONNECTION ARGS
-			connection_args = readPossiblyModernObject( version < 4, true, buffer );
+			connection_args = readModernObject(buffer );
 		}
 		catch( Exception ex ) {
 			throw handleDeserializationError( "vmid", ex,
@@ -312,7 +312,7 @@ public final class MessageDecoder {
 		if ( version < 2 ) reconnect_token = null;
 		else {
 			try {
-				reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
+				reconnect_token = readModernObject(buffer );
 			}
 			catch( Exception ex ) {
 				throw handleDeserializationError( "reconnect token", ex,
@@ -346,7 +346,7 @@ public final class MessageDecoder {
 		VMID vmid;
 		try {
 			// VMID
-			vmid = readVMID( version < 4, buffer, vmid_creator );
+			vmid = readVMID( buffer, vmid_creator );
 		}
 		catch( Exception ex ) {
 			throw handleDeserializationError( "vmid", ex,
@@ -364,16 +364,13 @@ public final class MessageDecoder {
 
 		// RECONNECT TOKEN
 		Serializable reconnect_token;
-		if ( version < 2 ) reconnect_token = null;
-		else {
-			try {
-				reconnect_token = readPossiblyModernObject( version < 4, true, buffer );
-			}
-			catch( Exception ex ) {
-				throw handleDeserializationError( "reconnect token", ex,
-					response_handler,
-					msg -> new SessionCloseIMessage( msg, false ) );
-			}
+		try {
+			reconnect_token = readModernObject(buffer );
+		}
+		catch( Exception ex ) {
+			throw handleDeserializationError( "reconnect token", ex,
+				response_handler,
+				msg -> new SessionCloseIMessage( msg, false ) );
 		}
 
 		// ACK RATE
@@ -413,7 +410,7 @@ public final class MessageDecoder {
 		byte flags = buffer.get();
 
 		boolean has_args = ( flags & 0x01 ) != 0;
-		boolean has_persistent_name = ( flags & 0x02 ) != 0;
+		// 0x02 is unused since version 4
 		boolean has_user_context = ( flags & 0x04 ) != 0;
 		boolean server_perf_stats_requested = ( flags & 0x08 ) != 0;
 
@@ -438,24 +435,8 @@ public final class MessageDecoder {
 		}
 
 		// PERSISTENT NAME
-		String persistent_name = null;
-		if ( has_persistent_name ) {
-			try {
-				persistent_name = buffer.getString(
-					proto_version >= 3 ? StandardCharsets.UTF_8 : StandardCharsets.UTF_16,
-					proto_version >= 3 ? UTF8_DECODER : UTF16_DECODER,
-					c -> {} );
-
-				LOG.trace( "  decoded persistent name: {}", persistent_name );
-			}
-			catch ( CharacterCodingException ex ) {
-				throw handleDeserializationError( "object persistent name", ex,
-					response_handler,
-					msg -> new InvokeReturnIMessage( call_id,
-						new ServerException( msg, ex ),
-						true, null, null ) );
-			}
-		}
+		String persistent_name = readString(buffer).orElse(null);
+		LOG.trace( "  decoded persistent name: {}", persistent_name );
 
 		// USER CONTEXT
 		UserContextInfo user_context = null;
@@ -606,7 +587,7 @@ public final class MessageDecoder {
 		else proto_version = version_or_protocol_version;
 
 		// REASON
-		String reason = readStringOrLegacyResourceKey( proto_version, buffer );
+		String reason = readString( buffer ).orElse(null);
 
 		// AUTH FAILURE
 		boolean is_auth_failure = buffer.get() != 0;
@@ -708,7 +689,7 @@ public final class MessageDecoder {
 
 		if ( rejected ) {
 			// REJECT REASON
-			String reason = readStringOrLegacyResourceKey( proto_version, buffer );
+			String reason = readString( buffer ).orElse( null );
 
 			return new ChannelInitResponseIMessage( request_id, reason );
 		}
@@ -924,79 +905,54 @@ public final class MessageDecoder {
 		}
 	}
 
+	/**
+	 * Read a string prefixed with a 4-byte length.
+	 */
+	private static Optional<String> readString(@Nonnull DataSource buffer)
+		throws EOFException, MessageConsumedButInvalidException {
 
-	private static @Nullable String readStringOrLegacyResourceKey(
-		byte proto_version, @Nonnull DataSource buffer ) throws EOFException, MessageConsumedButInvalidException {
+		int length = buffer.getInt();
 
-		if ( buffer.get() != 0 ) {
-			if ( proto_version >= 3 ) {
-				try {
-					return buffer.getString( StandardCharsets.UTF_8, UTF8_DECODER, c -> {} );
-				}
-				catch ( CharacterCodingException ex ) {
-					LOG.warn( "Unable to decode channel rejection reason", ex );
-					throw new MessageConsumedButInvalidException( "Unable to decode text", ex);
-				}
-			}
-			else {
-				try {
-					ResourceKey<String> reject_reason = readObject( buffer );
-					return reject_reason.getValue();
-				}
-				catch ( Exception ex ) {
-					LOG.warn( "Unable to decode channel rejection reason (old " +
-						"proto version={})", proto_version, ex );
-					throw new MessageConsumedButInvalidException( "Unable to decode text", ex);
-				}
-			}
+		if (length == 0) return Optional.empty();
+		if (length < 0) throw new MessageConsumedButInvalidException("Invalid string length (negative)");
+        try {
+            return Optional.of(buffer.getUtf8String(length));
+        }
+		catch (CharacterCodingException e) {
+            throw new MessageConsumedButInvalidException("Unable to decode string", e);
+        }
+    }
+
+
+	private static @Nonnull VMID readVMID( @Nonnull DataSource buffer,
+		BiFunction<UUID,String,VMID> vmid_creator ) throws IOException {
+
+		long lsb = buffer.getLong();
+		long msb = buffer.getLong();
+		String hint_text;
+		try {
+			hint_text = readString(buffer).orElse(null);
 		}
-
-		return null;
+		catch (MessageConsumedButInvalidException e) {
+			throw new IOException(e);
+		}
+		return vmid_creator.apply( new UUID( msb, lsb ), hint_text );
 	}
 
-
-	private static @Nonnull VMID readVMID( boolean is_legacy,
-		@Nonnull DataSource buffer, BiFunction<UUID,String,VMID> vmid_creator )
+	private static @Nullable <T> T readModernObject(@Nonnull DataSource buffer )
 		throws IOException, ClassNotFoundException {
 
-		if ( !is_legacy ) {
-			long lsb = buffer.getLong();
-			long hsb = buffer.getLong();
-			String hint_text = null;
-			int length = buffer.getShort() & 0xFFFF;
-			if ( length != 0 ) {
-				hint_text = buffer.getString( StandardCharsets.UTF_8, UTF8_DECODER, length );
-			}
-			return vmid_creator.apply( new UUID( hsb, lsb ), hint_text );
-		}
-		else {
-			return readObject( buffer );
-		}
-	}
+		int length = buffer.getInt();
+		if ( length == 0 ) return null;
 
-	private static @Nullable <T> T readPossiblyModernObject( boolean is_legacy,
-		boolean modern_length_is_short, @Nonnull DataSource buffer )
-		throws IOException, ClassNotFoundException {
+		// TODO #11: Object decoder should go here
+		byte[] data = new byte[ length ];
+		buffer.getFully( data );
+		try ( ObjectInputStream in =
+			new ObjectInputStream( new ByteArrayInputStream( data ) ) ) {
 
-		if ( is_legacy ) {
-			if ( buffer.get() == 0 ) return null;
-
-			return readObject( buffer );
-		}
-		else {
-			int length = modern_length_is_short ?
-				buffer.getShort() & 0xFFFF : buffer.getInt();
-			if ( length == 0 ) return null;
-
-			// TODO #11: Object decoder should go here
-			byte[] data = new byte[ length ];
-			buffer.getFully( data );
-			try ( ObjectInputStream in =
-				new ObjectInputStream( new ByteArrayInputStream( data ) ) ) {
-
-				//noinspection unchecked
-				return ( T ) in.readObject();
-			}
+			//noinspection unchecked
+			return ( T ) in.readObject();
 		}
 	}
 

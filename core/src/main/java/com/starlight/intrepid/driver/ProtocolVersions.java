@@ -18,12 +18,16 @@ public class ProtocolVersions {
 	//                  UTF-8 strings
 	//                  Change ChannelInitResponse.reject_reason to string
 	//                  Drop version header from all messages, except ChannelInit
-	public static final byte PROTOCOL_VERSION = 3;  // REMINDER: update tests on change!
+	// 4 (2.0.0)      - PROTOCOL BREAKAGE - not backwards compatible!
+	//                  Message lengths always 4 bytes
+	//                  Support for object encoders
+	//                  Strings now always use length prefix rather than null termination
+	public static final byte PROTOCOL_VERSION = 4;  // REMINDER: update tests on change!
 
 	/** Minimum protocol version this instance can handle. */
 	public static final byte MIN_PROTOCOL_VERSION;
 	static {
-		int min_proto = Integer.getInteger( "intrepid.min_supported_protocol", 3 );
+		int min_proto = Integer.getInteger( "intrepid.min_supported_protocol", 4 );
 		if ( min_proto < 0 || min_proto > PROTOCOL_VERSION ) {
 			throw new IllegalArgumentException( "Invalid minimum supported protocol " +
 				"specified via system property: " + min_proto );
