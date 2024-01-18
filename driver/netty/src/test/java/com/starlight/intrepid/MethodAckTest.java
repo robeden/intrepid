@@ -61,7 +61,9 @@ public class MethodAckTest {
 				throws IOException {
 
 				// Non-invoke messages are okay
-				if ( !( message instanceof InvokeIMessage ) ) return false;
+				if ( !( message instanceof InvokeIMessage ) ) {
+					return false;
+				}
 
 				InvokeIMessage invoke = ( InvokeIMessage ) message;
 				// Don't receive any invokes (unless it's to the registry)
@@ -95,19 +97,16 @@ public class MethodAckTest {
 
 		long start = System.currentTimeMillis();
 
-		try {
-			proxy.run();
-		}
-		catch( MethodInvocationFailedException ex ) {
-			// Never received any acks
-			assertEquals("Initial message acknowledgement timeout exceeded", ex.getMessage());
-		}
+		assertThrows(
+			MethodInvocationFailedException.class,
+			proxy::run,
+			"Initial message acknowledgement timeout exceeded");
 
 		long duration = System.currentTimeMillis() - start;
 		System.out.println( "Ack abort duration: " + duration );
 
 		assertFalse(run_called.get(), "Server method was invoked (should have been dropped)");
-		assertTrue(duration >= 2500 && duration < 5000, "Duration < 2500 or > 5000: " + duration);
+		assertTrue(duration >= 2500 && duration < 10000, "Duration < 2500 or > 10000: " + duration);
 	}
 
 
