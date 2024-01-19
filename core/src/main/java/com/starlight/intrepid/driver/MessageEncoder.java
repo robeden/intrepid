@@ -41,36 +41,32 @@ import java.util.UUID;
  *
  */
 public final class MessageEncoder  {
-	private static final int MAX_SINGLE_SHORT_LENGTH = 0x7FFF;
-	private static final int DUAL_SHORT_FLAG = 0x8000;
 
 
 	/**
 	 * {@link SessionInitIMessage}-specific encoding, since the protocol version
 	 * is unavailable at this point.
 	 *
-	 * @see #encode(IMessage, byte, DataSink, DataSink)
+	 * @see #encode(IMessage, byte, DataSink)
 	 */
-	public static void encodeSessionInit( SessionInitIMessage message,
-		DataSink length_sink, DataSink data_sink ) throws Exception {
+	public static int encodeSessionInit( SessionInitIMessage message,
+		DataSink data_sink ) throws Exception {
 
-		encode_internal( message.getType().getID(),
-			sink -> encodeSessionInit( message, sink ),
-			length_sink, data_sink );
+		return encode_internal( message.getType().getID(),
+			sink -> encodeSessionInit0( message, sink ), data_sink );
 	}
 
 	/**
 	 * {@link SessionInitResponseIMessage}-specific encoding, since the protocol version
 	 * is unavailable at this point.
 	 *
-	 * @see #encode(IMessage, byte, DataSink, DataSink)
+	 * @see #encode(IMessage, byte, DataSink)
 	 */
-	public static void encodeSessionInitResponse( SessionInitResponseIMessage message,
-		DataSink length_sink, DataSink data_sink ) throws Exception {
+	public static int encodeSessionInitResponse( SessionInitResponseIMessage message,
+		DataSink data_sink ) throws Exception {
 
-		encode_internal( message.getType().getID(),
-			sink -> encodeSessionInitResponse( message, sink ),
-			length_sink, data_sink );
+		return encode_internal( message.getType().getID(),
+			sink -> encodeSessionInitResponse0( message, sink ), data_sink );
 	}
 
 
@@ -82,13 +78,13 @@ public final class MessageEncoder  {
 	 * complete message is written by writing the length buffer, followed by the data
 	 * buffer.
 	 *
-	 * @param length_sink     Sink to which the first part of the message will be
-	 *                        written. No more than an int worth of data will be written.
 	 * @param data_sink       Buffer to which the majority of the message data will be
 	 *                        written (could be large).
+	 *
+	 * @return	the number of bytes written
 	 */
-	public static void encode( IMessage message, byte proto_version,
-		DataSink length_sink, DataSink data_sink ) throws Exception {
+	public static int encode( IMessage message, byte proto_version,
+		DataSink data_sink ) throws Exception {
 
 		if ( proto_version < 4 ) {
 			throw new IllegalArgumentException("Invalid protocol version: " + proto_version);
@@ -184,12 +180,15 @@ public final class MessageEncoder  {
 					message );
 		}
 		
-		encode_internal( type.getID(), encoder_function, length_sink, data_sink );
+		return encode_internal( type.getID(), encoder_function, data_sink );
 	}
 
 
-	private static void encode_internal( byte type_id, Encoder encoder_function,
-		DataSink length_sink, DataSink data_sink ) throws Exception {
+	/**
+	 * @return	the number of bytes written
+	 */
+	private static int encode_internal( byte type_id, Encoder encoder_function,
+		DataSink data_sink ) throws Exception {
 
 
 		final DataSink.Tracking tracking_sink = data_sink.trackWritten();
@@ -199,13 +198,12 @@ public final class MessageEncoder  {
 
 		encoder_function.encode( tracking_sink );
 
-		int bytes = tracking_sink.bytesWritten();
-		putDualShortLength( length_sink, bytes );
+		return tracking_sink.bytesWritten();
 	}
 
 
 	// NOTE: protocol version is unknown!
-	private static void encodeSessionInit( SessionInitIMessage message,
+	private static void encodeSessionInit0( SessionInitIMessage message,
 		DataSink buffer ) throws IOException {
 
 		// VERSION
@@ -239,7 +237,7 @@ public final class MessageEncoder  {
 
 
 	// NOTE: protocol version is unknown!
-	private static void encodeSessionInitResponse( SessionInitResponseIMessage message,
+	private static void encodeSessionInitResponse0( SessionInitResponseIMessage message,
 		DataSink buffer ) throws IOException {
 
 		// VERSION
@@ -586,91 +584,6 @@ public final class MessageEncoder  {
 		buffer.putShort( message.getSequenceNumber() );
 	}
 
-
-//	private void writeObject( Object object, IoBuffer buffer, int call_id )
-//		throws IOException {
-//
-//		if ( object == null ) {
-//			if ( DEBUG ) System.out.println( ">>> WRITE: null" );
-//			buffer.put( SerializationShortCut.NULL.getID() );
-//			return;
-//		}
-//
-//		if ( object instanceof Number ) {
-//			if ( object instanceof Byte ) {
-//				if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): byte" );
-//				buffer.put( SerializationShortCut.BYTE.getID() );
-//				buffer.put( ( ( Byte ) object ).byteValue() );
-//				return;
-//			}
-//			else if ( object instanceof Short ) {
-//				if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): short" );
-//				buffer.put( SerializationShortCut.SHORT.getID() );
-//				buffer.putShort( ( ( Short ) object ).shortValue() );
-//				return;
-//			}
-//			else if ( object instanceof Integer ) {
-//				if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): int" );
-//				buffer.put( SerializationShortCut.INT.getID() );
-//				buffer.putInt( ( ( Integer ) object ).byteValue() );
-//				return;
-//			}
-//			else if ( object instanceof Long ) {
-//				if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): long" );
-//				buffer.put( SerializationShortCut.LONG.getID() );
-//				buffer.putLong( ( ( Long ) object ).byteValue() );
-//				return;
-//			}
-//			else if ( object instanceof Float ) {
-//				if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): float" );
-//				buffer.put( SerializationShortCut.FLOAT.getID() );
-//				buffer.putFloat( ( ( Float ) object ).byteValue() );
-//				return;
-//			}
-//			else if ( object instanceof Double ) {
-//				if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): double" );
-//				buffer.put( SerializationShortCut.DOUBLE.getID() );
-//				buffer.putDouble( ( ( Double ) object ).byteValue() );
-//				return;
-//			}
-//			// can fall through if BigInt, etc.
-//		}
-//		else if ( object instanceof Boolean ) {
-//			if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): boolean" );
-//			buffer.put( ( ( Boolean ) object ).booleanValue() ?
-//				SerializationShortCut.BOOLEAN_TRUE.getID() :
-//				SerializationShortCut.BOOLEAN_FALSE.getID() );
-//			return;
-//		}
-//		else if ( object instanceof byte[] ) {
-//			if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): byte[]" );
-//			buffer.put( SerializationShortCut.BYTE_ARRAY.getID() );
-//
-//			byte[] data = ( byte[] ) object;
-////			System.out.println( "Write byte array: " + data.length );
-//			putDualShortLength( buffer, data.length, buffer.position() );
-//			buffer.put( ( byte[] ) object );
-//			return;
-//		}
-//		else if ( object instanceof String ) {
-//			if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): string" );
-//			buffer.put( SerializationShortCut.STRING.getID() );
-//			try {
-//				buffer.putString( ( String ) object, STRING_ENCODER );
-//				buffer.put( ( byte ) 0x00 );           // NULL terminate string!!!
-//			}
-//			catch ( CharacterCodingException e ) {
-//				// Shouldn't happen
-//				throw new IntrepidRuntimeException( e );
-//			}
-//			return;
-//		}
-//
-//		if ( DEBUG ) System.out.println( ">>> WRITE (" + call_id + "): object" );
-//		buffer.put( SerializationShortCut.NONE.getID() );
-//		IoBufferSerialization.putObject( object, buffer );
-//	}
-
 	private static void writeVMID(VMID vmid, DataSink buffer) throws IOException {
 		UUID uuid = vmid.uuid();
 		buffer.putLong(uuid.getLeastSignificantBits());
@@ -687,23 +600,6 @@ public final class MessageEncoder  {
 		}
 	}
 
-
-	/**
-	 * @return		True if it's using a full int
-	 */
-	static boolean putDualShortLength( DataSink buffer, int length ) {
-		assert length >= 0 : "Invalid length: " + length;
-
-		if ( length > MAX_SINGLE_SHORT_LENGTH ) {
-			buffer.putShort( ( short ) ( ( length >>> 16 ) | DUAL_SHORT_FLAG ) );
-			buffer.putShort( ( short ) length );
-			return true;
-		}
-		else {
-			buffer.putShort( ( short ) length );
-			return false;
-		}
-	}
 
 	private static void putModernObject( Object object, DataSink buffer ) throws IOException {
 		if (object == null) {

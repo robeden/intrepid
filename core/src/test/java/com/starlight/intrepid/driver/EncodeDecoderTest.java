@@ -91,20 +91,15 @@ public class EncodeDecoderTest {
 	@ParameterizedTest
 	@MethodSource("testMessages")
 	public void testInvokeEncode(IMessage message) throws Exception {
-		Buffer length_buffer = new Buffer();
 		Buffer data_buffer = new Buffer();
 
-		OkioBufferData length_data = new OkioBufferData( length_buffer );
 		OkioBufferData data = new OkioBufferData( data_buffer );
 
-
-
-		MessageEncoder.encode( message, ProtocolVersions.PROTOCOL_VERSION,
-			length_data, data );
+		int length = MessageEncoder.encode( message, ProtocolVersions.PROTOCOL_VERSION, data );
 
 		Buffer complete = new Buffer();
-		length_buffer.readAll( complete );
-		data_buffer.readAll( complete );
+		complete.writeInt(length);
+		complete.write(data_buffer, data_buffer.size());
 
 		IMessage new_message = MessageDecoder.decode( new OkioBufferData( complete ),
 			ProtocolVersions.PROTOCOL_VERSION, ( response, close ) -> {},

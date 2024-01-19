@@ -61,18 +61,17 @@ public class ChannelDataAckMessageCodecTest {
 	private ChannelDataAckIMessage encodeDecode( ChannelDataAckIMessage original )
 		throws Exception {
 
-		Buffer length_buffer = new Buffer();
 		Buffer data_buffer = new Buffer();
-		MessageEncoder.encode( original, ( byte ) 4, new OkioBufferData( length_buffer ),
-			new OkioBufferData( data_buffer ) );
+		int length = MessageEncoder.encode( original, ( byte ) 4, new OkioBufferData( data_buffer ) );
 
 
 		Buffer data = new Buffer();
-		data.write( length_buffer, length_buffer.size() );
+		data.writeInt(length);
 		data.write( data_buffer, data_buffer.size() );
 		return ( ChannelDataAckIMessage ) MessageDecoder.decode(
-				new OkioBufferData( data ),
-				Byte.valueOf( ( byte ) 3 ), ( message, close ) -> {},
-				( __, ___ ) -> { throw new AssertionError( "Don't call me" ); } );
+			new OkioBufferData( data ),
+			(byte) 4,			// protocol version
+			(message, close ) -> {},
+			( __, ___ ) -> { throw new AssertionError( "Don't call me" ); } );
 	}
 }

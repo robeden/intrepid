@@ -98,16 +98,15 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 
 		buffer.position( 4 );       // leave space for length
 
-		DataSink length_slice_wrapper = new IoBufferWrapper(length_slice);
 		DataSink buffer_wrapper = new IoBufferWrapper(buffer);
+		int length;
 		if ( message.getType() == IMessageType.SESSION_INIT ) {
-			MessageEncoder.encodeSessionInit( ( SessionInitIMessage ) message,
-				length_slice_wrapper, buffer_wrapper );
+			length = MessageEncoder.encodeSessionInit(
+				( SessionInitIMessage ) message, buffer_wrapper );
 		}
 		else if ( message.getType() == IMessageType.SESSION_INIT_RESPONSE ) {
-			MessageEncoder.encodeSessionInitResponse(
-				( SessionInitResponseIMessage ) message, length_slice_wrapper,
-				buffer_wrapper );
+			length = MessageEncoder.encodeSessionInitResponse(
+				( SessionInitResponseIMessage ) message, buffer_wrapper );
 		}
 		else {
 			SessionInfo session_info =
@@ -135,10 +134,9 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 				throw new IllegalStateException( error_message );
 			}
 
-			MessageEncoder.encode( message, protocol_version,
-				length_slice_wrapper, buffer_wrapper );
+			length = MessageEncoder.encode( message, protocol_version, buffer_wrapper );
 		}
-
+		length_slice.putInt(length);
 		prependLength( buffer, length_slice );
 
 		out.write( buffer );

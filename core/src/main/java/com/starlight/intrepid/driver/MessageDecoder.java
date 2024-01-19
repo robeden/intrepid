@@ -84,13 +84,13 @@ public final class MessageDecoder {
 			LOG.trace( "Decoder called: {}", source.hex() );
 		}
 
-		// Need at least 4 bytes
-		if ( !source.request( 4 ) ) return null;
+		// Need at least 6 bytes (length + type + at least a byte)
+		if ( !source.request( 6 ) ) return null;
 
 		source.maybeMarkRead();
 
 		// LENGTH
-		int length = getDualShortLength( source );
+		int length = source.getInt();
 		if ( !source.request( length ) ) {
 			LOG.trace( "Decoder not enough data. Length: {} Buffer: {}", length, source );
 			source.maybeResetRead();
@@ -798,97 +798,6 @@ public final class MessageDecoder {
 
 		return new PingResponseIMessage( seq_number );
 	}
-
-//	private Object readObject( IoBuffer buffer, int call_id )
-//		throws IOException, ClassNotFoundException {
-//
-//		byte shortcut_id = buffer.get();
-//
-//		SerializationShortCut shortcut = SerializationShortCut.findByID( shortcut_id );
-//		if ( shortcut == null ) {
-//			throw new ClassNotFoundException( "Unknown serialization shortcut: " +
-//				shortcut_id );
-//		}
-//
-//		switch ( shortcut ) {
-//			case NONE:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): object" );
-//				return IoBufferSerialization.getObject( buffer );
-//
-//			case NULL:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): null" );
-//				return null;
-//
-//			case BYTE_ARRAY:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): byte[]" );
-//				int length = getDualShortLength( buffer );
-//				if ( DEBUG ) System.out.println( "read byte array: " + length );
-//				byte[] data = new byte[ length ];
-//				buffer.get( data );
-//				return data;
-//
-//			case BYTE:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): byte" );
-//				return Byte.valueOf( buffer.get() );
-//
-//			case SHORT:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): short" );
-//				return Short.valueOf( buffer.getShort() );
-//
-//			case INT:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): int" );
-//				return Integer.valueOf( buffer.getInt() );
-//
-//			case LONG:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): long" );
-//				return Long.valueOf( buffer.getLong() );
-//
-//			case FLOAT:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): float" );
-//				return Float.valueOf( buffer.getFloat() );
-//
-//			case DOUBLE:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): double" );
-//				return Double.valueOf( buffer.getDouble() );
-//
-//			case BOOLEAN_TRUE:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): boolean (true)" );
-//				return Boolean.TRUE;
-//			case BOOLEAN_FALSE:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): boolean (false)" );
-//				return Boolean.FALSE;
-//
-//			case STRING:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): string" );
-//				try {
-//					return buffer.getString( STRING_DECODER );
-//				}
-//				catch ( CharacterCodingException e ) {
-//					// Shouldn't happen
-//					throw new IntrepidRuntimeException( e );
-//				}
-//
-//			default:
-//				if ( DEBUG ) System.out.println( ">>> READ (" + call_id + "): ERROR" );
-//				assert false : "Unhandled SerializationShortCut: " + shortcut;
-//				throw new ClassNotFoundException( "Unhandled serialization shortcut: " +
-//					shortcut );
-//		}
-//	}
-
-
-	// Visible for testing
-	static int getDualShortLength( @Nonnull DataSource buffer ) throws EOFException {
-		short s_length = buffer.getShort();
-		if ( s_length < 0 ) {
-			short low_short = buffer.getShort();
-			return ( ( s_length & 0x7FFF ) << 16 ) | ( low_short & 0xFFFF );
-		}
-		else {
-			return s_length & 0xFFFF;
-		}
-	}
-
 
 
 	private static <T> T readObject( DataSource source )
