@@ -29,6 +29,7 @@ import com.logicartisan.common.core.IOKit;
 import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.ConnectionListener;
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.PerformanceListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
@@ -76,6 +77,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
+
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -140,6 +143,7 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	private UnitTestHook unit_test_hook;
 	private ScheduledExecutor thread_pool;
 	private VMID local_vmid;
+	private ObjectCodec object_codec;
 
 	private SocketAcceptor acceptor;
 	private SocketConnector connector;
@@ -196,19 +200,19 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 	}
 
 	@Override
-	public void init( SocketAddress server_address, String vmid_hint,
-		InboundMessageHandler message_handler, ConnectionListener connection_listener,
-		ScheduledExecutor thread_pool, VMID vmid,
-		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener, UnitTestHook unit_test_hook,
-		BiFunction<UUID,String,VMID> vmid_creator )
+	public void init(SocketAddress server_address, String vmid_hint,
+					 InboundMessageHandler message_handler, ConnectionListener connection_listener,
+					 ScheduledExecutor thread_pool, VMID vmid,
+					 ThreadLocal<VMID> deserialization_context_vmid,
+					 PerformanceListener performance_listener, UnitTestHook unit_test_hook,
+					 BiFunction<UUID,String,VMID> vmid_creator, ObjectCodec object_codec)
 		throws IOException {
 
-		Objects.requireNonNull( message_handler );
-		Objects.requireNonNull( connection_listener );
+		requireNonNull( message_handler );
+		requireNonNull( connection_listener );
 
 		this.reconnect_manager = new ReconnectManager();
-
+		this.object_codec = requireNonNull(object_codec);
 		this.message_handler = message_handler;
 		this.connection_listener = connection_listener;
 		this.performance_listener = performance_listener;
@@ -224,8 +228,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 			else connection_type_description = "Plain";
 		}
 
-		IntrepidCodecFactory codec =
-			new IntrepidCodecFactory( vmid, deserialization_context_vmid, vmid_creator );
+		IntrepidCodecFactory codec = new IntrepidCodecFactory( vmid, deserialization_context_vmid,
+			vmid_creator, object_codec );
 
 		SSLContext context;
 		try {
@@ -1279,8 +1283,8 @@ public class MINAIntrepidDriver implements IntrepidDriver, IoHandler {
 		ReconnectRunnable(SessionContainer container, VMID original_vmid,
 						  Object attachment, SocketAddress socket_address, Serializable reconnect_token ) {
 
-			Objects.requireNonNull( container );
-			Objects.requireNonNull(socket_address);
+			requireNonNull( container );
+			requireNonNull(socket_address);
 
 			this.container = container;
 			this.original_vmid = original_vmid;

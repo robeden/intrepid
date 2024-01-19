@@ -5,6 +5,7 @@
 
 package com.starlight.intrepid.driver;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.OkioBufferData;
 import com.starlight.intrepid.message.ChannelDataAckIMessage;
 import okio.Buffer;
@@ -72,6 +73,7 @@ public class ChannelDataAckMessageCodecTest {
 			new OkioBufferData( data ),
 			(byte) 4,			// protocol version
 			(message, close ) -> {},
-			( __, ___ ) -> { throw new AssertionError( "Don't call me" ); } );
+			( __, ___ ) -> { throw new AssertionError( "Don't call me" ); },
+			ObjectCodec.DEFAULT);
 	}
 }

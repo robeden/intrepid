@@ -64,7 +64,7 @@ public class IntrepidContext {
 
 
 	/**
-	 * Returns the InetAddress of the host that invoked the method which we're inside
+	 * Returns the SocketAddress of the host that invoked the method which we're inside
 	 * the context of. This will be null if not applicable, either because we're not in
 	 * a call, the call comes from the local VM, or the host information isn't available
 	 * from the SPI.

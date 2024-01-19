@@ -72,7 +72,7 @@ public class StubIntrepidDriver implements IntrepidDriver {
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
 		PerformanceListener performance_listener, UnitTestHook unit_test_hook,
-		BiFunction<UUID,String,VMID> vmid_creator )
+		BiFunction<UUID,String,VMID> vmid_creator, ObjectCodec object_codec )
 		throws IOException {}
 
 	@Override

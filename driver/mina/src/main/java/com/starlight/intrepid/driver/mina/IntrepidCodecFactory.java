@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.driver.mina;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.VMID;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
@@ -40,26 +41,28 @@ import java.util.function.BiFunction;
  *
  */
 class IntrepidCodecFactory implements ProtocolCodecFactory {
-	private final ProtocolDecoder DECODER;
-	private final ProtocolEncoder ENCODER = new MINAIMessageEncoder();
+	private final ProtocolDecoder decoder;
+	private final ProtocolEncoder encoder;
 
 
-	IntrepidCodecFactory( @Nonnull VMID vmid,
-		@Nonnull ThreadLocal<VMID> deserialization_context_vmid,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+	IntrepidCodecFactory(@Nonnull VMID vmid,
+						 @Nonnull ThreadLocal<VMID> deserialization_context_vmid,
+						 @Nonnull BiFunction<UUID,String,VMID> vmid_creator,
+						 @Nonnull ObjectCodec object_codec) {
 
-		DECODER =
-			new MINAIMessageDecoder( vmid, deserialization_context_vmid, vmid_creator );
+		decoder = new MINAIMessageDecoder( vmid, deserialization_context_vmid,
+			vmid_creator, object_codec );
+		encoder = new MINAIMessageEncoder(object_codec);
 	}
 
 
 	@Override
-	public ProtocolDecoder getDecoder( IoSession session ) throws Exception {
-		return DECODER;
+	public ProtocolDecoder getDecoder( IoSession session ) {
+		return decoder;
 	}
 
 	@Override
-	public ProtocolEncoder getEncoder( IoSession session ) throws Exception {
-		return ENCODER;
+	public ProtocolEncoder getEncoder( IoSession session ) {
+		return encoder;
 	}
 }

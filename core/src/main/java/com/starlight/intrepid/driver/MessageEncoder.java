@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.driver;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.message.*;
 
@@ -50,10 +51,10 @@ public final class MessageEncoder  {
 	 * @see #encode(IMessage, byte, DataSink)
 	 */
 	public static int encodeSessionInit( SessionInitIMessage message,
-		DataSink data_sink ) throws Exception {
+		DataSink data_sink, ObjectCodec codec ) throws Exception {
 
 		return encode_internal( message.getType().getID(),
-			sink -> encodeSessionInit0( message, sink ), data_sink );
+			sink -> encodeSessionInit0( message, sink, codec ), data_sink );
 	}
 
 	/**
@@ -63,10 +64,10 @@ public final class MessageEncoder  {
 	 * @see #encode(IMessage, byte, DataSink)
 	 */
 	public static int encodeSessionInitResponse( SessionInitResponseIMessage message,
-		DataSink data_sink ) throws Exception {
+		DataSink data_sink, ObjectCodec codec ) throws Exception {
 
 		return encode_internal( message.getType().getID(),
-			sink -> encodeSessionInitResponse0( message, sink ), data_sink );
+			sink -> encodeSessionInitResponse0( message, sink, codec ), data_sink );
 	}
 
 
@@ -112,7 +113,7 @@ public final class MessageEncoder  {
 
 			case INVOKE:
 				encoder_function = sink -> encodeInvoke(
-					( InvokeIMessage ) message, proto_version, sink );
+					( InvokeIMessage ) message, sink );
 				break;
 
 			case INVOKE_RETURN:
@@ -204,7 +205,7 @@ public final class MessageEncoder  {
 
 	// NOTE: protocol version is unknown!
 	private static void encodeSessionInit0( SessionInitIMessage message,
-		DataSink buffer ) throws IOException {
+		DataSink buffer, ObjectCodec codec ) throws IOException {
 
 		// VERSION
 		buffer.put( ( byte ) 4 );
@@ -219,7 +220,7 @@ public final class MessageEncoder  {
 		writeVMID(message.getInitiatorVMID(), buffer);
 
 		// CONNECTION ARGS
-		putModernObject( message.getConnectionArgs(), buffer );
+		putModernObject( message.getConnectionArgs(), buffer, codec );
 
 		// SERVER PORT
 		if ( message.getInitiatorServerPort() == null ) buffer.put( ( byte ) 0 );
@@ -229,7 +230,7 @@ public final class MessageEncoder  {
 		}
 
 		// RECONNECT TOKEN
-		putModernObject( message.getReconnectToken(), buffer );
+		putModernObject( message.getReconnectToken(), buffer, codec );
 
 		// REQUESTED ACK RATE
 		buffer.put( message.getRequestedAckRateSec() );
@@ -238,7 +239,7 @@ public final class MessageEncoder  {
 
 	// NOTE: protocol version is unknown!
 	private static void encodeSessionInitResponse0( SessionInitResponseIMessage message,
-		DataSink buffer ) throws IOException {
+		DataSink buffer, ObjectCodec codec ) throws IOException {
 
 		// VERSION
 		buffer.put( ( byte ) 3 );       // NOTE: Version 4 should change VMID
@@ -258,14 +259,14 @@ public final class MessageEncoder  {
 		}
 
 		// RECONNECT TOKEN
-		putModernObject( message.getReconnectToken(), buffer );
+		putModernObject( message.getReconnectToken(), buffer, codec );
 
 		// ACK RATE
 		buffer.put( message.getAckRateSec() );
 	}
 
 
-	private static void encodeInvoke( InvokeIMessage message, byte proto_version,
+	private static void encodeInvoke( InvokeIMessage message,
 		DataSink buffer ) throws Exception {
 
 		// CALL ID
@@ -601,17 +602,14 @@ public final class MessageEncoder  {
 	}
 
 
-	private static void putModernObject( Object object, DataSink buffer ) throws IOException {
+	private static void putModernObject(Object object, DataSink buffer, ObjectCodec codec) throws IOException {
 		if (object == null) {
 			buffer.putInt(0);
 			return;
 		}
 
-		try (
-			ByteArrayOutputStream bout = new ByteArrayOutputStream(8 * 1024);
-			ObjectOutputStream out = new ObjectOutputStream( bout ) ) {
-
-			out.writeUnshared( object );
+		try (ByteArrayOutputStream bout = new ByteArrayOutputStream(8 * 1024) ) {
+			codec.writeObject(object, bout);
 
 			byte[] data = bout.toByteArray();
 			buffer.putInt(data.length);

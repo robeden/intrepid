@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.driver.mina;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.driver.DataSink;
 import com.starlight.intrepid.driver.MessageEncoder;
 import com.starlight.intrepid.driver.SessionInfo;
@@ -81,6 +82,11 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 	}
 
 
+	private final ObjectCodec object_codec;
+
+	public MINAIMessageEncoder(ObjectCodec object_codec) {
+		this.object_codec = object_codec;
+	}
 
 	@Override
 	public void encode( IoSession session, Object message_obj, ProtocolEncoderOutput out )
@@ -102,11 +108,11 @@ class MINAIMessageEncoder implements ProtocolEncoder {
 		int length;
 		if ( message.getType() == IMessageType.SESSION_INIT ) {
 			length = MessageEncoder.encodeSessionInit(
-				( SessionInitIMessage ) message, buffer_wrapper );
+				( SessionInitIMessage ) message, buffer_wrapper, object_codec );
 		}
 		else if ( message.getType() == IMessageType.SESSION_INIT_RESPONSE ) {
 			length = MessageEncoder.encodeSessionInitResponse(
-				( SessionInitResponseIMessage ) message, buffer_wrapper );
+				( SessionInitResponseIMessage ) message, buffer_wrapper, object_codec);
 		}
 		else {
 			SessionInfo session_info =

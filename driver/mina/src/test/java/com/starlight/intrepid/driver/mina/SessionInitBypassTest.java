@@ -179,7 +179,7 @@ public class SessionInitBypassTest {
 			new IntrepidCodecFactory( vmid, new ThreadLocal<>(),
 				( uuid, s ) -> {
 					throw new AssertionError( "Shouldn't be called" );
-				} );
+				}, ObjectCodec.DEFAULT );
 		NioSocketConnector connector = new NioSocketConnector();
 		connector.getFilterChain().addLast( "intrepid", new ProtocolCodecFilter( codec ) );
 

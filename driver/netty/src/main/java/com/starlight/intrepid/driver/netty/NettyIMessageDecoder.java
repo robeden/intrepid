@@ -1,5 +1,6 @@
 package com.starlight.intrepid.driver.netty;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.driver.MessageConsumedButInvalidException;
 import com.starlight.intrepid.driver.MessageDecoder;
@@ -28,14 +29,17 @@ public class NettyIMessageDecoder extends ByteToMessageDecoder {
 	private final VMID vmid;
 	private final ThreadLocal<VMID> deserialization_context_vmid;
 	private final BiFunction<UUID,String,VMID> vmid_creator;
+	private final ObjectCodec object_codec;
 
-	NettyIMessageDecoder( @Nonnull VMID vmid,
-		@Nonnull ThreadLocal<VMID> deserialization_context_vmid,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+	NettyIMessageDecoder(@Nonnull VMID vmid,
+						 @Nonnull ThreadLocal<VMID> deserialization_context_vmid,
+						 @Nonnull BiFunction<UUID,String,VMID> vmid_creator,
+						 @Nonnull ObjectCodec object_codec) {
 
 		this.vmid = requireNonNull( vmid );
 		this.deserialization_context_vmid = requireNonNull( deserialization_context_vmid );
 		this.vmid_creator = requireNonNull( vmid_creator );
+		this.object_codec = requireNonNull(object_codec);
 	}
 
 
@@ -64,7 +68,7 @@ public class NettyIMessageDecoder extends ByteToMessageDecoder {
 						}
 						CloseHandler.close( ctx.channel(), flush_time );
 					}
-				}, vmid_creator );
+				}, vmid_creator, object_codec );
 			if ( message == null ) {
                 in.readerIndex(position_before);
 			}

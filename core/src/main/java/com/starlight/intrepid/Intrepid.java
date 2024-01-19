@@ -767,7 +767,7 @@ public class Intrepid {
 			channel_rx_window_size_function = attachment ->
 			Integer.getInteger( "intrepid.channel.default_rx_window", 10_000_000 );
 		private ProxyClassFilter proxy_class_filter = ( o, i ) -> true;
-		private boolean force_proto_2 = false;
+		private ObjectCodec object_codec = ObjectCodec.DEFAULT;
 
 		private UnitTestHook unit_test_hook;
 
@@ -792,7 +792,7 @@ public class Intrepid {
 		}
 
 		public Builder threadPool( ScheduledExecutor thread_pool ) {
-			this.thread_pool = thread_pool;
+			this.thread_pool = requireNonNull(thread_pool);
 			return this;
 		}
 
@@ -878,15 +878,13 @@ public class Intrepid {
 		}
 
 
-		@Deprecated
-		public Builder forceProtocolVersion2() {
-			force_proto_2 = true;
+		Builder unitTestHook( @Nonnull UnitTestHook hook ) {
+			this.unit_test_hook = requireNonNull(hook);
 			return this;
 		}
 
-
-		Builder unitTestHook( @Nonnull UnitTestHook hook ) {
-			this.unit_test_hook = hook;
+		Builder objectCodec( @Nonnull ObjectCodec codec ) {
+			this.object_codec = requireNonNull(codec);
 			return this;
 		}
 
@@ -950,14 +948,13 @@ public class Intrepid {
 				this.proxy_class_filter );
 			RemoteCallHandler remote_handler = new RemoteCallHandler( driver, auth_handler,
 				local_handler, vmid, thread_pool, performance_listeners,
-				this.channel_acceptor, this.channel_rx_window_size_function,
-				this.force_proto_2 );
+				this.channel_acceptor, this.channel_rx_window_size_function );
 	
 			// Init SPI
 			driver.init( server_address, vmid_hint, remote_handler,
 				connection_listeners.dispatch(), thread_pool, vmid,
 				ProxyInvocationHandler.DESERIALIZING_VMID, performance_listeners.dispatch(),
-				this.unit_test_hook, VMID::new );
+				this.unit_test_hook, VMID::new, this.object_codec );
 	
 			Intrepid instance = new Intrepid( driver, vmid, local_handler, remote_handler,
 				connection_listeners, performance_listeners );

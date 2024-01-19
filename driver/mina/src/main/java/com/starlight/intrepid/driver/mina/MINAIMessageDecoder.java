@@ -25,6 +25,7 @@
 
 package com.starlight.intrepid.driver.mina;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.driver.*;
 import com.starlight.intrepid.message.IMessage;
@@ -61,14 +62,17 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 	private final VMID vmid;
 	private final ThreadLocal<VMID> deserialization_context_vmid;
 	private final BiFunction<UUID,String,VMID> vmid_creator;
+	private final ObjectCodec object_codec;
 
 	MINAIMessageDecoder( @Nonnull VMID vmid,
-		@Nonnull ThreadLocal<VMID> deserialization_context_vmid,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator ) {
+						 @Nonnull ThreadLocal<VMID> deserialization_context_vmid,
+						 @Nonnull BiFunction<UUID,String,VMID> vmid_creator,
+						 @Nonnull ObjectCodec object_codec) {
 
 		this.vmid = requireNonNull( vmid );
 		this.deserialization_context_vmid = requireNonNull( deserialization_context_vmid );
 		this.vmid_creator = requireNonNull( vmid_creator );
+		this.object_codec = requireNonNull(object_codec);
 	}
 
 
@@ -84,7 +88,7 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 				( SessionInfo ) session.getAttribute( SESSION_INFO_KEY );
 			final Byte protocol_version = session_info.getProtocolVersion();
 
-			IMessage message = MessageDecoder.decode( new IoBufferWrapper( in ),
+			IMessage message = MessageDecoder.decode(new IoBufferWrapper(in),
 				protocol_version,
 				( response, close_option ) -> {
 					LOG.debug( "Response: {}", response );
@@ -98,7 +102,7 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 						}
 						CloseHandler.close( session, flush_time );
 					}
-				}, vmid_creator );
+				}, vmid_creator, object_codec);
 			if ( message == null ) {
 				in.position( position_before );
 				return false;
@@ -122,7 +126,7 @@ class MINAIMessageDecoder extends CumulativeProtocolDecoder {
 	}
 
 
-	private class IoBufferWrapper implements DataSource {
+	private static class IoBufferWrapper implements DataSource {
 		private final IoBuffer delegate;
 
 

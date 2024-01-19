@@ -29,6 +29,7 @@ import com.logicartisan.common.core.thread.ObjectSlot;
 import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.ConnectionListener;
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.PerformanceListener;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
@@ -145,6 +146,7 @@ public class NettyIntrepidDriver<C extends Channel, S extends ServerChannel> imp
 	private UnitTestHook unit_test_hook;
 	private ScheduledExecutor thread_pool;
 	private VMID local_vmid;
+	private ObjectCodec object_codec;
 
 	private ServerBootstrap server_bootstrap;
 	private ChannelFuture server_channel_future;
@@ -233,19 +235,20 @@ public class NettyIntrepidDriver<C extends Channel, S extends ServerChannel> imp
 	}
 
 	@Override
-	public void init( SocketAddress server_address, String vmid_hint,
-		InboundMessageHandler message_handler, ConnectionListener connection_listener,
-		ScheduledExecutor thread_pool, VMID vmid,
-		ThreadLocal<VMID> deserialization_context_vmid,
-		PerformanceListener performance_listener, UnitTestHook unit_test_hook,
-		BiFunction<UUID,String,VMID> vmid_creator )
+	public void init(SocketAddress server_address, String vmid_hint,
+					 InboundMessageHandler message_handler, ConnectionListener connection_listener,
+					 ScheduledExecutor thread_pool, VMID vmid,
+					 ThreadLocal<VMID> deserialization_context_vmid,
+					 PerformanceListener performance_listener, UnitTestHook unit_test_hook,
+					 BiFunction<UUID, String, VMID> vmid_creator,
+					 ObjectCodec object_codec)
 		throws IOException {
 
 		requireNonNull( message_handler );
 		requireNonNull( connection_listener );
 
 		this.reconnect_manager = new ReconnectManager();
-
+		this.object_codec = requireNonNull(object_codec);
 		this.message_handler = message_handler;
 		this.connection_listener = connection_listener;
 		this.performance_listener = performance_listener;
@@ -1086,8 +1089,9 @@ public class NettyIntrepidDriver<C extends Channel, S extends ServerChannel> imp
 
 //			String header = server_bootstrap == null ? "<<CLIENT " : "<<SERVER ";
 //			pipe.addLast(new LoggingHandler(header + "PRE-CODEC", LogLevel.INFO));
-			pipe.addLast(new NettyIMessageEncoder());
-			pipe.addLast(new NettyIMessageDecoder(local_vmid, deserialization_context_vmid, vmid_creator));
+			pipe.addLast(new NettyIMessageEncoder(object_codec));
+			pipe.addLast(new NettyIMessageDecoder(local_vmid, deserialization_context_vmid,
+				vmid_creator, object_codec));
 
 //			pipe.addLast(new LoggingHandler(header + "POST-CODEC", LogLevel.INFO));
 

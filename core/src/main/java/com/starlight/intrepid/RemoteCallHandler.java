@@ -103,9 +103,6 @@ class RemoteCallHandler implements InboundMessageHandler {
 	private static final InvokeAttempt[] INVOKE_ATTEMPT = InvokeAttempt.values();
 
 
-	// TODO: remove in Intrepid 1.8
-	private final boolean force_proto_version_2;
-
 	private final AuthenticationHandler auth_handler;
 	private final IntrepidDriver spi;
 	private final LocalCallHandler local_handler;
@@ -151,8 +148,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		LocalCallHandler local_handler, VMID local_vmid, ScheduledExecutor executor,
 		ListenerSupport<PerformanceListener, ?> performance_listeners,
 		ChannelAcceptor channel_acceptor,
-		ToIntFunction<Optional<Object>> channel_window_size_function,
-		boolean force_proto_version_2 ) {
+		ToIntFunction<Optional<Object>> channel_window_size_function ) {
 
 		this.auth_handler = auth_handler;
 		this.spi = spi;
@@ -162,7 +158,6 @@ class RemoteCallHandler implements InboundMessageHandler {
 		this.channel_acceptor = channel_acceptor;
 		this.performance_listeners = performance_listeners;
 		this.channel_window_size_function = requireNonNull( channel_window_size_function );
-		this.force_proto_version_2 = force_proto_version_2;
 	}
 
 	void initInstance( Intrepid instance ) {
@@ -246,10 +241,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 						performance_listeners.hasListeners() );
 				}
 
-				Integer call_id_obj = Integer.valueOf( call_id );
+				Integer call_id_obj = call_id;
 				LOG.trace( "Sending message {}", call_id_obj );
-				assert message != null;
-				assert vmid != null;
 
 				SessionInfo session_info =
 					spi.sendMessage( vmid, message, protocol_version_slot::set );
@@ -348,8 +341,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 						if ( LOG.isDebugEnabled() ) {
 							LOG.debug( "Result of call {} indicates new IDs: " +
 								"\n\tVMID: {} -> {}" +
-								"\n\tOID:  {} -> {}", vmid, new_vmid,
-								Integer.valueOf( object_id ), new_object_id );
+								"\n\tOID:  {} -> {}", call_id, vmid, new_vmid,
+                                object_id, new_object_id );
 						}
 						throw new NewIDIndicator( new_vmid,
 							new_object_id == null ? object_id : new_object_id.intValue(),
@@ -359,7 +352,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				}
 			}
 
-			if ( !( t instanceof InterruptedCallException ) && t instanceof Error ) {
+			if (t instanceof Error) {
 				t = new ServerException( t );
 			}
 
@@ -368,8 +361,8 @@ class RemoteCallHandler implements InboundMessageHandler {
 				if ( LOG.isDebugEnabled() ) {
 					LOG.debug( "Result of call {} indicates new IDs: " +
 						"\n\tVMID: {} -> {}" +
-						"\n\tOID:  {} -> {}", vmid, new_vmid,
-						Integer.valueOf( object_id ), new_object_id );
+						"\n\tOID:  {} -> {}", call_id, vmid, new_vmid,
+                        object_id, new_object_id );
 				}
 				throw new NewIDIndicator( new_vmid,
 					new_object_id == null ? object_id : new_object_id.intValue(),
@@ -555,7 +548,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			}
 			catch ( Exception ex ) {
 				LOG.warn( "Unable to send channel close message: {}",
-					Short.valueOf( channel_id ), ex );
+                    channel_id, ex );
 			}
 		}
 
@@ -631,7 +624,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			data.limit( position + will_send_amount );
 			if ( LOG.isDebugEnabled() ) {
 				LOG.debug( "Sending {} bytes to virtual channel {} (message ID={})",
-					Integer.valueOf( data.remaining() ), Short.valueOf( channel_id ),
+                    data.remaining(), channel_id,
 					message_id );
 			}
 
@@ -739,7 +732,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			LOG.warn( "Invalid message ({}) received from session " +
 				"(locally_initiated_session={}): {}",
 				message.getClass().getSimpleName(),
-				Boolean.valueOf( locally_initiated_session ),
+                locally_initiated_session,
 				session_info );
 			throw new CloseSessionIndicator( new SessionCloseIMessage() );
 		}
@@ -875,7 +868,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			}
 
 			if ( channel_id_map != null ) {
-				channel_id_map.forEachValue( new ChannelCloseProcedure() );
+				channel_id_map.forEachValue(new ChannelCloseProcedure());
 			}
 		}
 
@@ -889,14 +882,14 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 	@Override
 	public IMessage sessionOpened( SessionInfo session_info, boolean opened_locally,
-		ConnectionArgs connection_args ) throws CloseSessionIndicator {
+		ConnectionArgs connection_args ) {
 
 		// Only care about sessions we opened
 		if ( !opened_locally ) return null;
 
 		return new SessionInitIMessage( local_vmid, spi.getServerPort(),
 			connection_args, ProtocolVersions.MIN_PROTOCOL_VERSION,
-			force_proto_version_2 ? 2 : ProtocolVersions.PROTOCOL_VERSION,
+			ProtocolVersions.PROTOCOL_VERSION,
 			session_info.getReconnectToken(),
 			REQUEST_INVOKE_ACK_RATE_SEC );
 	}
@@ -912,7 +905,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		OptionalInt negotiated_proto_version = ProtocolVersions.negotiateProtocolVersion(
 			message.getMinProtocolVersion(), message.getPrefProtocolVersion() );
-		if ( !negotiated_proto_version.isPresent() ) {
+		if (negotiated_proto_version.isEmpty()) {
 			throw new CloseSessionIndicator( new SessionCloseIMessage(
 				"Incompatible protocol version. Acceptable range: " +
 					ProtocolVersions.MIN_PROTOCOL_VERSION + "-" +
@@ -926,7 +919,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 
 		// WARNING: Make sure the protocol version is set immediately as it will be needed
 		//          for the close message is –for example- user authentication fails
-		session_info.setProtocolVersion( Byte.valueOf( proto_version ) );
+		session_info.setProtocolVersion(proto_version);
 
 		// NOTE: MUST come before setVMID
 		session_info.setPeerServerPort( message.getInitiatorServerPort() );
@@ -984,7 +977,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		byte ack_rate = message.getAckRateSec();
 		if ( ack_rate <= 0 ) ack_rate = REQUEST_INVOKE_ACK_RATE_SEC;
 
-		session_info.setProtocolVersion( Byte.valueOf( message.getProtocolVersion() ) );
+		session_info.setProtocolVersion(message.getProtocolVersion());
 		session_info.setVMID( message.getResponderVMID(), ack_rate );
 		session_info.setReconnectToken( message.getReconnectToken() );
 	}
@@ -1074,7 +1067,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		if ( call_info == null ) {
 			if ( LOG.isDebugEnabled() ) {
 				LOG.debug( "No info found for call {}, message: {}",
-					Integer.valueOf( message.getCallID() ), message );
+                    message.getCallID(), message );
 			}
 			return;
 		}
@@ -1113,7 +1106,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		if ( call_info == null ) {
 			if ( LOG.isDebugEnabled() ) {
 				LOG.debug( "No info found for call {}, message: {}",
-					Integer.valueOf( message.getCallID() ), message );
+                    message.getCallID(), message );
 			}
 			return;
 		}
@@ -1164,7 +1157,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 			VirtualByteChannel prev_channel = channel_id_map.put( channel_id, channel );
 			if ( prev_channel != null ) {
 				assert false : "Duplicate channel ID " + channel_id;
-				LOG.warn( "Duplicate channel ID: {}", Short.valueOf( channel_id ) );
+				LOG.warn( "Duplicate channel ID: {}", channel_id);
 				prev_channel.closedByPeer();
 			}
 		}
@@ -1400,7 +1393,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 	}
 
 
-	private class ChannelCloseProcedure implements TObjectProcedure<VirtualByteChannel> {
+	private static class ChannelCloseProcedure implements TObjectProcedure<VirtualByteChannel> {
 		@Override
 		public boolean execute( VirtualByteChannel channel ) {
 			if ( channel != null ) channel.closedByPeer();

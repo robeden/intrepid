@@ -188,8 +188,8 @@ public class SessionInitBypassTest {
 					ch.pipeline().addLast(new NettyIMessageDecoder(vmid, new ThreadLocal<>(),
 						( uuid, s ) -> {
 							throw new AssertionError( "Shouldn't be called" );
-						}));
-					ch.pipeline().addLast(new NettyIMessageEncoder());
+						}, ObjectCodec.DEFAULT));
+					ch.pipeline().addLast(new NettyIMessageEncoder(ObjectCodec.DEFAULT));
 				}
 
 				@Override

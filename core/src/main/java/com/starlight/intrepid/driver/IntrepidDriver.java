@@ -26,10 +26,7 @@
 package com.starlight.intrepid.driver;
 
 import com.logicartisan.common.core.thread.ScheduledExecutor;
-import com.starlight.intrepid.ConnectionListener;
-import com.starlight.intrepid.PerformanceControl;
-import com.starlight.intrepid.PerformanceListener;
-import com.starlight.intrepid.VMID;
+import com.starlight.intrepid.*;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.exception.NotConnectedException;
 import com.starlight.intrepid.message.IMessage;
@@ -86,7 +83,8 @@ public interface IntrepidDriver {
 		ScheduledExecutor thread_pool, VMID vmid,
 		ThreadLocal<VMID> deserialization_context_vmid,
 		PerformanceListener performance_listener,
-		UnitTestHook unit_test_hook, BiFunction<UUID,String,VMID> vmid_creator )
+		UnitTestHook unit_test_hook, BiFunction<UUID,String,VMID> vmid_creator,
+	    ObjectCodec object_codec)
 		throws IOException;
 
 	void shutdown();

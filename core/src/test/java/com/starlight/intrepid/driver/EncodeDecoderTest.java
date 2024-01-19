@@ -1,5 +1,6 @@
 package com.starlight.intrepid.driver;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.OkioBufferData;
 import com.starlight.intrepid.auth.SimpleUserContextInfo;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -107,7 +108,7 @@ public class EncodeDecoderTest {
 			//       be needed...
 			( uuid, s ) -> {
 				throw new AssertionError( "Shouldn't be called" );
-			} );
+			}, ObjectCodec.DEFAULT );
 
 		assertEquals( message, new_message );
 	}

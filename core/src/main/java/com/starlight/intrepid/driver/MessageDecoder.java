@@ -26,6 +26,7 @@
 package com.starlight.intrepid.driver;
 
 import com.logicartisan.common.core.IOKit;
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.VMID;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import com.starlight.intrepid.auth.UserContextInfo;
@@ -40,8 +41,6 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -53,14 +52,6 @@ import java.util.function.Function;
  */
 public final class MessageDecoder {
 	private static final Logger LOG = LoggerFactory.getLogger( MessageDecoder.class );
-
-	@SuppressWarnings( "DeprecatedIsStillUsed" )
-	@Deprecated
-	private static final CharsetDecoder UTF16_DECODER =     // proto 0-2
-		StandardCharsets.UTF_16.newDecoder();
-	private static final CharsetDecoder UTF8_DECODER =      // proto 3+
-		StandardCharsets.UTF_8.newDecoder();
-
 
 
 	/**
@@ -76,7 +67,7 @@ public final class MessageDecoder {
 	public static @Nullable IMessage decode( @Nonnull DataSource source,
 		@Nullable Byte proto_version,
 		@Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator, @Nonnull ObjectCodec codec)
 		throws MessageConsumedButInvalidException, EOFException {
 
 
@@ -111,7 +102,7 @@ public final class MessageDecoder {
 		IMessage message = null;
 		try {
 			message = decode0( message_type,
-				tracking_source, proto_version, response_handler, vmid_creator );
+				tracking_source, proto_version, response_handler, vmid_creator, codec );
 		}
 		catch( EOFException ex ) {
 			invalid_message_exception = new MessageConsumedButInvalidException();
@@ -138,7 +129,8 @@ public final class MessageDecoder {
 		@Nonnull DataSource source,
 		@Nullable Byte proto_version,
 		@Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator,
+		@Nonnull ObjectCodec codec)
 		throws MessageConsumedButInvalidException, EOFException {
 
 		final IMessage message;
@@ -146,12 +138,12 @@ public final class MessageDecoder {
 			switch ( message_type ) {
 				case SESSION_INIT:
 					message = decodeSessionInit(
-						source, response_handler, vmid_creator );
+						source, response_handler, vmid_creator, codec );
 					break;
 
 				case SESSION_INIT_RESPONSE:
 					message = decodeSessionInitResponse(
-						source, response_handler, vmid_creator );
+						source, response_handler, vmid_creator, codec );
 					break;
 
 				case SESSION_CLOSE:
@@ -177,14 +169,14 @@ public final class MessageDecoder {
 				//       Old intrepid versions allow re-init
 				case SESSION_INIT:
 					message = decodeSessionInit(
-						source, response_handler, vmid_creator );
+						source, response_handler, vmid_creator, codec );
 					break;
 
 				// NOTE: Allowing session init messages even if proto version is known.
 				//       Old intrepid versions allow re-init
 				case SESSION_INIT_RESPONSE:
 					message = decodeSessionInitResponse(
-						source, response_handler, vmid_creator );
+						source, response_handler, vmid_creator, codec );
 					break;
 
 				case SESSION_TOKEN_CHANGE:
@@ -272,7 +264,7 @@ public final class MessageDecoder {
 	// NOTE: protocol version is unknown
 	private static @Nonnull SessionInitIMessage decodeSessionInit(
 		@Nonnull DataSource buffer, @Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator, @Nonnull ObjectCodec codec )
 		throws MessageConsumedButInvalidException, EOFException {
 
 		// VERSION
@@ -291,7 +283,7 @@ public final class MessageDecoder {
 			vmid = readVMID( buffer, vmid_creator );
 
 			// CONNECTION ARGS
-			connection_args = readModernObject(buffer );
+			connection_args = readModernObject(buffer, codec );
 		}
 		catch( Exception ex ) {
 			throw handleDeserializationError( "vmid", ex,
@@ -312,7 +304,7 @@ public final class MessageDecoder {
 		if ( version < 2 ) reconnect_token = null;
 		else {
 			try {
-				reconnect_token = readModernObject(buffer );
+				reconnect_token = readModernObject(buffer, codec);
 			}
 			catch( Exception ex ) {
 				throw handleDeserializationError( "reconnect token", ex,
@@ -334,7 +326,7 @@ public final class MessageDecoder {
 	private static SessionInitResponseIMessage decodeSessionInitResponse(
 		@Nonnull DataSource buffer,
 		@Nonnull ResponseHandler response_handler,
-		@Nonnull BiFunction<UUID,String,VMID> vmid_creator )
+		@Nonnull BiFunction<UUID,String,VMID> vmid_creator, ObjectCodec codec)
 		throws MessageConsumedButInvalidException, EOFException {
 
 		// VERSION
@@ -365,7 +357,7 @@ public final class MessageDecoder {
 		// RECONNECT TOKEN
 		Serializable reconnect_token;
 		try {
-			reconnect_token = readModernObject(buffer );
+			reconnect_token = readModernObject(buffer, codec);
 		}
 		catch( Exception ex ) {
 			throw handleDeserializationError( "reconnect token", ex,
@@ -580,11 +572,7 @@ public final class MessageDecoder {
 	private static @Nonnull SessionCloseIMessage decodeSessionClose( @Nonnull DataSource buffer )
 		throws EOFException, MessageConsumedButInvalidException {
 		// VERSION or PROTOCOL_VERSION
-		byte version_or_protocol_version = buffer.get();
-
-		byte proto_version;
-		if ( version_or_protocol_version == 0 ) proto_version = 2;
-		else proto_version = version_or_protocol_version;
+		buffer.get();
 
 		// REASON
 		String reason = readString( buffer ).orElse(null);
@@ -848,20 +836,16 @@ public final class MessageDecoder {
 		return vmid_creator.apply( new UUID( msb, lsb ), hint_text );
 	}
 
-	private static @Nullable <T> T readModernObject(@Nonnull DataSource buffer )
+	private static @Nullable <T> T readModernObject(@Nonnull DataSource buffer, ObjectCodec codec)
 		throws IOException, ClassNotFoundException {
 
 		int length = buffer.getInt();
 		if ( length == 0 ) return null;
 
-		// TODO #11: Object decoder should go here
 		byte[] data = new byte[ length ];
 		buffer.getFully( data );
-		try ( ObjectInputStream in =
-			new ObjectInputStream( new ByteArrayInputStream( data ) ) ) {
-
-			//noinspection unchecked
-			return ( T ) in.readObject();
+		try ( ByteArrayInputStream in = new ByteArrayInputStream( data ) ) {
+			return (T) codec.readObject(in);
 		}
 	}
 

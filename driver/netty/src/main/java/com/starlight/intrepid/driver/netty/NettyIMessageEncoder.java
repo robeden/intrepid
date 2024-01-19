@@ -1,5 +1,6 @@
 package com.starlight.intrepid.driver.netty;
 
+import com.starlight.intrepid.ObjectCodec;
 import com.starlight.intrepid.driver.DataSink;
 import com.starlight.intrepid.driver.MessageEncoder;
 import com.starlight.intrepid.driver.SessionInfo;
@@ -14,12 +15,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.starlight.intrepid.driver.netty.NettyIntrepidDriver.SESSION_INFO_KEY;
+import static java.util.Objects.requireNonNull;
 
 public class NettyIMessageEncoder extends MessageToByteEncoder<IMessage> {
     private static final Logger LOG = LoggerFactory.getLogger(NettyIMessageEncoder.class);
 
 
-    @Override
+	private final ObjectCodec object_codec;
+
+	public NettyIMessageEncoder(ObjectCodec object_codec) {
+		this.object_codec = requireNonNull(object_codec);
+	}
+
+	@Override
     protected void encode(ChannelHandlerContext ctx, IMessage message, ByteBuf out)
         throws Exception {
 
@@ -43,11 +51,11 @@ public class NettyIMessageEncoder extends MessageToByteEncoder<IMessage> {
 
 		if ( message.getType() == IMessageType.SESSION_INIT ) {
 			return MessageEncoder.encodeSessionInit(
-				(SessionInitIMessage) message, buffer_wrapper );
+				(SessionInitIMessage) message, buffer_wrapper, object_codec );
 		}
 		else if ( message.getType() == IMessageType.SESSION_INIT_RESPONSE ) {
 			return MessageEncoder.encodeSessionInitResponse(
-				(SessionInitResponseIMessage) message, buffer_wrapper );
+				(SessionInitResponseIMessage) message, buffer_wrapper, object_codec );
 		}
 		else {
 			SessionInfo session_info = ctx.attr( SESSION_INFO_KEY ).get();

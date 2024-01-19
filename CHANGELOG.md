@@ -13,11 +13,18 @@ real history will start at 1.7.0.
 ### Changed
 - **Breaking change:** The wire protocol was incremented to version 4, which is incompatible
   with earlier releases. Primarily, the way frame lengths are handled is a vast simplification.
-  While the cutting torch is out, string length handling is also a little safer. 
+  While the cutting torch is out, string length handling is also a little safer. Forcing use
+  of protocol version 2 is no longer possible via Intrepid.Builder.
 - **Breaking change:** ConnectionListener replaces host (`InetAddress`) and port (`int`)
   with a single `SocketAddress`.
 - **Breaking change:** Builder method `serverPort` has been removed and the signature of
   `serverAddress` has been changed to take a `SocketAddress` rather than an `InetAddress`.
+- **Breaking change:** IntrepidContext.getCallingHost() now returns a SocketAddress.
+
+### Added
+- A Netty driver has been added and is now the preferred implementation.
+- Custom Object encoding is now supported via the `ObjectCodec` interface.
+
 
 
 ## [1.8.0] - 2023-05-26
