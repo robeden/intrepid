@@ -28,6 +28,8 @@ package com.starlight.intrepid.driver.netty;
 import com.logicartisan.common.core.thread.ObjectSlot;
 import com.starlight.intrepid.auth.ConnectionArgs;
 import io.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
 import java.util.Objects;
@@ -37,6 +39,9 @@ import java.util.Objects;
 *
 */
 class ChannelContainer {
+	private static final Logger LOG = LoggerFactory.getLogger(ChannelContainer.class);
+
+
 	private final SocketAddress socket_address;
 	private final ConnectionArgs connection_args;
 
@@ -77,13 +82,10 @@ class ChannelContainer {
 	 * Set a new session and return the old one (if any).
 	 */
 	public Channel setChannel(Channel channel ) {
+		LOG.debug("Channel for {} container ({}) set: {}",
+			System.identityHashCode(this), socket_address, channel);
 //		System.out.println( "Session set (" + host_and_port + "): " + session );
 		return channel_slot.getAndSet( channel );
-	}
-
-
-	public boolean clearIfExpectedSession( Channel channel ) {
-		return channel_slot.compareAndSet( channel, null );
 	}
 
 

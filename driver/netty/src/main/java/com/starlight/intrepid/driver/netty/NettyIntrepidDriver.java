@@ -49,8 +49,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.EncoderException;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.JZlibEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
@@ -58,7 +56,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.Serializable;
@@ -73,11 +70,13 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.IntConsumer;
 
+import static java.util.Objects.requireNonNull;
+
 
 /**
  *
  */
-public class NettyIntrepidDriver implements IntrepidDriver {
+public class NettyIntrepidDriver<C extends Channel, S extends ServerChannel> implements IntrepidDriver {
 
 	private static final Logger LOG = LoggerFactory.getLogger( NettyIntrepidDriver.class );
 
@@ -130,6 +129,13 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	private final boolean enable_compression;
 	private final SslContext client_ssl_context;
 	private final SslContext server_ssl_context;
+	private final Class<? extends Channel> client_channel_class;
+	private final Map<ChannelOption,Object> client_options;
+	private final EventLoopGroup client_worker_group;
+	private final Class<? extends ServerChannel> server_channel_class;
+	private final Map<ChannelOption,Object> server_options;
+	private final EventLoopGroup server_boss_group;
+	private final EventLoopGroup server_worker_group;
 
 	private String connection_type_description;
 
@@ -143,8 +149,6 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	private ServerBootstrap server_bootstrap;
 	private ChannelFuture server_channel_future;
 	private Bootstrap client_bootstrap;
-	private EventLoopGroup worker_group;
-	private EventLoopGroup boss_group;
 
 	// Lock for session_map, outbound_session_map and vmid_remap
 	private final Lock map_lock = new ReentrantLock();
@@ -160,8 +164,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	// put here.
 	private final Map<VMID,VMID> vmid_remap = new HashMap<>();
 
-	private final DelayQueue<ReconnectRunnable> reconnect_delay_queue =
-		new DelayQueue<>();
+	private final DelayQueue<ReconnectRunnable> reconnect_delay_queue = new DelayQueue<>();
 	private final ConcurrentHashMap<SocketAddress,SocketAddress> active_reconnections =
 		new ConcurrentHashMap<>();
 
@@ -173,11 +176,13 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		Long.getLong( "intrepid.driver.mina.message_send_delay" );
 
 
-	/**
-	 * Create an instance with compression and SSL disabled.
-	 */
+	public static <C extends Channel, S extends ServerChannel> Builder<C,S> newBuilder() {
+		return new Builder<>();
+	}
+
+
 	public NettyIntrepidDriver() {
-		this( false, null, null );
+		this(false, null, null, null, null, null, null, null, null, null);
 	}
 
 	/**
@@ -185,14 +190,45 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	 *
 	 * @param enable_compression		If true, compression will be enabled.
 	 */
-	public NettyIntrepidDriver(boolean enable_compression,
-							   SslContext client_ssl_context, SslContext server_ssl_context ) {
+	private NettyIntrepidDriver(boolean enable_compression,
+								@Nullable SslContext client_ssl_context,
+								@Nullable Class<C> client_channel_class,
+								@Nullable Map<ChannelOption,Object> client_options,
+								@Nullable EventLoopGroup client_worker_group,
+								@Nullable SslContext server_ssl_context,
+								@Nullable Class<S> server_channel_class,
+								@Nullable Map<ChannelOption,Object> server_options,
+								@Nullable EventLoopGroup server_boss_group,
+								@Nullable EventLoopGroup server_worker_group) {
+
 		this.enable_compression = enable_compression;
 		this.client_ssl_context = client_ssl_context;
+		this.client_channel_class =
+			client_channel_class == null ? NioSocketChannel.class : client_channel_class;
+		this.client_options = client_options;
+		this.client_worker_group = client_worker_group == null ? new NioEventLoopGroup() : client_worker_group;
 		this.server_ssl_context = server_ssl_context;
+		this.server_channel_class =
+			server_channel_class == null ? NioServerSocketChannel.class : server_channel_class;
+		this.server_options = server_options;
+		this.server_boss_group =
+			server_boss_group == null ? new NioEventLoopGroup(1) : server_boss_group;
+		this.server_worker_group =
+			server_worker_group == null ? new NioEventLoopGroup() : server_worker_group;
 
 		if ( message_send_delay != null ) {
 			LOG.warn( "Message send delay is active: " + message_send_delay + " ms" );
+		}
+
+		if (this.client_worker_group.isShuttingDown() || this.client_worker_group.isShutdown() ||
+			this.client_worker_group.isTerminated()) {
+
+			throw new IllegalArgumentException("Client worker group is stopped");
+		}
+		if (this.server_worker_group.isShuttingDown() || this.server_worker_group.isShutdown() ||
+			this.server_worker_group.isTerminated()) {
+
+			throw new IllegalArgumentException("Server worker group is stopped");
 		}
 	}
 
@@ -205,8 +241,8 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		BiFunction<UUID,String,VMID> vmid_creator )
 		throws IOException {
 
-		Objects.requireNonNull( message_handler );
-		Objects.requireNonNull( connection_listener );
+		requireNonNull( message_handler );
+		requireNonNull( connection_listener );
 
 		this.reconnect_manager = new ReconnectManager();
 
@@ -225,44 +261,42 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			else connection_type_description = "Plain";
 		}
 
-		SSLContext context;
-		try {
-			context = SSLContext.getInstance( "TLS" );
-			context.init( null, null, null );
-		}
-		catch( Exception ex ) {
-			LOG.error( "Unable to enable SSL", ex );
-		}
-
 		ChannelHandler handler = new ChannelHandler(deserialization_context_vmid, vmid_creator);
 
-        worker_group = new NioEventLoopGroup();
-
 		client_bootstrap = new Bootstrap()
-			.group(worker_group)
-			.channel(NioSocketChannel.class)	// TODO: change for UDS
-			.option(ChannelOption.TCP_NODELAY, true)
-			.option(ChannelOption.SO_KEEPALIVE, true)
-			.option(ChannelOption.SO_LINGER, 0)
+			.group(client_worker_group)
+			.channel(client_channel_class)
 			.handler(handler);
-
-		// TODO: What is this? Still apply?
-//		client_bootstrap.getSessionConfig().setThroughputCalculationInterval( 1 );
+		if (client_options == null) {
+			if (NioSocketChannel.class.equals(client_channel_class)) {
+				client_bootstrap = client_bootstrap
+					.option(ChannelOption.TCP_NODELAY, true)
+					.option(ChannelOption.SO_KEEPALIVE, true)
+					.option(ChannelOption.SO_LINGER, 0);
+			}
+		}
+		else {
+			client_options.forEach(client_bootstrap::option);
+		}
 
 
 		if ( server_address != null ) {
-			boss_group = new NioEventLoopGroup(1);
 			server_bootstrap = new ServerBootstrap()
-				.group(boss_group, worker_group)
-             	.channel(NioServerSocketChannel.class)	// TODO: change for UDS
+				.group(server_boss_group, server_worker_group)
+             	.channel(server_channel_class)
 				.childAttr(LOCAL_INITIATE_KEY, false)
-				.option(ChannelOption.TCP_NODELAY, true)
-				.option(ChannelOption.SO_KEEPALIVE, true)
-				.option(ChannelOption.SO_LINGER, 0)
-				.handler(new LoggingHandler("<<HANDLER>>", LogLevel.INFO))
-//				.childHandler(new LoggingHandler("<<<CHILD>>>", LogLevel.INFO));
-//				.handler(handler)
 				.childHandler(handler);
+			if (server_options == null) {
+				if (NioServerSocketChannel.class.equals(server_channel_class)) {
+					server_bootstrap = server_bootstrap
+						.childOption(ChannelOption.TCP_NODELAY, true)
+						.childOption(ChannelOption.SO_KEEPALIVE, true)
+						.childOption(ChannelOption.SO_LINGER, 0);
+				}
+			}
+			else {
+				server_options.forEach(server_bootstrap::option);
+			}
 
 			if (server_address instanceof InetSocketAddress && ((InetSocketAddress) server_address).getPort() <= 0) {
 				server_channel_future = server_bootstrap.bind(0);
@@ -336,9 +370,9 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		});
 
 
-
-		if (boss_group != null) boss_group.shutdownGracefully();
-		if (worker_group != null) worker_group.shutdownGracefully();
+		if (server_boss_group != null) server_boss_group.shutdownGracefully();
+		if (server_worker_group != null) server_worker_group.shutdownGracefully();
+		if (client_worker_group != null) client_worker_group.shutdownGracefully();
 
 		if ( client_bootstrap != null ) {
 			client_bootstrap = null;
@@ -539,7 +573,6 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			.attr(RECONNECT_TOKEN_KEY, reconnect_token)
 			.attr(CONTAINER_KEY, container)
 			.attr(ATTACHMENT_KEY, attachment)
-			.attr(CONTAINER_KEY, new ChannelContainer(socket_address, args))
 			.attr(VMID_SLOT_KEY, vmid_slot)
 			.attr(VMID_KEY, original_vmid)
 			.connect(socket_address);
@@ -771,7 +804,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 	}
 
 
-	class ReconnectRunnable implements Runnable, Delayed {
+	class ReconnectRunnable implements DelayedRunnable {
 		private final ChannelContainer container;
 		private final VMID original_vmid;
 		private final Object attachment;
@@ -787,8 +820,8 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		ReconnectRunnable(ChannelContainer container, VMID original_vmid,
 						  Object attachment, SocketAddress socket_address, Serializable reconnect_token ) {
 
-			Objects.requireNonNull( container );
-			Objects.requireNonNull(socket_address);
+			requireNonNull( container );
+			requireNonNull(socket_address);
 
 			this.container = container;
 			this.original_vmid = original_vmid;
@@ -945,10 +978,13 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 
 
 	@FunctionalInterface
-	interface ReconnectRunnableCreator {
-		ReconnectRunnable create(ChannelContainer container, VMID original_vmid,
-								 Object attachment, SocketAddress socket_address, Serializable reconnect_token);
+	interface ReconnectRunnableCreator<DR extends DelayedRunnable> {
+		DR create(ChannelContainer container, VMID original_vmid,
+				  Object attachment, SocketAddress socket_address,
+				  Serializable reconnect_token);
 	}
+
+	interface DelayedRunnable extends Delayed, Runnable {}
 
 
 	class ReconnectManager extends Thread {
@@ -1034,7 +1070,7 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 		}
 
 		@Override
-		protected void initChannel(Channel c) throws Exception {
+		protected void initChannel(Channel c) {
 			ChannelPipeline pipe = c.pipeline();
 
 			SslContext ssl_context = null;
@@ -1045,21 +1081,20 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			}
 
 			if (enable_compression) {
-				pipe.addLast(new JZlibEncoder());
-				pipe.addLast(new JZlibDecoder());
+				pipe.addLast(new JZlibEncoder(), new JZlibDecoder());
 			}
 
-			String header = server_bootstrap == null ? "<<CLIENT " : "<<SERVER ";
+//			String header = server_bootstrap == null ? "<<CLIENT " : "<<SERVER ";
 //			pipe.addLast(new LoggingHandler(header + "PRE-CODEC", LogLevel.INFO));
 			pipe.addLast(new NettyIMessageEncoder());
 			pipe.addLast(new NettyIMessageDecoder(local_vmid, deserialization_context_vmid, vmid_creator));
 
 //			pipe.addLast(new LoggingHandler(header + "POST-CODEC", LogLevel.INFO));
 
-			pipe.addLast(new ProcessListener(session_map, outbound_session_map, vmid_remap, map_lock, connection_listener,
-					connection_type_description, local_vmid, message_handler, performance_listener,
-					reconnect_delay_queue, thread_pool, unit_test_hook,
-					ReconnectRunnable::new));
+			pipe.addLast(new ProcessListener<>(session_map, outbound_session_map, vmid_remap, map_lock,
+				connection_listener, connection_type_description, local_vmid, message_handler,
+				performance_listener, reconnect_delay_queue, thread_pool, unit_test_hook,
+				ReconnectRunnable::new));
 //			pipe.addLast(new LoggingHandler(header + "PIPELINE 4>>", LogLevel.INFO));
 
 //			c.pipeline().addLast(new LoggingHandler("<<PIPELINE>>", LogLevel.INFO));
@@ -1077,6 +1112,75 @@ public class NettyIntrepidDriver implements IntrepidDriver {
 			else LOG.debug( "Exception caught", cause );
 
 			super.exceptionCaught(ctx, cause);
+		}
+	}
+
+	public static class Builder<C extends Channel, S extends ServerChannel> {
+		private boolean enableCompression = false;
+		private SslContext clientSslContext = null;
+		private Class<C> clientChannelClass = null;
+		private Map<ChannelOption, Object> clientOptions = null;
+		private EventLoopGroup clientWorkerGroup = null;
+		private SslContext serverSslContext = null;
+		private Class<S> serverChannelClass = null;
+		private Map<ChannelOption, Object> serverOptions = null;
+		private EventLoopGroup serverBossGroup = null;
+		private EventLoopGroup serverWorkerGroup = null;
+
+		public Builder<C,S> compression(boolean enable) {
+			this.enableCompression = enable;
+			return this;
+		}
+
+		public Builder<C,S> clientSslContext(SslContext context) {
+			this.clientSslContext = requireNonNull(context);
+			return this;
+		}
+
+		public Builder<C,S> clientChannelClass(Class<C> channel) {
+			this.clientChannelClass = requireNonNull(channel);
+			return this;
+		}
+
+		public Builder<C,S> clientOptions(Map<ChannelOption,Object> options) {
+			this.clientOptions = requireNonNull(options);
+			return this;
+		}
+
+		public Builder<C,S> clientWorkerGroup(EventLoopGroup group) {
+			this.clientWorkerGroup = requireNonNull(group);
+			return this;
+		}
+
+		public Builder<C,S> serverSslContext(SslContext context) {
+			this.serverSslContext = requireNonNull(context);
+			return this;
+		}
+
+		public Builder<C,S> serverChannelClass(Class<S> channel) {
+			this.serverChannelClass = requireNonNull(channel);
+			return this;
+		}
+
+		public Builder<C,S> serverOptions(Map<ChannelOption,Object> options) {
+			this.serverOptions = requireNonNull(options);
+			return this;
+		}
+
+		public Builder<C,S> serverBossGroup(EventLoopGroup group) {
+			this.serverBossGroup = requireNonNull(group);
+			return this;
+		}
+
+		public Builder<C,S> serverWorkerGroup(EventLoopGroup group) {
+			this.serverWorkerGroup = requireNonNull(group);
+			return this;
+		}
+
+		public NettyIntrepidDriver<C,S> build() {
+			return new NettyIntrepidDriver<>(enableCompression, clientSslContext,
+				clientChannelClass, clientOptions, clientWorkerGroup, serverSslContext,
+				serverChannelClass, serverOptions, serverBossGroup, serverWorkerGroup);
 		}
 	}
 }

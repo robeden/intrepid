@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 import static com.starlight.intrepid.driver.netty.NettyIntrepidDriver.*;
 
 
-public class ProcessListener extends ChannelDuplexHandler {
+public class ProcessListener<DR extends DelayedRunnable> extends ChannelDuplexHandler {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessListener.class);
 
     private final Map<VMID, ChannelContainer> session_map;
@@ -42,21 +42,21 @@ public class ProcessListener extends ChannelDuplexHandler {
     private final VMID local_vmid;
     private final InboundMessageHandler message_handler;
     private final PerformanceListener performance_listener;
-    private final DelayQueue<NettyIntrepidDriver.ReconnectRunnable> reconnect_delay_queue;
+    private final DelayQueue<DR> reconnect_delay_queue;
     private final ScheduledExecutor thread_pool;
     private final UnitTestHook unit_test_hook;
-	private final ReconnectRunnableCreator rr_creator;
+	private final ReconnectRunnableCreator<DR> rr_creator;
 
-    public ProcessListener(Map<VMID, ChannelContainer> session_map,
-                           Map<SocketAddress, ChannelContainer> outbound_session_map,
-                           Map<VMID, VMID> vmid_remap, Lock map_lock,
-                           ConnectionListener connection_listener,
-                           String connection_type_description, VMID local_vmid,
-                           InboundMessageHandler message_handler,
-                           PerformanceListener performance_listener,
-                           DelayQueue<NettyIntrepidDriver.ReconnectRunnable> reconnect_delay_queue,
-                           ScheduledExecutor thread_pool, UnitTestHook unit_test_hook,
-						   ReconnectRunnableCreator rr_creator) {
+	ProcessListener(Map<VMID, ChannelContainer> session_map,
+					Map<SocketAddress, ChannelContainer> outbound_session_map,
+					Map<VMID, VMID> vmid_remap, Lock map_lock,
+					ConnectionListener connection_listener,
+					String connection_type_description, VMID local_vmid,
+					InboundMessageHandler message_handler,
+					PerformanceListener performance_listener,
+					DelayQueue<DR> reconnect_delay_queue,
+					ScheduledExecutor thread_pool, UnitTestHook unit_test_hook,
+					ReconnectRunnableCreator<DR> rr_creator) {
         this.session_map = session_map;
         this.outbound_session_map = outbound_session_map;
         this.vmid_remap = vmid_remap;
@@ -74,7 +74,7 @@ public class ProcessListener extends ChannelDuplexHandler {
 
 
     @Override
-	public void exceptionCaught(ChannelHandlerContext context, Throwable cause) throws Exception {
+	public void exceptionCaught(ChannelHandlerContext context, Throwable cause) {
         LOG.trace( "NETTY.exceptionCaught: {}", context, cause );
 
 		// Make sure unexpected errors are printed
@@ -85,22 +85,16 @@ public class ProcessListener extends ChannelDuplexHandler {
 	}
 
 	@Override
-	public void channelActive(ChannelHandlerContext context) throws Exception {
+	public void channelActive(ChannelHandlerContext context) {
         LOG.trace( "{} channelActive: {}", local_vmid, context );
 
 		Channel channel = context.channel();
 
 		// Make sure the session has a container attached
 		// NOTE: This path is hit for inbound connections to the server
-		ChannelContainer container = channel.attr(CONTAINER_KEY).get();
-		if ( container == null ) {
-			// TODO: This remoteAddress call is returning null (not connected yet?)
-			container = new ChannelContainer( channel.remoteAddress(), null );
-			channel.attr(CONTAINER_KEY).set( container );
-
-			// Install a VMID future
-			channel.attr(VMID_SLOT_KEY).set( new ObjectSlot<>() );
-		}
+		channel.attr(CONTAINER_KEY).setIfAbsent(
+			new ChannelContainer( channel.remoteAddress(), null ));
+		channel.attr(VMID_SLOT_KEY).setIfAbsent(new ObjectSlot<>());
 
 		// WARNING: Don't set session in container here because the session isn't fully
 		//          initialized. It needs to be done when the VMID is set because that
@@ -144,8 +138,8 @@ public class ProcessListener extends ChannelDuplexHandler {
 	}
 
 	@Override
-	public void channelInactive(ChannelHandlerContext context) throws Exception {
-        LOG.trace( "{} = channelInactive: {}", context );
+	public void channelInactive(ChannelHandlerContext context) {
+        LOG.trace( "channelInactive: {}", context );
 
 		Channel channel = context.channel();
 
@@ -280,7 +274,7 @@ public class ProcessListener extends ChannelDuplexHandler {
 					channel.attr(VMID_SLOT_KEY).set( new ObjectSlot<>() );
 
 					// Schedule a retry (will pretty much run immediately)
-					NettyIntrepidDriver.ReconnectRunnable runnable = rr_creator.create(container, vmid,
+					DR runnable = rr_creator.create(container, vmid,
 						attachment, socket_address,
 						channel.attr(RECONNECT_TOKEN_KEY).get());
 					LOG.debug( "ReconnectRunnable added to delay queue: {}", runnable );

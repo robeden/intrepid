@@ -27,7 +27,7 @@ package com.starlight.intrepid;
 
 import com.starlight.intrepid.auth.UserContextInfo;
 
-import java.net.InetAddress;
+import java.net.SocketAddress;
 
 
 /**
@@ -71,7 +71,7 @@ public class IntrepidContext {
 	 *
 	 * @see #isCall()
 	 */
-	public static InetAddress getCallingHost() {
+	public static SocketAddress getCallingHost() {
 		CallInfo info = CALL_INFO.get();
 		return info == null
 			? null
@@ -103,7 +103,7 @@ public class IntrepidContext {
 	}
 
 
-	static void setCallInfo( Intrepid instance, VMID source, InetAddress source_address,
+	static void setCallInfo( Intrepid instance, VMID source, SocketAddress source_address,
 		UserContextInfo user_context ) {
 
 		CALL_INFO.set( new CallInfo( instance, source, source_address, user_context ) );
@@ -117,10 +117,10 @@ public class IntrepidContext {
 	private static class CallInfo {
 		final Intrepid instance;
 		final VMID source;
-		final InetAddress source_address;
+		final SocketAddress source_address;
 		final UserContextInfo user_context;
 
-		CallInfo( Intrepid instance, VMID source, InetAddress source_address,
+		CallInfo( Intrepid instance, VMID source, SocketAddress source_address,
 			UserContextInfo user_context ) {
 
 			this.instance = instance;

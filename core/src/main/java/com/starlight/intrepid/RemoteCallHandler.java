@@ -50,8 +50,6 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -1032,11 +1030,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 				message.getArgs(), context_info, message.getPersistentName() );
 		}
 
-		InetAddress source_address = null;
 		SocketAddress sock_addr = session_info.getRemoteAddress();
-		if ( sock_addr != null && sock_addr instanceof InetSocketAddress ) {
-			source_address = ( ( InetSocketAddress ) sock_addr ).getAddress();
-		}
 
 		Byte protocol_version = session_info.getProtocolVersion();
 		assert protocol_version != null :
@@ -1048,7 +1042,7 @@ class RemoteCallHandler implements InboundMessageHandler {
 		Byte ack_rate = session_info.getAckRateSec();
 
 		InvokeRunner runner = new InvokeRunner( message, session_info.getVMID(),
-			source_address, context_info, spi, local_handler, instance, runner_map,
+			sock_addr, context_info, spi, local_handler, instance, runner_map,
 			runner_map_lock, performance_listeners, needs_ack,
 			ack_rate == null ? REQUEST_INVOKE_ACK_RATE_SEC : ack_rate.byteValue(),
 			executor );

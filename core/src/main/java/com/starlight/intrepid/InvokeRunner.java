@@ -29,18 +29,18 @@ import com.logicartisan.common.core.listeners.ListenerSupport;
 import com.logicartisan.common.core.thread.ScheduledExecutor;
 import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.auth.UserContextInfo;
+import com.starlight.intrepid.driver.IntrepidDriver;
 import com.starlight.intrepid.exception.IllegalProxyDelegateException;
 import com.starlight.intrepid.message.InvokeAckIMessage;
 import com.starlight.intrepid.message.InvokeIMessage;
 import com.starlight.intrepid.message.InvokeReturnIMessage;
-import com.starlight.intrepid.driver.IntrepidDriver;
 import gnu.trove.map.TIntObjectMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -54,7 +54,7 @@ class InvokeRunner implements Runnable {
 
 	private final InvokeIMessage message;
 	private final VMID source;
-	private final InetAddress source_address;
+	private final SocketAddress source_address;
 	private final UserContextInfo user_context;
 	private final IntrepidDriver spi;
 	private final LocalCallHandler local_handler;
@@ -70,7 +70,7 @@ class InvokeRunner implements Runnable {
 
 	Thread my_thread;
 
-	InvokeRunner( InvokeIMessage message, VMID source, InetAddress source_address,
+	InvokeRunner( InvokeIMessage message, VMID source, SocketAddress source_address,
 		UserContextInfo user_context, IntrepidDriver spi, LocalCallHandler local_handler,
 		Intrepid instance, TIntObjectMap<InvokeRunner> runner_map, Lock runner_map_lock,
 		ListenerSupport<PerformanceListener,?> performance_listeners, boolean needs_ack,

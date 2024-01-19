@@ -49,6 +49,9 @@ public class EncryptedCommTest extends CommTest {
 			.forServer(ssc.certificate(), ssc.privateKey())
 			.build();
 
-		return new NettyIntrepidDriver( false, client_ctx, server_ctx );
+		return NettyIntrepidDriver.newBuilder()
+			.clientSslContext(client_ctx)
+			.serverSslContext(server_ctx)
+			.build();
 	}
 }

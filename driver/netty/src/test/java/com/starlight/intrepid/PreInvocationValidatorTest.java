@@ -40,7 +40,9 @@ public class PreInvocationValidatorTest {
 			( instance, calling_vmid, calling_host, user_context, method, target, args ) -> {
 
 			assertEquals(client_instance.getLocalVMID(), calling_vmid);
-			assertEquals(localhost, calling_host);
+
+			assertInstanceOf(InetSocketAddress.class, calling_host);
+			assertEquals(localhost, ((InetSocketAddress)calling_host).getAddress());
 
 			if ( !method.getName().equals( "doForLove" ) ) return;
 

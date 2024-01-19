@@ -41,7 +41,7 @@ public class NettyIntrepidDriverTest {
 	public void testAnonymousPortServer() {
 		Intrepid instance = null;
 		try {
-			NettyIntrepidDriver spi = new NettyIntrepidDriver();
+			NettyIntrepidDriver spi = new NettyIntrepidDriver.Builder().build();
 			instance = Intrepid.newBuilder()
 				.driver( spi )
 				.openServer()
@@ -63,7 +63,7 @@ public class NettyIntrepidDriverTest {
 	public void testSpecificPortServer() {
 		Intrepid instance = null;
 		try {
-			NettyIntrepidDriver spi = new NettyIntrepidDriver();
+			NettyIntrepidDriver spi = new NettyIntrepidDriver.Builder().build();
 			instance = Intrepid.newBuilder()
 				.driver( spi )
 				.openServer()
