@@ -434,7 +434,7 @@ public class ReconnectTest {
 
 
 		boolean reconnected = false;
-		for( int i = 0; i < 40; i++ ) {
+		for( int i = 0; i < 5; i++ ) {
 			ThreadKit.sleep( 500 );
 
 			try {
@@ -444,7 +444,7 @@ public class ReconnectTest {
 			}
 			catch ( IntrepidRuntimeException ex ) {
 				// expected
-				System.out.println( ex );
+				System.out.println( "Possibly-expected error: " + ex );
 			}
 		}
 
