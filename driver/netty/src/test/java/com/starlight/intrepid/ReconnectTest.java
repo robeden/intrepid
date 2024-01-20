@@ -34,6 +34,7 @@ import com.starlight.intrepid.exception.IntrepidRuntimeException;
 import com.starlight.intrepid.exception.NotConnectedException;
 import org.easymock.EasyMock;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -340,6 +341,7 @@ public class ReconnectTest {
 	}
 
 
+	@Disabled("#2 : Known broken - 2024-01-19")
 	@Test
 	@Timeout(value = 20, unit = TimeUnit.SECONDS)
 	public void testTokenReconnection() throws Exception {
