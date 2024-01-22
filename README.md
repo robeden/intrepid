@@ -14,23 +14,23 @@ allows even classes such as HashMap to be used remotely without any changes.
 Download
 --------
 
-Download the [latest core JAR](https://search.maven.org/remote_content?g=com.logicartisan.intrepid&a=intrepid-core&v=LATEST)
-and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intrepid&a=intrepid-driver-mina&v=LATEST) or grab via Maven:
+Download the [latest core JAR](https://search.maven.org/remote_content?g=com.logicartisan.intrepid&a=intrepid&v=LATEST)
+and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intrepid&a=intrepid-driver-netty&v=LATEST) or grab via Maven:
 ```
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
-  <artifactId>intrepid-core</artifactId>
-  <version>1.9.0</version>
+  <artifactId>intrepid</artifactId>
+  <version>2.0.0</version>
 </dependency>
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
-  <artifactId>intrepid-driver-mina</artifactId>
-  <version>1.9.0</version>
+  <artifactId>intrepid-driver-netty</artifactId>
+  <version>2.0.0</version>
   <scope>runtime</scope>  <!-- runtime only -->
 </dependency>
 ```
 or Gradle:
-```groovy
+```kotlin
 
 implementation("com.logicartisan.intrepid:intrepid-core:2.0.0")
 runtimeOnly("com.logicartisan.intrepid:intrepid-driver-netty:2.0.0")
