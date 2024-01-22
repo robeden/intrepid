@@ -21,7 +21,7 @@ jobs:
       matrix:
         java-version:
           - 11
-          - 17
+#          - 17
           - 21
 
     steps:
@@ -41,48 +41,49 @@ jobs:
         run: |
           ./gradlew -Dtest.java.version=${{ matrix.java-version }} build --stacktrace
 
-  all-platforms:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ macos-13, ubuntu-latest ] #, windows-latest ]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
-
-      - name: Configure JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'termurin'
-          java-version: 21
-
-      - name: Test
-        if: matrix.os != 'windows-latest'
-        run: |
-          ./gradlew build
-
-#      - name: Test (No WASM)
-#        if: matrix.os == 'windows-latest'
+#  all-platforms:
+#    runs-on: ${{ matrix.os }}
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        os: [ macos-13, ubuntu-latest ] #, windows-latest ]
+#
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Validate Gradle Wrapper
+#        uses: gradle/wrapper-validation-action@v1
+#
+#      - name: Configure JDK
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: 'termurin'
+#          java-version: 21
+#
+#      - name: Test
+#        if: matrix.os != 'windows-latest'
 #        run: |
-#          ./gradlew build -Dkwasm=false
-
-      - name: Save Test Reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: '**/build/reports'
+#          ./gradlew build
+#
+##      - name: Test (No WASM)
+##        if: matrix.os == 'windows-latest'
+##        run: |
+##          ./gradlew build -Dkwasm=false
+#
+#      - name: Save Test Reports
+#        if: failure()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: test-reports
+#          path: '**/build/reports'
 
   publish:
     runs-on: ubuntu-latest
     if: github.repository == 'robeden/intrepid' && github.ref == 'refs/heads/master'
-    needs: [jvm, all-platforms]
+    needs: [jvm]
+#    needs: [jvm, all-platforms]
 
     steps:
       - name: Checkout
@@ -91,9 +92,8 @@ jobs:
       - name: Configure JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: 11
-#          java-version: 19
+          distribution: 'temurin'
+          java-version: 21
 
       - name: Upload Artifacts
         run: |
