@@ -1,0 +1,104 @@
+name: build
+
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+  push:
+    branches:
+      - 'master'
+    tags-ignore:
+      - '**'
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+jobs:
+  jvm:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        java-version:
+          - 11
+          - 17
+          - 21
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Configure JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+
+      - name: Test
+        run: |
+          ./gradlew -Dtest.java.version=${{ matrix.java-version }} build --stacktrace
+
+  all-platforms:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-13, ubuntu-latest ] #, windows-latest ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Configure JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'termurin'
+          java-version: 21
+
+      - name: Test
+        if: matrix.os != 'windows-latest'
+        run: |
+          ./gradlew build
+
+#      - name: Test (No WASM)
+#        if: matrix.os == 'windows-latest'
+#        run: |
+#          ./gradlew build -Dkwasm=false
+
+      - name: Save Test Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports'
+
+  publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'robeden/intrepid' && github.ref == 'refs/heads/master'
+    needs: [jvm, all-platforms]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 11
+#          java-version: 19
+
+      - name: Upload Artifacts
+        run: |
+          ./gradlew clean publish --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_NEXUS_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_NEXUS_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.ARTIFACT_SIGNING_PRIVATE_KEY }}

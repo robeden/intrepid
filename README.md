@@ -31,8 +31,9 @@ and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intr
 ```
 or Gradle:
 ```groovy
-compile 'com.logicartisan.intrepid:intrepid-core:1.9.0'
-runtime 'com.logicartisan.intrepid:intrepid-driver-mina:1.9.0'  // runtime only
+
+implementation("com.logicartisan.intrepid:intrepid-core:2.0.0")
+runtimeOnly("com.logicartisan.intrepid:intrepid-driver-netty:2.0.0")
 ```
 
 

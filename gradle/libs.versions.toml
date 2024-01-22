@@ -1,0 +1,27 @@
+[versions]
+mina = "2.2.3"
+netty = "4.1.105.Final"
+slf4j = "2.0.11"
+
+[libraries]
+byteunits = { module = "com.jakewharton.byteunits:byteunits", version = "0.9.1" }
+findbugs-jsr305 = { module = "com.google.code.findbugs:jsr305", version = "3.0.1" }
+logicartisan-common = { module = "com.logicartisan:common-core", version = "1.1.0" }
+mina-core = { module = "org.apache.mina:mina-core", version.ref="mina" }
+mina-compression = { module = "org.apache.mina:mina-filter-compression", version.ref="mina" }
+netty-handler = { module = "io.netty:netty-handler", version.ref = "netty" }
+netty-transport = { module = "io.netty:netty-transport", version.ref = "netty" }
+netty-transport-epoll-classes = { module = "io.netty:netty-transport-classes-epoll", version.ref = "netty" }
+netty-transport-kqueue-classes = { module = "io.netty:netty-transport-classes-kqueue", version.ref = "netty" }
+netty-transport-epoll-native = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
+netty-transport-kqueue-native = { module = "io.netty:netty-transport-native-kqueue", version.ref = "netty" }
+okio = { module = "com.squareup.okio:okio", version = "3.6.0" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+trove = { module = "net.sf.trove4j:trove4j", version = "3.0.3" }
+test-easymock = { module = "org.easymock:easymock", version="3.4" }
+test-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version="5.10.1" }
+test-junit-platform = { module = "org.junit.platform:junit-platform-launcher" }
+test-jzlib = { module = "com.jcraft:jzlib", version = "1.1.3" }
+test-mockito = { module = "org.mockito:mockito-core", version = "4.3.1" }
+vanniktech-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version = "0.27.0" }
