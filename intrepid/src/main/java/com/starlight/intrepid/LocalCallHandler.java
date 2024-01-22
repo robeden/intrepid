@@ -449,6 +449,10 @@ class LocalCallHandler {
 				// Skip non-public interfaces
 				if ( !Modifier.isPublic( implemented_class.getModifiers() ) ) continue;
 
+				// TODO JRE 17+, check for sealed and hidden
+				// For now, ignore everything from the constants package
+				if ( implemented_class.getName().startsWith( "java.lang.constant" ) ) continue;
+
 				if ( !proxy_class_filter.checkInterfaceAllowed(
 					object, implemented_class ) ) {
 					continue;

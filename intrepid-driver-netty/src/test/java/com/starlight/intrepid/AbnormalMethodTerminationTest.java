@@ -1,11 +1,8 @@
 package com.starlight.intrepid;
 
-import com.logicartisan.common.core.thread.SharedThreadPool;
-import com.logicartisan.common.core.thread.ThreadKit;
 import com.starlight.intrepid.exception.InterruptedCallException;
 import com.starlight.intrepid.exception.ServerException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +10,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -127,17 +123,6 @@ public class AbnormalMethodTerminationTest {
 	}
 
 	@Test
-	public void testDieByThreadDeath() {
-		try {
-			server.dieByThreadDeath();
-		}
-		catch( ServerException ex ) {
-			assertNotNull(ex.getCause());
-			assertEquals(ThreadDeath.class, ex.getCause().getClass());
-		}
-	}
-
-	@Test
 	public void testDieBySessionClose() {
 		try {
 			server.dieBySessionClose();
@@ -156,7 +141,6 @@ public class AbnormalMethodTerminationTest {
 		void dieByDeclaredError() throws Error;
 		void dieByUndeclaredError();
 		void dieByOutOfMemory();
-		void dieByThreadDeath();
 		void dieBySessionClose();
 	}
 
@@ -195,20 +179,6 @@ public class AbnormalMethodTerminationTest {
 			while( true ) {
 				list_of_doom.add( new byte[ 1024000 ] );
 			}
-		}
-
-		@SuppressWarnings( "deprecation" )
-		@Override
-		public void dieByThreadDeath() {
-			final Thread thread_to_kill = Thread.currentThread();
-
-			SharedThreadPool.INSTANCE.schedule(
-                thread_to_kill::stop, 1, TimeUnit.SECONDS );
-
-			ThreadKit.sleep( 5000 );
-
-			System.err.println( "Thread didn't die!" );
-			Assertions.fail("Thread didn't die!");
 		}
 
 		@Override

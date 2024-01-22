@@ -31,11 +31,15 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import org.junit.jupiter.api.condition.DisabledOnJre;
+import org.junit.jupiter.api.condition.JRE;
 
 
 /**
  *
  */
+@DisabledOnJre(value= JRE.JAVA_21,
+	disabledReason = "Self-signed cert doesn't work on JRE 21")
 public class EncryptedCommTest extends CommTest {
 	@Override
 	protected IntrepidDriver createSPI( boolean server ) throws Exception {

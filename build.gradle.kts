@@ -93,7 +93,7 @@ allprojects {
       // This hack allows Maven users to continue using our original Okio artifact names (like
       // com.squareup.okio:okio:3.x.y) even though we changed that artifact from JVM-only to Kotlin
       // Multiplatform. Note that module.json doesn't need this hack.
-      val mavenPublications = publishingExtension.publications.withType<MavenPublication>()
+//      val mavenPublications = publishingExtension.publications.withType<MavenPublication>()
 //      mavenPublications.configureEach {
 //        if (name != "jvm") return@configureEach
 //        val jvmPublication = this
