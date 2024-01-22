@@ -196,7 +196,7 @@ public class ReconnectTest {
 			.serverAddress( new InetSocketAddress( port ) )
 			.openServer()
 			.build();
-		System.out.println( "Server instance recreated: " + port );
+		System.out.println( "Server instance recreated (port=" + port +")" );
 		server_instance.getLocalRegistry().bind( "server", server_impl );
 
 
@@ -326,24 +326,24 @@ public class ReconnectTest {
 		UserContextInfo test_info = new SimpleUserContextInfo( "test_user" );
 
 		// Mock for first call - no token should be provided
-		EasyMock.expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
-			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+		EasyMock.expect( mock_auth_handler.checkConnection( EasyMock.isNull(),
+			EasyMock.notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( test_info );
 		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
-			EasyMock.<ConnectionArgs>isNull(),
-			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.isNull(),
+			EasyMock.notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.<ConnectionArgs>isNull() ) ).andReturn( "my test token" );
 		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
             2);
 		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
-			EasyMock.<ConnectionArgs>isNull(),
-			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.isNull(),
+			EasyMock.notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.eq( "my test token" ) ) ).andReturn( "my test token - TWO" );
 		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
             2);
 		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
-			EasyMock.<ConnectionArgs>isNull(),
-			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.isNull(),
+			EasyMock.notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.eq( "my test token - TWO" ) ) ).andReturn( "my test token - THREE" );
 		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
             2);
@@ -383,11 +383,11 @@ public class ReconnectTest {
 
 		// Mock for second call - token SHOULD be provided
 		EasyMock.reset( mock_auth_handler );
-		EasyMock.expect( mock_auth_handler.checkConnection( EasyMock.<ConnectionArgs>isNull(),
-			EasyMock.<SocketAddress>notNull(), EasyMock.<SocketAddress>notNull(),
+		EasyMock.expect( mock_auth_handler.checkConnection( EasyMock.isNull(),
+			EasyMock.notNull(), EasyMock.<SocketAddress>notNull(),
 			EasyMock.eq( "my test token - THREE" ) ) ).andReturn( test_info );
 		EasyMock.expect( mock_auth_handler.generateReconnectToken( EasyMock.eq( test_info ),
-			EasyMock.<ConnectionArgs>isNull(), EasyMock.<SocketAddress>notNull(),
+			EasyMock.isNull(), EasyMock.notNull(),
 			EasyMock.<SocketAddress>notNull(), EasyMock.eq( "my test token - THREE" ) ) )
 			.andReturn( "my NEW test token" );
 		EasyMock.expect(mock_auth_handler.getTokenRegenerationInterval()).andReturn(
