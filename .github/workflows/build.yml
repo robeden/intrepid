@@ -82,7 +82,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    if: github.repository == 'robeden/intrepid' && ${{ startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ github.repository == 'robeden/intrepid' && startsWith(github.ref, 'refs/tags/') }}
     needs: [jvm]
 #    needs: [jvm, all-platforms]
 
