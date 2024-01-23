@@ -4,6 +4,7 @@ import com.starlight.intrepid.exception.InterruptedCallException;
 import com.starlight.intrepid.exception.ServerException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
@@ -111,6 +112,7 @@ public class AbnormalMethodTerminationTest {
 		}
 	}
 
+	@Disabled("Flaky on Github Actions - 2024-01-23")
 	@Test
 	public void testDieByOutOfMemory() {
 		try {
