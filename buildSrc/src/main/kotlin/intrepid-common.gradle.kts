@@ -17,7 +17,7 @@ java {
     withSourcesJar()
 }
 
-val testJavaVersion = System.getProperty("test.java.version", "19").toInt()
+val testJavaVersion = System.getProperty("test.java.version", "21").toInt()
 tasks.named<Test>("test") {
     useJUnitPlatform()
 
