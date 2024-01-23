@@ -84,7 +84,17 @@ publishing {
         }
     }
     repositories {
-        mavenCentral()
+        maven {
+            name = "OSSRH"
+            url = if (version.toString().endsWith("SNAPSHOT"))
+                uri("https://oss.sonatype.org/content/repositories/snapshots/")
+                else uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+
+            credentials {
+                username = findProperty("ossrhUsername")?.toString() ?: System.getenv("OSSRH_USERNAME")
+                password = findProperty("ossrhPassword")?.toString() ?: System.getenv("OSSRH_PASSWORD")
+            }
+        }
     }
 }
 
