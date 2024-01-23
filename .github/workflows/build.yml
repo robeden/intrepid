@@ -103,3 +103,4 @@ jobs:
           OSSRH_USERNAME: ${{ secrets.SONATYPE_NEXUS_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.SONATYPE_NEXUS_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.ARTIFACT_SIGNING_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ARTIFACT_SIGNING_PASSWORD }}
