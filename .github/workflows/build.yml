@@ -10,7 +10,7 @@ on:
       - '**'
 
 env:
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g -Dorg.gradle.daemon=false"
 
 jobs:
   jvm:
