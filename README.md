@@ -19,7 +19,7 @@ and [driver JAR](https://search.maven.org/remote_content?g=com.logicartisan.intr
 ```
 <dependency>
   <groupId>com.logicartisan.intrepid</groupId>
-  <artifactId>intrepid</artifactId>
+  <artifactId>intrepid-core</artifactId>
   <version>2.0.0</version>
 </dependency>
 <dependency>
