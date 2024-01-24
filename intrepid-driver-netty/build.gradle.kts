@@ -4,7 +4,7 @@ plugins {
 
 
 dependencies {
-    implementation(project(":intrepid"))
+    implementation(project(":intrepid-core"))
 
     implementation(libs.netty.handler)
     implementation(libs.netty.transport)

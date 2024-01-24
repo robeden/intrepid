@@ -4,7 +4,7 @@ plugins {
 
 
 dependencies {
-    implementation(project(":intrepid"))
+    implementation(project(":intrepid-core"))
 
     implementation(libs.mina.core)
     implementation(libs.mina.compression)
