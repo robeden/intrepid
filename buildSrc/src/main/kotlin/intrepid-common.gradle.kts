@@ -6,7 +6,7 @@ plugins {
     signing
 }
 
-group = "com.logicastisan.intrepid"
+group = "com.logicartisan.intrepid"
 
 repositories {
     mavenCentral()
