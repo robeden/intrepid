@@ -1,8 +1,4 @@
-plugins {
-    id("net.nemerosa.versioning") version "3.0.0"
-}
-
-version = versioning.info.display
+version = project.property("VERSION") as String
 println("Version: $version")
 
 allprojects {
