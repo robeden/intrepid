@@ -60,7 +60,7 @@ publishing {
             from(components["java"])
             pom {
                 name = project.name
-                description = "A Java RMI replacement with easier usage with better control and security"
+                description = "Java RMI replacement with easier usage with better control and security"
                 url = "https://github.com/robeden/intrepid/"
                 licenses {
                     license {
@@ -85,15 +85,8 @@ publishing {
     }
     repositories {
         maven {
-            name = "OSSRH"
-            url = if (version.toString().endsWith("SNAPSHOT"))
-                uri("https://oss.sonatype.org/content/repositories/snapshots/")
-                else uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-
-            credentials {
-                username = findProperty("ossrhUsername")?.toString() ?: System.getenv("OSSRH_USERNAME")
-                password = findProperty("ossrhPassword")?.toString() ?: System.getenv("OSSRH_PASSWORD")
-            }
+            name = "PreDeploy"
+            url = uri(layout.buildDirectory.dir("pre-deploy"))
         }
     }
 }
@@ -103,4 +96,40 @@ signing {
     val signingPassword: String? by project
     useInMemoryPgpKeys(signingInMemoryKey, signingPassword)
     sign(publishing.publications["mavenJava"])
+}
+
+
+jreleaser {
+    project {
+        copyright = "Rob Eden"
+        description = "Java RMI replacement with easier usage with better control and security"
+    }
+    signing {
+        setActive("ALWAYS")
+        setMode("MEMORY")
+        armored = true
+
+//        mode = Signing.Mode.MEMORY
+//
+//        publicKey = "public.key"
+//        secretKey = "private.key"
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                create("sonatype") {
+                    setActive("ALWAYS")
+                    url = "https://central.sonatype.com/api/v1/publisher"
+                    stagingRepository("build/pre-deploy")
+                    username = findProperty("ossrhUsername")?.toString() ?: System.getenv("OSSRH_USERNAME")
+                    password = findProperty("ossrhPassword")?.toString() ?: System.getenv("OSSRH_PASSWORD")
+                }
+            }
+        }
+    }
+    release {
+        github {
+            enabled = false
+        }
+    }
 }
